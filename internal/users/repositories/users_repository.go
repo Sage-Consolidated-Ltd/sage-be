@@ -13,6 +13,7 @@ import (
 type UsersRepositoryInt interface {
 	CreateUser(ctx context.Context, req *requests.CreateUserRequest, hash string) error
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	MarkEmailVerified(ctx context.Context, email string) error
 }
 
 var (
@@ -26,6 +27,9 @@ var (
 	`
 	GET_USER_BY_EMAIL = `
 	SELECT * FROM users WHERE email = $1
+	`
+	MARK_EMAIL_VERIFIED = `
+	UPDATE users SET is_verified = true WHERE email = $1
 	`
 )
 
@@ -53,7 +57,6 @@ func (r *UsersRepository) CreateUser(ctx context.Context, req *requests.CreateUs
 	}
 	return nil
 }
-
 func (r *UsersRepository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	var user models.User
 
@@ -65,4 +68,12 @@ func (r *UsersRepository) GetUserByEmail(ctx context.Context, email string) (*mo
 		return nil, err
 	}
 	return &user, nil
+}
+
+func (r *UsersRepository) MarkEmailVerified(ctx context.Context, email string) error {
+	_, err := r.db.ExecContext(ctx, MARK_EMAIL_VERIFIED, email)
+	if err != nil {
+		return err
+	}
+	return nil
 }

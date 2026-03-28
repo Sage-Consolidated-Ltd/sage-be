@@ -84,9 +84,18 @@ func (s *AuthService) OAuthLogin(ctx context.Context, payload *requests.CreateUs
 		if err = s.userRepo.CreateUser(ctx, newUser, hash); err != nil {
 			return nil, "", err
 		}
+		if err = s.userRepo.MarkEmailVerified(ctx, newUser.Email); err != nil {
+			return nil, "", err
+		}
 
 		// Fetch the newly created user
 		user, err = s.userRepo.GetUserByEmail(ctx, payload.Email)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	if !user.IsVerified {
+		err = s.userRepo.MarkEmailVerified(ctx, payload.Email)
 		if err != nil {
 			return nil, "", err
 		}
