@@ -47,6 +47,17 @@ func main() {
 		JwtSecret: cfg.JWTSecret,
 	}
 
+	cfgGomniAuth := config.NewConfigGomniAuth(
+		cfg.GomniSecurityKey, 
+		cfg.GoogleClientId, 
+		cfg.GoogleClientSecret, 
+		cfg.GoogleRedirectUrl,
+		cfg.GitHubClientId,
+		cfg.GitHubClientSecret,
+		cfg.GitHubRedirectUrl,
+	)
+	cfgGomniAuth.InitGomniauth()
+
 	// repository
 	userRepo := repositories.NewUsersRepository(db)
 

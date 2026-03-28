@@ -18,3 +18,19 @@ type User struct {
 	UpdatedAt    sql.NullTime `json:"updated_at" db:"updated_at"`
 	DeletedAt    sql.NullTime `json:"deleted_at" db:"deleted_at"`
 }
+type GetUserResponse struct {
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Email     string    `json:"email"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+func(u *User) ToResponse() *GetUserResponse {
+	return &GetUserResponse{
+		FirstName: u.FirstName,
+		LastName:  u.LastName,
+		Email:     u.Email,
+		Role:      string(u.Role),
+		CreatedAt: u.CreatedAt,
+	}
+}

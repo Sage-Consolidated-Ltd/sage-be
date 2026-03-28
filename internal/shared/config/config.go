@@ -15,6 +15,13 @@ type Config struct {
 	DBConnMAXLife  int
 	JWTSecret      string
 	PORT           string
+	GomniSecurityKey string
+	GoogleClientId string
+	GoogleClientSecret string
+	GoogleRedirectUrl string
+	GitHubClientId string
+	GitHubClientSecret string
+	GitHubRedirectUrl string
 }
 
 func requireEnv(value string) string {
@@ -52,5 +59,12 @@ func Setup() *Config {
 		DBMAXIdleConns: getEnvInt("DB_MAX_IDLE_CONNS", 25),
 		DBConnMAXLife:  getEnvInt("DB_CONN_MAX_LIFE", 300),
 		PORT:           getEnv("PORT", "3333"),
+		GomniSecurityKey: requireEnv("GOMNI_SECURITY_KEY"),
+		GoogleClientId: requireEnv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret: requireEnv("GOOGLE_CLIENT_SECRET"),
+		GoogleRedirectUrl: requireEnv("GOOGLE_REDIRECT_URL"),
+		GitHubClientId: requireEnv("GITHUB_CLIENT_ID"),
+		GitHubClientSecret: requireEnv("GITHUB_CLIENT_SECRET"),
+		GitHubRedirectUrl: requireEnv("GITHUB_REDIRECT_URL"),
 	}
 }
