@@ -18,8 +18,21 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/gofiber/contrib/swagger"
+	_ "sage-backend/docs"
 )
 
+// @title           Sage API
+// @version         1.0
+// @description     Documentation for the Sage API.
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @host      localhost:3333
+// @BasePath  /api/v1
 func main() {
 	cfg := config.Setup()
 	db, err := db.ConnectDB(cfg)
@@ -38,6 +51,15 @@ func main() {
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization, session_id",
 	}))
 	app.Use(recover.New())
+
+	swaggerConfig := swagger.Config{
+		BasePath: "/api/v1",
+		FilePath: "./docs/swagger.json",
+		Path: "docs",
+		Title: "Sage API Documentation",
+	}
+
+	app.Use(swagger.New(swaggerConfig))
 
 	app.Options("/*", func(c *fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusNoContent)

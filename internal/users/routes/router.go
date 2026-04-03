@@ -29,6 +29,7 @@ func RegisterAuthRoutes(router fiber.Router, ah *handlers.AuthHandler) {
 	auth := router.Group("/auth")
 
 	auth.Post("/register", ah.CreateUser)
+	auth.Post("/login", ah.Login)
 	auth.Get("/login/:provider", ah.BeginAuthLogin)
 	auth.Get("/callback/:provider", ah.AuthCallback)
 }

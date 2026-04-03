@@ -106,7 +106,26 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 
 	return response.JSON(c, fiber.StatusOK, "Login successful", map[string]interface{}{"data": resp, "token": token})
 }
+func (a *AuthHandler) Login(c *fiber.Ctx) error {
+	var req requests.LoginRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+	
+	resp, token, err := a.authServ.Login(c.Context(), &req)
+	if err != nil {
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
 
+	return response.JSON(c, fiber.StatusOK, "Login successful", map[string]interface{}{"data": resp, "token": token})
+}
 func fetchGithubEmail(accessToken string) (string, error) {
 	req, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)

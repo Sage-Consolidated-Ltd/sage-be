@@ -15,6 +15,7 @@ import (
 type AuthServiceInt interface {
 	CreateUser(ctx context.Context, req *requests.CreateUserRequest) error
 	OAuthLogin(ctx context.Context, payload *requests.CreateUserRequest) (*models.GetUserResponse, string, error)
+	Login(ctx context.Context, req *requests.LoginRequest) (*models.GetUserResponse, string, error)
 }
 
 type AuthService struct {
@@ -49,7 +50,7 @@ func (s *AuthService) CreateUser(ctx context.Context, req *requests.CreateUserRe
 	}
 
 	// then create account
-	err = s.userRepo.CreateUser(ctx, req, hash)
+	err = s.userRepo.CreateUserWithOrganization(ctx, req, hash)
 	if err != nil {
 		return err
 	}
@@ -99,6 +100,33 @@ func (s *AuthService) OAuthLogin(ctx context.Context, payload *requests.CreateUs
 		if err != nil {
 			return nil, "", err
 		}
+	}
+
+	token, err := s.jwtService.GenerateToken(jwt.UserPayload{
+		Id: user.ID,
+		Email:  user.Email,
+		Role:   user.Role,
+	})
+	if err != nil {
+		return nil, "", apperrors.InternalServerError("error signing token")
+	}
+
+	resp := user.ToResponse()
+
+	return resp, token, nil
+}
+func (s *AuthService) Login(ctx context.Context, req *requests.LoginRequest) (*models.GetUserResponse, string, error) {
+	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if !user.IsVerified {
+		return nil, "", apperrors.UnauthorizedException("email not verified")
+	}
+
+	if match := utils.CompareHashAndPassword(req.Password, user.PasswordHash); !match {
+		return nil, "", apperrors.UnauthorizedException("invalid credentials")
 	}
 
 	token, err := s.jwtService.GenerateToken(jwt.UserPayload{
