@@ -41,13 +41,19 @@ func main() {
 	}
 	defer db.Close()
 
+	config.InitSessionStore(cfg)
+
 	app := fiber.New(fiber.Config{
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          []string{"0.0.0.0/0"},
 		BodyLimit:               5 * 1024 * 1024,
 	})
 	app.Use(cors.New(cors.Config{
+		AllowOriginsFunc: func(origin string) bool {
+        return true
+    	},
 		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS,PATCH",
+		AllowCredentials: true,
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization, session_id",
 	}))
 	app.Use(recover.New())
@@ -69,16 +75,17 @@ func main() {
 		JwtSecret: cfg.JWTSecret,
 	}
 
-	cfgGomniAuth := config.NewConfigGomniAuth(
-		cfg.GomniSecurityKey, 
+	cfgOAuth := config.NewOAuthConfig(
 		cfg.GoogleClientId, 
 		cfg.GoogleClientSecret, 
 		cfg.GoogleRedirectUrl,
 		cfg.GitHubClientId,
 		cfg.GitHubClientSecret,
 		cfg.GitHubRedirectUrl,
+		cfg.AzureClientId,
+		cfg.AzureClientSecret,
+		cfg.AzureRedirectUrl,
 	)
-	cfgGomniAuth.InitGomniauth()
 
 	// repository
 	userRepo := repositories.NewUsersRepository(db)
@@ -87,7 +94,7 @@ func main() {
 	authServ := services.NewAuthService(userRepo, jwtService)
 
 	// handlers
-	authHandler := handlers.NewAuthHandler(authServ)
+	authHandler := handlers.NewAuthHandler(authServ, cfgOAuth, cfg)
 
 	routes.Setup(app, authHandler)
 

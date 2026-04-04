@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     is_verified BOOLEAN NOT NULL DEFAULT false,
     role user_role NOT NULL DEFAULT 'user',
+    two_factor_secret TEXT,
+    two_factor_enabled BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     deleted_at TIMESTAMPTZ

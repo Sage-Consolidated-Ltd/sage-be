@@ -1,53 +1,72 @@
 package config
 
 import (
-	"github.com/stretchr/gomniauth"
-	"github.com/stretchr/gomniauth/providers/google"
-	"github.com/stretchr/gomniauth/providers/github"
+    "golang.org/x/oauth2"
+    "golang.org/x/oauth2/google"
+    "golang.org/x/oauth2/github"
+    "golang.org/x/oauth2/microsoft"
 )
 
-type ConfigGomniAuth struct {
-	securityKey string
-	googleClientId string
-	googleClientSecret string
-	redirectUrl string
-	gitHubClientId string
-	gitHubClientSecret string
-	gitHubRedirectUrl string
+type OAuthConfig struct {
+    GoogleClientId     string
+    GoogleClientSecret string
+    GoogleRedirectUrl  string
+    
+    GitHubClientId     string
+    GitHubClientSecret string
+    GitHubRedirectUrl  string
+    
+    AzureClientId      string
+    AzureClientSecret  string
+    AzureRedirectUrl   string
 }
 
-func NewConfigGomniAuth(
-	securityKey string,
-	googleClientId string,
-	googleClientSecret string,
-	redirectUrl string,
-	gitHubClientId string,
-	gitHubClientSecret string,
-	gitHubRedirectUrl string,
-) *ConfigGomniAuth {
-	return &ConfigGomniAuth{
-		securityKey: securityKey,
-		googleClientId: googleClientId,
-		googleClientSecret: googleClientSecret,
-		redirectUrl: redirectUrl,
-		gitHubClientId: gitHubClientId,
-		gitHubClientSecret: gitHubClientSecret,
-		gitHubRedirectUrl: gitHubRedirectUrl,
-	}
+// NewOAuthConfig is your new constructor
+func NewOAuthConfig(
+    googleId, googleSecret, googleRedirect string,
+    githubId, githubSecret, githubRedirect string,
+    azureId, azureSecret, azureRedirect string,
+) *OAuthConfig {
+    return &OAuthConfig{
+        GoogleClientId:     googleId,
+        GoogleClientSecret: googleSecret,
+        GoogleRedirectUrl:  googleRedirect,
+        GitHubClientId:     githubId,
+        GitHubClientSecret: githubSecret,
+        GitHubRedirectUrl:  githubRedirect,
+        AzureClientId:      azureId,
+        AzureClientSecret:  azureSecret,
+        AzureRedirectUrl:   azureRedirect,
+    }
 }
 
-func (c *ConfigGomniAuth) InitGomniauth() {
-	gomniauth.SetSecurityKey(c.securityKey)
-	gomniauth.WithProviders(
-		google.New(
-			c.googleClientId,
-			c.googleClientSecret,
-			c.redirectUrl,
-		),
-		github.New(
-			c.gitHubClientId,
-			c.gitHubClientSecret,
-			c.gitHubRedirectUrl,
-		),
-	)
+// GetConfig returns the provider-specific oauth2.Config
+func (c *OAuthConfig) GetConfig(provider string) *oauth2.Config {
+    switch provider {
+    case "google":
+        return &oauth2.Config{
+            ClientID:     c.GoogleClientId,
+            ClientSecret: c.GoogleClientSecret,
+            RedirectURL:  c.GoogleRedirectUrl,
+            Endpoint:     google.Endpoint,
+            Scopes:       []string{"https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email"},
+        }
+    case "github":
+        return &oauth2.Config{
+            ClientID:     c.GitHubClientId,
+            ClientSecret: c.GitHubClientSecret,
+            RedirectURL:  c.GitHubRedirectUrl,
+            Endpoint:     github.Endpoint,
+            Scopes:       []string{"read:user", "user:email"},
+        }
+    case "azure":
+        return &oauth2.Config{
+            ClientID:     c.AzureClientId,
+            ClientSecret: c.AzureClientSecret,
+            RedirectURL:  c.AzureRedirectUrl,
+            Endpoint:     microsoft.AzureADEndpoint("common"),
+            Scopes:       []string{"https://graph.microsoft.com/User.Read"},
+        }
+    }
+    return nil
 }

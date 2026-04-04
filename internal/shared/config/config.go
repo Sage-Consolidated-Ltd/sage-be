@@ -22,6 +22,9 @@ type Config struct {
 	GitHubClientId string
 	GitHubClientSecret string
 	GitHubRedirectUrl string
+	AzureClientId string
+	AzureClientSecret string
+	AzureRedirectUrl string
 }
 
 func requireEnv(value string) string {
@@ -66,5 +69,8 @@ func Setup() *Config {
 		GitHubClientId: requireEnv("GITHUB_CLIENT_ID"),
 		GitHubClientSecret: requireEnv("GITHUB_CLIENT_SECRET"),
 		GitHubRedirectUrl: requireEnv("GITHUB_REDIRECT_URL"),
+		AzureClientId: requireEnv("AZURE_CLIENT_ID"),
+		AzureClientSecret: requireEnv("AZURE_CLIENT_SECRET"),
+		AzureRedirectUrl: requireEnv("AZURE_REDIRECT_URL"),
 	}
 }

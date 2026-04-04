@@ -15,6 +15,7 @@ type UsersRepositoryInt interface {
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	MarkEmailVerified(ctx context.Context, email string) error
 	CreateUserWithOrganization(ctx context.Context, req *requests.CreateUserRequest, hash string) error
+	GetUserOrganizations(ctx context.Context, userId string) (*[]models.Organization, error)
 }
 
 var (
@@ -46,6 +47,11 @@ var (
 	user_id,
 	role
 	) VALUES ($1, $2, $3)
+	`
+	GET_USER_ORGANIZATIONS = `
+	SELECT o.* FROM organizations o
+	JOIN organization_members om ON o.id = om.organization_id
+	WHERE om.user_id = $1
 	`
 )
 
@@ -123,4 +129,13 @@ func (r *UsersRepository) CreateUserWithOrganization(ctx context.Context, req *r
 	}
 
 	return nil
+}
+func (r *UsersRepository) GetUserOrganizations(ctx context.Context, userId string) (*[]models.Organization, error) {
+	var orgs []models.Organization
+
+	err := r.db.SelectContext(ctx, &orgs, GET_USER_ORGANIZATIONS, userId)
+	if err != nil {
+		return nil, err
+	}
+	return &orgs, nil
 }
