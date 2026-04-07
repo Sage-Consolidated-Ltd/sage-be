@@ -14,6 +14,8 @@ type User struct {
 	IsVerified   bool         `json:"is_verified" db:"is_verified"`
 	PasswordHash string       `json:"password_hash" db:"password_hash"`
 	Role         types.Role   `json:"role" db:"role"`
+	TwoFactorSecret sql.NullString `json:"two_factor_secret" db:"two_factor_secret"`
+	TwoFactorEnabled bool `json:"two_factor_enabled" db:"two_factor_enabled"`
 	CreatedAt    time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt    sql.NullTime `json:"updated_at" db:"updated_at"`
 	DeletedAt    sql.NullTime `json:"deleted_at" db:"deleted_at"`
@@ -32,6 +34,7 @@ type GetUserResponse struct {
 	LastName  string    `json:"last_name"`
 	Email     string    `json:"email"`
 	Role      string    `json:"role"`
+	TwoFactorEnabled bool `json:"two_factor_enabled" db:"two_factor_enabled"`
 	CreatedAt time.Time `json:"created_at"`
 	Organization []GetOrganizationResponse `json:"organization,omitempty"`
 }
@@ -48,6 +51,7 @@ func(u *User) ToResponse(orgs *[]Organization) *GetUserResponse {
 		LastName:  u.LastName,
 		Email:     u.Email,
 		Role:      string(u.Role),
+		TwoFactorEnabled: u.TwoFactorEnabled,
 		CreatedAt: u.CreatedAt,
 		Organization: organizationsResp,
 	}

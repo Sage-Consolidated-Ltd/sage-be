@@ -3,11 +3,12 @@ package routes
 import (
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/users/handlers"
+	"sage-backend/internal/users/middlewares"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-func Setup(app *fiber.App, ah *handlers.AuthHandler) {
+func Setup(app *fiber.App, ah *handlers.AuthHandler, m *middlewares.AuthMiddleware) {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Welcome to SAGE API SERVICE")
 	})
@@ -18,18 +19,22 @@ func Setup(app *fiber.App, ah *handlers.AuthHandler) {
 		return response.JSON(c, fiber.StatusOK, "API is Healthy", nil)
 	})
 
-	RegisterAuthRoutes(v1, ah)
+	RegisterAuthRoutes(v1, ah, m)
 
 	app.Use(func(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusNotFound, "route not found", nil)
 	})
 }
 
-func RegisterAuthRoutes(router fiber.Router, ah *handlers.AuthHandler) {
+func RegisterAuthRoutes(router fiber.Router, ah *handlers.AuthHandler, m *middlewares.AuthMiddleware) {
 	auth := router.Group("/auth")
 
 	auth.Post("/register", ah.CreateUser)
 	auth.Post("/login", ah.Login)
 	auth.Get("/login/:provider", ah.BeginAuthLogin)
 	auth.Get("/callback/:provider", ah.AuthCallback)
+
+	auth.Get("/generate-2fa", m.RequireAuth, ah.Generate2FA)
+	auth.Post("/enable-2fa", m.RequireAuth, ah.Enable2FA)
+	auth.Post("/verify-2fa", m.RequireAuth, ah.Verify2FA)
 }

@@ -8,6 +8,7 @@ import (
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/users/handlers"
+	"sage-backend/internal/users/middlewares"
 	"sage-backend/internal/users/repositories"
 	"sage-backend/internal/users/routes"
 	"sage-backend/internal/users/services"
@@ -15,11 +16,12 @@ import (
 	"strings"
 	"syscall"
 
+	_ "sage-backend/docs"
+
+	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/gofiber/contrib/swagger"
-	_ "sage-backend/docs"
 )
 
 // @title           Sage API
@@ -71,6 +73,7 @@ func main() {
 		return c.SendStatus(fiber.StatusNoContent)
 	})
 
+
 	jwtService := &jwt.JwtService{
 		JwtSecret: cfg.JWTSecret,
 	}
@@ -87,16 +90,19 @@ func main() {
 		cfg.AzureRedirectUrl,
 	)
 
+	// middlewares
+	authMiddleware := &middlewares.AuthMiddleware{}
+
 	// repository
 	userRepo := repositories.NewUsersRepository(db)
 
 	// services
-	authServ := services.NewAuthService(userRepo, jwtService)
+	authServ := services.NewAuthService(userRepo, jwtService, cfg)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authServ, cfgOAuth, cfg)
 
-	routes.Setup(app, authHandler)
+	routes.Setup(app, authHandler, authMiddleware)
 
 	port := strings.TrimSpace(cfg.PORT)
 

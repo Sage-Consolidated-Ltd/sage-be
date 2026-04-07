@@ -1,17 +1,23 @@
 package services
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image/png"
 	"net/http"
+	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/utils"
 	"sage-backend/internal/users/models"
 	"sage-backend/internal/users/repositories"
 	"sage-backend/internal/users/requests"
 	"sage-backend/pkg/jwt"
+
+	"github.com/pquerna/otp/totp"
 )
 
 type AuthServiceInt interface {
@@ -19,17 +25,22 @@ type AuthServiceInt interface {
 	OAuthLogin(ctx context.Context, payload *requests.CreateUserRequest) (*models.GetUserResponse, error)
 	Login(ctx context.Context, req *requests.LoginRequest) (*models.GetUserResponse, error)
 	FetchExternalUser(ctx context.Context, provider, accessToken string) (*models.ExternalUser, error)
+	Generate2FA(ctx context.Context, email string) (string, string, error)
+	Enabled2FA(ctx context.Context, code string, secret string, userID string) error
+	Verify2FA(ctx context.Context, code, userID string) error
 }
 
 type AuthService struct {
 	userRepo   repositories.UsersRepositoryInt
 	jwtService *jwt.JwtService
+	appConfig *config.Config
 }
 
-func NewAuthService(userRepo repositories.UsersRepositoryInt, jwtService *jwt.JwtService) AuthServiceInt {
+func NewAuthService(userRepo repositories.UsersRepositoryInt, jwtService *jwt.JwtService, appConfig *config.Config) AuthServiceInt {
 	return &AuthService{
 		userRepo:   userRepo,
 		jwtService: jwtService,
+		appConfig: appConfig,
 	}
 }
 
@@ -133,20 +144,10 @@ func (s *AuthService) Login(ctx context.Context, req *requests.LoginRequest) (*m
 		return nil, err
 	}
 
-	// token, err := s.jwtService.GenerateToken(jwt.UserPayload{
-	// 	Id: user.ID,
-	// 	Email:  user.Email,
-	// 	Role:   user.Role,
-	// })
-	// if err != nil {
-	// 	return nil, apperrors.InternalServerError("error signing token")
-	// }
-
 	resp := user.ToResponse(orgs)
 
 	return resp, nil
 }
-
 func (s *AuthService) FetchExternalUser(ctx context.Context, provider, accessToken string) (*models.ExternalUser, error) {
 	var url string
 	switch provider {
@@ -199,7 +200,6 @@ func (s *AuthService) FetchExternalUser(ctx context.Context, provider, accessTok
 
 	return user, nil
 }
-
 func (s *AuthService) fetchGithubEmail(accessToken string) (string, error) {
 	req, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
@@ -237,4 +237,62 @@ func (s *AuthService) fetchGithubEmail(accessToken string) (string, error) {
 	}
 
 	return "", errors.New("no verified email found on github account")
+}
+func (s *AuthService) Generate2FA(ctx context.Context, email string) (string, string, error) {
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer: "Sage",
+		AccountName: email,
+	})
+	if err != nil {
+        return "", "", err
+    }
+
+	fa_secret, err := utils.Encrypt(key.Secret(), []byte(s.appConfig.AppEncryptionKey))
+	if err != nil {
+		return "", "", err
+	}
+
+	img, err := key.Image(200, 200)
+    if err != nil {
+        return "", "", err
+    }
+
+    var buf bytes.Buffer
+    png.Encode(&buf, img)
+    qr := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+	return fa_secret, qr, nil
+}
+func (s *AuthService) Enabled2FA(ctx context.Context, code string, secret string, userID string) error {
+	decryptedSecret, err := utils.Decrypt(secret, []byte(s.appConfig.AppEncryptionKey))
+	if err != nil {
+		return fmt.Errorf("Error decrypting secret: %v", err)
+	}
+	if !totp.Validate(code, decryptedSecret) {
+        return fmt.Errorf("Invalid code")
+    }
+
+	if err := s.userRepo.Enable2FA(ctx, secret, userID); err != nil {
+        return fmt.Errorf("Error enabling 2FA: %v", err)
+    }	
+
+	return nil
+}
+func (s *AuthService) Verify2FA(ctx context.Context, code, userID string) error {
+	secret, err := s.userRepo.GetTOTPSecret(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	decryptedSecret, err := utils.Decrypt(secret, []byte(s.appConfig.AppEncryptionKey))
+	if err != nil {
+		return fmt.Errorf("Error decrypting secret: %v", err)
+	}
+
+
+	if !totp.Validate(code, decryptedSecret) {
+		return fmt.Errorf("Invalid 2FA code")
+	}
+
+	return nil
 }

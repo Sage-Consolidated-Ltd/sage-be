@@ -5,6 +5,11 @@ import (
 	_ "sage-backend/internal/users/models"
 )
 
+type Generate2FAResponse struct {
+    QRCode string `json:"qr_code" example:"data:image/png;base64,..."`
+    Secret string `json:"secret" example:"JBSWY3DPEHPK3PXP....."`
+}
+
 // @Summary Create User
 // @Description Creates a user
 // @Tags Auth
@@ -34,3 +39,32 @@ func _BeginAuthLogin(){}
 // @Success      200       {object}  models.GetUserResponse
 // @Router       /auth/login [post]
 func _Login(){}
+
+// @Summary      Generate 2FA Secret
+// @Description  Generates a 2FA secret for the user and returns the otpauth URL and the base32 secret
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Success      200     {object}  Generate2FAResponse
+// @Router       /auth/generate-2fa [get]
+func _Generate2FA(){}
+
+// @Summary      Enable 2FA
+// @Description  Enables 2FA for the user after verifying the provided TOTP code
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request   body      requests.GoogleAuthenticatorRequest true "TOTP Code"
+// @Success      200
+// @Router       /auth/enable-2fa [post]
+func _Enable2FA() {}
+
+// @Summary      Verify 2FA
+// @Description  Verifies the provided TOTP code for the user
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request   body      requests.GoogleAuthenticatorRequest true "TOTP Code"
+// @Success      200
+// @Router       /auth/verify-2fa [post]
+func _Verify2FA() {}

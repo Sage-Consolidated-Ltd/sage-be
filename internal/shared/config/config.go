@@ -25,6 +25,7 @@ type Config struct {
 	AzureClientId string
 	AzureClientSecret string
 	AzureRedirectUrl string
+	AppEncryptionKey string
 }
 
 func requireEnv(value string) string {
@@ -72,5 +73,6 @@ func Setup() *Config {
 		AzureClientId: requireEnv("AZURE_CLIENT_ID"),
 		AzureClientSecret: requireEnv("AZURE_CLIENT_SECRET"),
 		AzureRedirectUrl: requireEnv("AZURE_REDIRECT_URL"),
+		AppEncryptionKey: requireEnv("APP_ENCRYPTION_KEY"),
 	}
 }

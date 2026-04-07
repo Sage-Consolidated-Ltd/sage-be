@@ -1,9 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
-	"errors"
-	"net/http"
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/response"
@@ -103,6 +100,8 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
+	sess, _ := config.Store.Get(c)
+
 	resp, err := a.authServ.OAuthLogin(ctx, &requests.CreateUserRequest{
 		FirstName: externalUser.FirstName,
 		LastName:  externalUser.LastName,
@@ -114,7 +113,16 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
 
-		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", err.Error())
+	}
+
+	if resp.TwoFactorEnabled {
+		sess.Set("userID", resp.ID)
+		sess.Set("pending_2fa", true)
+		if err := sess.Save(); err != nil {
+			return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
+		}
+		return response.JSON(c, fiber.StatusAccepted, "2FA required", nil)
 	}
 
 	if _, err := config.SetSession(c, config.SessionParam{
@@ -136,6 +144,11 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 		errs := utils.ValidationErrors(err)
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
+
+	sess, _ := config.Store.Get(c)
+	if sess.Get("userID") != nil && sess.Get("pending_2fa") == nil {
+		return response.JSON(c, fiber.StatusOK, "Login successful", nil)
+	}
 	
 	resp, err := a.authServ.Login(c.Context(), &req)
 	if err != nil {
@@ -145,6 +158,15 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 		}
 		log.Errorf("Error occured with login: %s", err)
 		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	if resp.TwoFactorEnabled {
+		sess.Set("userID", resp.ID)
+		sess.Set("pending_2fa", true)
+		if err := sess.Save(); err != nil {
+			return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
+		}
+		return response.JSON(c, fiber.StatusAccepted, "2FA required", nil)
 	}
 
 	if _, err := config.SetSession(c, config.SessionParam{
@@ -157,28 +179,90 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 
 	return response.JSON(c, fiber.StatusOK, "Login successful", map[string]interface{}{"data": resp})
 }
-func fetchGithubEmail(accessToken string) (string, error) {
-	req, _ := http.NewRequest("GET", "https://api.github.com/user/emails", nil)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	var emails []struct {
-		Email string `json:"email"`
-		Primary bool `json:"primary"`
-		Verified bool `json:"verified"`
-	}
-	 if err := json.NewDecoder(resp.Body).Decode(&emails); err != nil {
-        return "", err
+func (a *AuthHandler) Generate2FA(c *fiber.Ctx) error {
+	sess, err := config.Store.Get(c)
+    if err != nil || sess.Get("userID") == nil {
+        return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
     }
 
-	for _, email := range emails {
-		if email.Primary && email.Verified {
-			return email.Email, nil
-		}
+	email := sess.Get("email").(string) 
+	
+	fa_secret, qrCode, err := a.authServ.Generate2FA(c.Context(), email)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
-	return "", errors.New("no verified primary email found on GitHub account")
+
+	sess.Set("pending_totp_secret", fa_secret)
+	sess.Save()
+
+	return response.JSON(c, fiber.StatusOK, "scan QR with Google Authenticator", map[string]interface{}{
+        "qr_code": "data:image/png;base64," + qrCode,
+    })
+}
+func (a *AuthHandler) Enable2FA(c *fiber.Ctx) error {
+	sess, err := config.Store.Get(c)
+	if err != nil || sess.Get("userID") == nil {
+        return response.Error(c, fiber.StatusUnauthorized, "not authenticated", nil)
+    }
+	userID := sess.Get("userID").(string)
+
+	var req requests.GoogleAuthenticatorRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	secret, ok := sess.Get("pending_totp_secret").(string)
+    if !ok || secret == "" {
+        return response.Error(c, fiber.StatusBadRequest, "no pending 2FA setup", nil)
+    }
+
+	err = a.authServ.Enabled2FA(c.Context(), req.Code, secret, userID)
+	if err != nil {
+		if err, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, err.StatusCode, err.Error(), nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	sess.Delete("pending_totp_secret")
+    sess.Save()
+
+	return response.JSON(c, fiber.StatusOK, "2FA Enabled", nil)
+}
+func (a *AuthHandler) Verify2FA(c *fiber.Ctx) error {
+	sess, err := config.Store.Get(c)
+	if err != nil || sess.Get("pending_2fa") == nil {
+        return response.Error(c, fiber.StatusUnauthorized, "not authenticated", nil)
+    }
+
+	var req requests.GoogleAuthenticatorRequest
+    if err := c.BodyParser(&req); err != nil {
+        return response.Error(c, fiber.StatusBadRequest, "invalid body", nil)
+    }
+
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+    userID := sess.Get("userID").(string)
+
+	err = a.authServ.Verify2FA(c.Context(), req.Code, userID)
+	if err != nil {
+		if err, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, err.StatusCode, err.Error(), nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	sess.Delete("pending_2fa")
+    sess.Set("verified", true)
+    sess.Save()
+
+	return response.JSON(c, fiber.StatusOK, "2FA Verified", nil)
 }

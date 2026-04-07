@@ -1,12 +1,17 @@
 package utils
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
+	"io"
 	"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
 
 func HashPassword(password string) (string, error) {
 	cost := bcrypt.DefaultCost
@@ -17,6 +22,66 @@ func HashPassword(password string) (string, error) {
 		return "", hashErr
 	}
 	return string(hash), nil
+}
+
+func HashRandomString(str string) (string, error) {
+	cost := 10
+
+	hash, hashErr := bcrypt.GenerateFromPassword([]byte(str), cost)
+	if hashErr != nil {
+		log.Println("Hash error: ", hashErr)
+		return "", hashErr
+	}
+	return string(hash), nil
+}
+
+func Encrypt(plainText string, key []byte) (string, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
+
+	cipherText := gcm.Seal(nonce, nonce, []byte(plainText), nil)
+	return base64.StdEncoding.EncodeToString(cipherText), nil
+}
+
+func Decrypt(encryptedText string, key []byte) (string, error) {
+	ciphertext, err := base64.StdEncoding.DecodeString(encryptedText)
+    if err != nil {
+        return "", err
+    }
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
+
+	nonce, encryptedData := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, encryptedData, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext), nil
 }
 
 func CompareHashAndPassword(password string, hash string) bool {

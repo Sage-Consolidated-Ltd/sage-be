@@ -16,6 +16,8 @@ type UsersRepositoryInt interface {
 	MarkEmailVerified(ctx context.Context, email string) error
 	CreateUserWithOrganization(ctx context.Context, req *requests.CreateUserRequest, hash string) error
 	GetUserOrganizations(ctx context.Context, userId string) (*[]models.Organization, error)
+	Enable2FA(ctx context.Context, secret string, userID string) error
+	GetTOTPSecret(ctx context.Context, userID string) (string, error)
 }
 
 var (
@@ -52,6 +54,19 @@ var (
 	SELECT o.* FROM organizations o
 	JOIN organization_members om ON o.id = om.organization_id
 	WHERE om.user_id = $1
+	`
+	ENABLE_2FA=`
+	UPDATE users 
+		SET 
+			two_factor_enabled = true,
+			two_factor_secret = $1
+	WHERE id = $2
+	`
+	GET_TOTP_SECRET=`
+	SELECT two_factor_secret FROM users 
+	WHERE id = $1 
+	AND two_factor_enabled = true
+	AND is_verified = true
 	`
 )
 
@@ -138,4 +153,23 @@ func (r *UsersRepository) GetUserOrganizations(ctx context.Context, userId strin
 		return nil, err
 	}
 	return &orgs, nil
+}
+func (r *UsersRepository) Enable2FA(ctx context.Context, secret string, userID string) error {
+	_, err := r.db.ExecContext(ctx, ENABLE_2FA, secret, userID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+func (r *UsersRepository) GetTOTPSecret(ctx context.Context, userID string) (string, error) {
+	var secret string
+	err := r.db.QueryRowContext(ctx, GET_TOTP_SECRET, userID).Scan(&secret)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", apperrors.NotFoundError("2FA Secret not found")
+		}
+		return "", err
+	}
+	return secret, nil
 }

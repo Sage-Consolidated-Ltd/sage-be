@@ -1,0 +1,1 @@
+swag init -g cmd/api/main.go -d ./,internal/users/handlers,internal/users/models,internal/users/requests --parseDependency --parseInternal
