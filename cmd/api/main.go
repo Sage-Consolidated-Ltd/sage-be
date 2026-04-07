@@ -36,8 +36,8 @@ import (
 // @host      localhost:3333
 // @BasePath  /api/v1
 func main() {
-	cfg := config.Setup()
-	db, err := db.ConnectDB(cfg)
+	cfg := config.SetupAPI()
+	db, err := db.ConnectDB(&cfg.BaseConfig)
 	if err != nil {
 		log.Fatalf("Error connecting db: %s", err)
 	}

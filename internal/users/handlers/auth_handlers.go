@@ -16,10 +16,10 @@ import (
 type AuthHandler struct {
 	authServ services.AuthServiceInt
 	oAuthConfig *config.OAuthConfig
-	appConfig *config.Config
+	appConfig *config.APIConfig
 }
 
-func NewAuthHandler(authServ services.AuthServiceInt, oAuthConfig *config.OAuthConfig, appConfig *config.Config) *AuthHandler {
+func NewAuthHandler(authServ services.AuthServiceInt, oAuthConfig *config.OAuthConfig, appConfig *config.APIConfig) *AuthHandler {
 	return &AuthHandler{
 		authServ: authServ,
 		oAuthConfig: oAuthConfig,

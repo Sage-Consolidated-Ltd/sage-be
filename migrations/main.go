@@ -17,7 +17,7 @@ func main() {
 	forceVersion := flag.Int("force", -999, "Force a specific migration version (clears dirty state)")
 	flag.Parse()
 
-	cfg := config.Setup()
+	cfg := config.SetupAPI()
 
 	m, err := migrate.New("file://migrations", cfg.DatabaseUrl)
 	if err != nil {

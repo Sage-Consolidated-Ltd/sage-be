@@ -33,10 +33,10 @@ type AuthServiceInt interface {
 type AuthService struct {
 	userRepo   repositories.UsersRepositoryInt
 	jwtService *jwt.JwtService
-	appConfig *config.Config
+	appConfig *config.APIConfig
 }
 
-func NewAuthService(userRepo repositories.UsersRepositoryInt, jwtService *jwt.JwtService, appConfig *config.Config) AuthServiceInt {
+func NewAuthService(userRepo repositories.UsersRepositoryInt, jwtService *jwt.JwtService, appConfig *config.APIConfig) AuthServiceInt {
 	return &AuthService{
 		userRepo:   userRepo,
 		jwtService: jwtService,

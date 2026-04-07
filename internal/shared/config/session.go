@@ -17,7 +17,7 @@ type SessionParam struct {
 
 var Store *session.Store
 
-func InitSessionStore(cfg *Config) {
+func InitSessionStore(cfg *APIConfig) {
 	storage := redis.New(redis.Config{
 		Host: "localhost",
 		Port: 6379,

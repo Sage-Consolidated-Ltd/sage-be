@@ -14,7 +14,7 @@ type DB struct {
 	*sqlx.DB
 }
 
-func ConnectDB(cfg *config.Config) (*DB, error) {
+func ConnectDB(cfg *config.BaseConfig) (*DB, error) {
 	db, err := sqlx.Connect("postgres", cfg.DatabaseUrl)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to db: %w", err)
