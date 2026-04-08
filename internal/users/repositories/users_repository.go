@@ -18,6 +18,7 @@ type UsersRepositoryInt interface {
 	GetUserOrganizations(ctx context.Context, userId string) (*[]models.Organization, error)
 	Enable2FA(ctx context.Context, secret string, userID string) error
 	GetTOTPSecret(ctx context.Context, userID string) (string, error)
+	UpdateUserPassword(ctx context.Context, email string, hash string) error
 }
 
 var (
@@ -56,17 +57,19 @@ var (
 	WHERE om.user_id = $1
 	`
 	ENABLE_2FA=`
-	UPDATE users 
+		UPDATE users 
 		SET 
 			two_factor_enabled = true,
 			two_factor_secret = $1
-	WHERE id = $2
-	`
+		WHERE id = $2`
 	GET_TOTP_SECRET=`
 	SELECT two_factor_secret FROM users 
 	WHERE id = $1 
 	AND two_factor_enabled = true
 	AND is_verified = true
+	`
+	UPDATE_USER_PASSWORD=`
+	UPDATE users SET password_hash = $1 WHERE email = $2
 	`
 )
 
@@ -172,4 +175,11 @@ func (r *UsersRepository) GetTOTPSecret(ctx context.Context, userID string) (str
 		return "", err
 	}
 	return secret, nil
+}
+func (r *UsersRepository) UpdateUserPassword(ctx context.Context, email string, hash string) error {
+	_, err := r.db.ExecContext(ctx, UPDATE_USER_PASSWORD, hash, email)
+	if err != nil {
+		return err
+	}
+	return nil
 }

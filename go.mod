@@ -44,7 +44,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pquerna/otp v1.5.0 // indirect
-	github.com/redis/go-redis/v9 v9.17.3 // indirect
+	github.com/redis/go-redis/v9 v9.18.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/stretchr/codecs v0.0.0-20170403063245-04a5b1e1910d // indirect
 	github.com/stretchr/gomniauth v0.0.0-20170717123514-4b6c822be2eb // indirect
@@ -58,6 +58,7 @@ require (
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	go.mongodb.org/mongo-driver v1.13.1 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect

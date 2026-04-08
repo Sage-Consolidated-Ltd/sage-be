@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -82,6 +83,11 @@ func Decrypt(encryptedText string, key []byte) (string, error) {
 	}
 
 	return string(plaintext), nil
+}
+
+func GenerateSecureOTP() string {
+	n, _ := rand.Int(rand.Reader, big.NewInt(900000))
+	return fmt.Sprintf("%06d", n.Int64()+100000)
 }
 
 func CompareHashAndPassword(password string, hash string) bool {

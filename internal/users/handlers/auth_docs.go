@@ -68,3 +68,33 @@ func _Enable2FA() {}
 // @Success      200
 // @Router       /auth/verify-2fa [post]
 func _Verify2FA() {}
+
+// @Summary 	Forgot Password
+// @Description  Initiates the password reset process for a user
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request   body      requests.ForgotPasswordRequest true "Email Address"
+// @Success      200
+// @Router       /auth/forgot-password [post]
+func _ForgotPassword(){}
+
+// @Summary 	Verify Reset Token
+// @Description  Verifies the password reset token
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request   body      requests.VerifyResetTokenRequest true "Reset Token"
+// @Success      200
+// @Router       /auth/verify-reset-token [post]
+func _VerifyResetToken(){}
+
+// @Summary 	Reset Password
+// @Description  Resets the user's password
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request   body      requests.ResetPasswordRequest true "New Password"
+// @Success      200
+// @Router       /auth/reset-password [post]
+func _ResetPassword() {}

@@ -14,6 +14,7 @@ type BaseConfig struct {
 	DBMAXIdleConns   int
 	DBConnMAXLife    int
 	AppEncryptionKey string
+	RedisDbUrl string
 }
 
 type APIConfig struct {
@@ -83,6 +84,7 @@ func loadBase() BaseConfig {
 		DBMAXIdleConns:   getEnvInt("DB_MAX_IDLE_CONNS", 25),
 		DBConnMAXLife:    getEnvInt("DB_CONN_MAX_LIFE", 300),
 		AppEncryptionKey: requireEnv("APP_ENCRYPTION_KEY"),
+		RedisDbUrl: requireEnv("REDIS_DB_URL"),
 	}
 }
 

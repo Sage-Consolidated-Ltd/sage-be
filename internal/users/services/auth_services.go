@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"image/png"
+	"log"
 	"net/http"
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/errors/apperrors"
@@ -16,8 +17,10 @@ import (
 	"sage-backend/internal/users/repositories"
 	"sage-backend/internal/users/requests"
 	"sage-backend/pkg/jwt"
+	"time"
 
 	"github.com/pquerna/otp/totp"
+	"github.com/redis/go-redis/v9"
 )
 
 type AuthServiceInt interface {
@@ -28,19 +31,24 @@ type AuthServiceInt interface {
 	Generate2FA(ctx context.Context, email string) (string, string, error)
 	Enabled2FA(ctx context.Context, code string, secret string, userID string) error
 	Verify2FA(ctx context.Context, code, userID string) error
+	ForgotPassword(ctx context.Context, email string) error
+	VerifyResetToken(ctx context.Context, token string) error
+	ResetPassword(ctx context.Context, req *requests.ResetPasswordRequest, token string) error
 }
 
 type AuthService struct {
 	userRepo   repositories.UsersRepositoryInt
 	jwtService *jwt.JwtService
 	appConfig *config.APIConfig
+	redis *redis.Client
 }
 
-func NewAuthService(userRepo repositories.UsersRepositoryInt, jwtService *jwt.JwtService, appConfig *config.APIConfig) AuthServiceInt {
+func NewAuthService(userRepo repositories.UsersRepositoryInt, jwtService *jwt.JwtService, appConfig *config.APIConfig, redis *redis.Client) AuthServiceInt {
 	return &AuthService{
 		userRepo:   userRepo,
 		jwtService: jwtService,
 		appConfig: appConfig,
+		redis: redis,
 	}
 }
 
@@ -293,6 +301,67 @@ func (s *AuthService) Verify2FA(ctx context.Context, code, userID string) error 
 	if !totp.Validate(code, decryptedSecret) {
 		return fmt.Errorf("Invalid 2FA code")
 	}
+
+	return nil
+}
+func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
+	// generate password reset token
+	token := utils.GenerateSecureOTP()
+	// save token in redis with expiry
+	err := s.redis.Set(ctx, "password_reset:"+token, email, 15 * 60 * time.Second).Err()
+	if err != nil {
+		return err
+	}
+	// send email to user with reset link containing token
+	// NOTE - should send mail to user for password reset
+	log.Println("Password reset token for ", email, " : ", token)
+	return nil
+}
+func (s *AuthService) VerifyResetToken(ctx context.Context, token string) error {
+	// check token in redis
+	_, err := s.redis.Get(ctx, "password_reset:"+token).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return apperrors.BadException("invalid or expired token")
+		}
+		return err
+	} 
+	return nil
+}
+func (s *AuthService) ResetPassword(ctx context.Context, req *requests.ResetPasswordRequest, token string) error {
+	// confirm passwords match
+	if req.Password != req.ConfirmPassword {
+		return apperrors.BadException("passwords do not match")
+	}
+
+	// verify confirm password change token
+	email, err := s.redis.Get(ctx, "password_reset:"+token).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return apperrors.BadException("invalid or expired token")
+		}
+		return err
+	}
+
+	_, err = s.userRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return err
+	}
+
+	// hash new password
+	hash, err := utils.HashPassword(req.Password)
+	if err != nil {
+		return err
+	}
+
+	// store new password hash in db
+	err = s.userRepo.UpdateUserPassword(ctx, email, hash)
+	if err != nil {
+		return err
+	}
+
+	// delete tokens from redis
+	s.redis.Del(ctx, "password_reset:"+token)
 
 	return nil
 }

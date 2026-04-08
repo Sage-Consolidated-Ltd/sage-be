@@ -266,3 +266,90 @@ func (a *AuthHandler) Verify2FA(c *fiber.Ctx) error {
 
 	return response.JSON(c, fiber.StatusOK, "2FA Verified", nil)
 }
+func (a *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
+	var req requests.ForgotPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+	
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	err := a.authServ.ForgotPassword(c.Context(), req.Email)
+	if err != nil {
+		if err, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, err.StatusCode, err.Error(), nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Password reset token sent to email, if exists", nil)
+}
+func (a *AuthHandler) VerifyResetToken(c *fiber.Ctx) error {
+	sess, err := config.Store.Get(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "not authenticated", nil)
+	}
+	var req requests.VerifyResetTokenRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+	
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	err = a.authServ.VerifyResetToken(c.Context(), req.Token)
+	if err != nil {
+		if err, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, err.StatusCode, err.Error(), nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+	sess.Set("password_reset_token", req.Token)
+	sess.Set("password_token_verified", true)
+	sess.Save()
+
+	return response.JSON(c, fiber.StatusOK, "Token valid", nil)
+}
+func (a *AuthHandler) ResetPassword(c *fiber.Ctx) error {
+	sess, err := config.Store.Get(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "not authenticated", nil)
+	}
+	var req requests.ResetPasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+	
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	tokenVerified := sess.Get("password_token_verified")
+	if tokenVerified == nil || tokenVerified.(bool) == false {
+		return response.Error(c, fiber.StatusUnauthorized, "token not verified", nil)
+	}
+	token := sess.Get("password_reset_token")
+	if token == nil || token.(string) == "" {
+		return response.Error(c, fiber.StatusUnauthorized, "invalid token", nil)
+	}
+
+	err = a.authServ.ResetPassword(c.Context(), &req, token.(string))
+	if err != nil {
+		if err, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, err.StatusCode, err.Error(), nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	sess.Delete("password_reset_token")
+	sess.Delete("password_token_verified")
+	sess.Save()
+
+	return response.JSON(c, fiber.StatusOK, "Password reset successful", nil)
+}

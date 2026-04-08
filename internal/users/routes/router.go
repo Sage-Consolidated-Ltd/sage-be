@@ -37,4 +37,8 @@ func RegisterAuthRoutes(router fiber.Router, ah *handlers.AuthHandler, m *middle
 	auth.Get("/generate-2fa", m.RequireAuth, ah.Generate2FA)
 	auth.Post("/enable-2fa", m.RequireAuth, ah.Enable2FA)
 	auth.Post("/verify-2fa", m.RequireAuth, ah.Verify2FA)
+
+	auth.Post("/forgot-password", ah.ForgotPassword)
+	auth.Post("/verify-reset-token", ah.VerifyResetToken)
+	auth.Post("/reset-password", ah.ResetPassword)
 }

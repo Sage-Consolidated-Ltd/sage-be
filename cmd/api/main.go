@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/db"
+	"sage-backend/internal/shared/db/redis"
 	"sage-backend/internal/users/handlers"
 	"sage-backend/internal/users/middlewares"
 	"sage-backend/internal/users/repositories"
@@ -42,6 +43,11 @@ func main() {
 		log.Fatalf("Error connecting db: %s", err)
 	}
 	defer db.Close()
+
+	redis, err := redis.LaunchRedis(&cfg.BaseConfig)
+	if err != nil {
+		log.Fatalf("Error connecting redis: %s", err)
+	}
 
 	config.InitSessionStore(cfg)
 
@@ -97,7 +103,7 @@ func main() {
 	userRepo := repositories.NewUsersRepository(db)
 
 	// services
-	authServ := services.NewAuthService(userRepo, jwtService, cfg)
+	authServ := services.NewAuthService(userRepo, jwtService, cfg, redis)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authServ, cfgOAuth, cfg)
