@@ -8,7 +8,7 @@ Go backend service for the Sage platform.
 - Fiber v2
 - PostgreSQL
 - Redis
-- JWT authentication
+- Session Auth
 - Swagger (Swaggo)
 
 ## Project Structure
