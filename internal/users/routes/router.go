@@ -8,7 +8,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func Setup(app *fiber.App, ah *handlers.AuthHandler, m *middlewares.AuthMiddleware) {
+func Setup(
+	app *fiber.App, 
+	ah *handlers.AuthHandler, 
+	ch *handlers.CompanyHandler,
+	m *middlewares.AuthMiddleware) {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Welcome to SAGE API SERVICE")
 	})
@@ -20,7 +24,7 @@ func Setup(app *fiber.App, ah *handlers.AuthHandler, m *middlewares.AuthMiddlewa
 	})
 
 	RegisterAuthRoutes(v1, ah, m)
-
+	RegisterCompanyRoutes(v1, ch, m)
 	app.Use(func(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusNotFound, "route not found", nil)
 	})
@@ -41,4 +45,10 @@ func RegisterAuthRoutes(router fiber.Router, ah *handlers.AuthHandler, m *middle
 	auth.Post("/forgot-password", ah.ForgotPassword)
 	auth.Post("/verify-reset-token", ah.VerifyResetToken)
 	auth.Post("/reset-password", ah.ResetPassword)
+}
+
+func RegisterCompanyRoutes(router fiber.Router, ch *handlers.CompanyHandler, m *middlewares.AuthMiddleware) {
+	company := router.Group("/company")
+
+	company.Get("/industries", ch.GetIndustries)
 }

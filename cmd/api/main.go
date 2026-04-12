@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -8,6 +10,7 @@ import (
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/db/redis"
+	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/users/handlers"
 	"sage-backend/internal/users/middlewares"
 	"sage-backend/internal/users/repositories"
@@ -51,7 +54,16 @@ func main() {
 
 	config.InitSessionStore(cfg)
 
+	logger.Init(&cfg.BaseConfig)
+
 	app := fiber.New(fiber.Config{
+		JSONEncoder: func(v interface{}) ([]byte, error) {
+        	buf := &bytes.Buffer{}
+        	encoder := json.NewEncoder(buf)
+        	encoder.SetEscapeHTML(false)
+        	err := encoder.Encode(v)
+        	return bytes.TrimRight(buf.Bytes(), "\n"), err
+    	},
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          []string{"0.0.0.0/0"},
 		BodyLimit:               5 * 1024 * 1024,
@@ -101,14 +113,17 @@ func main() {
 
 	// repository
 	userRepo := repositories.NewUsersRepository(db)
+	companyRepo := repositories.NewCompanyRepository(db)
 
 	// services
-	authServ := services.NewAuthService(userRepo, jwtService, cfg, redis)
+	authServ := services.NewAuthService(userRepo, jwtService, cfg, redis, companyRepo)
+	companyServ := services.NewCompanyServices(companyRepo)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authServ, cfgOAuth, cfg)
+	companyHandler := handlers.NewCompanyHandler(companyServ)
 
-	routes.Setup(app, authHandler, authMiddleware)
+	routes.Setup(app, authHandler, companyHandler, authMiddleware)
 
 	port := strings.TrimSpace(cfg.PORT)
 

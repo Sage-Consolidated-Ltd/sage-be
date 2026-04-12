@@ -19,6 +19,7 @@ type UsersRepositoryInt interface {
 	Enable2FA(ctx context.Context, secret string, userID string) error
 	GetTOTPSecret(ctx context.Context, userID string) (string, error)
 	UpdateUserPassword(ctx context.Context, email string, hash string) error
+	OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) error
 }
 
 var (
@@ -27,8 +28,9 @@ var (
 	first_name,
 	last_name,
 	email,
+	time_zone,
 	password_hash
-	) VALUES ($1, $2, $3, $4)
+	) VALUES ($1, $2, $3, $4, $5)
 	RETURNING id;
 	`
 	GET_USER_BY_EMAIL = `
@@ -40,8 +42,9 @@ var (
 	CREATE_ORGANIZATION=`
 	INSERT INTO organizations (
 	name,
-	owner_id
-	) VALUES ($1, $2)
+	owner_id,
+	industry_id
+	) VALUES ($1, $2, $3)
 	RETURNING id;
 	`
 	ADD_USER_TO_ORGANIZATION=`
@@ -52,8 +55,17 @@ var (
 	) VALUES ($1, $2, $3)
 	`
 	GET_USER_ORGANIZATIONS = `
-	SELECT o.* FROM organizations o
+	SELECT 
+	o.id, 
+	o.name, 
+	o.owner_id, 
+	COALESCE(i.name, '') AS industry, 
+	o.created_at, 
+	o.updated_at, 
+	o.deleted_at 
+	FROM organizations o
 	JOIN organization_members om ON o.id = om.organization_id
+	LEFT JOIN industries i ON o.industry_id = i.id
 	WHERE om.user_id = $1
 	`
 	ENABLE_2FA=`
@@ -181,5 +193,35 @@ func (r *UsersRepository) UpdateUserPassword(ctx context.Context, email string, 
 	if err != nil {
 		return err
 	}
+	return nil
+}
+func (r *UsersRepository) OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var userId string
+	err = tx.QueryRowContext(ctx, CREATE_USER, req.FirstName, req.LastName, req.Email, req.TimeZone, hash).Scan(&userId)
+	if err != nil {
+		return err
+	}
+
+	var orgId string
+	err = tx.QueryRowContext(ctx, CREATE_ORGANIZATION, req.CompanyName, userId, req.IndustryId).Scan(&orgId)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, ADD_USER_TO_ORGANIZATION, orgId, userId, "owner")
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
 	return nil
 }

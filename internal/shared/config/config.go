@@ -1,10 +1,13 @@
 package config
 
 import (
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"strconv"
+	"strings"
+
+	"github.com/joho/godotenv"
+	"go.uber.org/zap/zapcore"
 )
 
 type BaseConfig struct {
@@ -15,6 +18,7 @@ type BaseConfig struct {
 	DBConnMAXLife    int
 	AppEncryptionKey string
 	RedisDbUrl string
+	LogLevel Level
 }
 
 type APIConfig struct {
@@ -51,6 +55,16 @@ type VisionConfig struct {
 	GomniSecurityKey string
 }
 
+type Level = zapcore.Level
+
+const (
+	DebugLevel = zapcore.DebugLevel
+	InfoLevel  = zapcore.InfoLevel
+	WarnLevel  = zapcore.WarnLevel
+	ErrorLevel = zapcore.ErrorLevel
+	FatalLevel = zapcore.FatalLevel
+)
+
 
 func requireEnv(key string) string {
 	v := os.Getenv(key)
@@ -76,6 +90,21 @@ func getEnvInt(key string, fallback int) int {
 	return fallback
 }
 
+func levelFromEnv() Level {
+	switch strings.ToLower(os.Getenv("LOG_LEVEL")) {
+	case "debug":
+		return DebugLevel
+	case "warn", "warning":
+		return WarnLevel
+	case "error":
+		return ErrorLevel
+	case "fatal":
+		return FatalLevel
+	default:
+		return InfoLevel
+	}
+}
+
 func loadBase() BaseConfig {
 	return BaseConfig{
 		APP_ENV:          requireEnv("APP_ENV"),
@@ -85,6 +114,7 @@ func loadBase() BaseConfig {
 		DBConnMAXLife:    getEnvInt("DB_CONN_MAX_LIFE", 300),
 		AppEncryptionKey: requireEnv("APP_ENCRYPTION_KEY"),
 		RedisDbUrl: requireEnv("REDIS_DB_URL"),
+		LogLevel: levelFromEnv(),
 	}
 }
 

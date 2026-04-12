@@ -1,0 +1,1 @@
+ALTER TABLE industries DROP CONSTRAINT industries_name_unique;

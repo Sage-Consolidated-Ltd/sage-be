@@ -34,6 +34,7 @@ type AuthServiceInt interface {
 	ForgotPassword(ctx context.Context, email string) error
 	VerifyResetToken(ctx context.Context, token string) error
 	ResetPassword(ctx context.Context, req *requests.ResetPasswordRequest, token string) error
+	CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) error
 }
 
 type AuthService struct {
@@ -41,14 +42,22 @@ type AuthService struct {
 	jwtService *jwt.JwtService
 	appConfig *config.APIConfig
 	redis *redis.Client
+	companyRepo repositories.CompanyRepositoryInt
 }
 
-func NewAuthService(userRepo repositories.UsersRepositoryInt, jwtService *jwt.JwtService, appConfig *config.APIConfig, redis *redis.Client) AuthServiceInt {
+func NewAuthService(
+	userRepo repositories.UsersRepositoryInt, 
+	jwtService *jwt.JwtService, 
+	appConfig *config.APIConfig, 
+	redis *redis.Client,
+	companyRepo repositories.CompanyRepositoryInt,
+	) AuthServiceInt {
 	return &AuthService{
 		userRepo:   userRepo,
 		jwtService: jwtService,
 		appConfig: appConfig,
 		redis: redis,
+		companyRepo: companyRepo,
 	}
 }
 
@@ -80,42 +89,78 @@ func (s *AuthService) CreateUser(ctx context.Context, req *requests.CreateUserRe
 	// NOTE - should send mail to user for verification of email
 	return nil
 }
-func (s *AuthService) OAuthLogin(ctx context.Context, payload *requests.CreateUserRequest) (*models.GetUserResponse, error) {
-	user, err := s.userRepo.GetUserByEmail(ctx, payload.Email)
+func (s *AuthService) CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) error {
+	// check if email already exists 
+	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
+	if user != nil {
+		return apperrors.ConflictError("EMAIL ALREADY EXISTS")
+	}
 	if err != nil {
 		var appErr *apperrors.ErrorResponse
-		if !errors.As(err, &appErr) || appErr.Code != apperrors.ErrNotFound {
-			return nil, err
+		if !errors.As(err, &appErr) {
+			return err
 		}
+	}
 
-		password, err := utils.GenerateRandomStringForHashing(32)
-		if err != nil {
-			return nil, err
-		}
-		hash, err := utils.HashPassword(password)
-		if err != nil {
-			return nil, err
-		}
+	// check if industry is valid
+	_, err = s.companyRepo.GetIndustryByID(ctx, req.IndustryId)
+	if err != nil {
+		return err
+	}
 
-		newUser := &requests.CreateUserRequest{
-			FirstName: payload.FirstName,
-			LastName:  payload.LastName,
-			Email:     payload.Email,
-			Password:  hash,
-		}
+	// hash password
+	hash, err := utils.HashPassword(req.Password)
+	if err != nil {
+		return fmt.Errorf("Error hashing password: %s", err)
+	}
 
-		if err = s.userRepo.CreateUser(ctx, newUser, hash); err != nil {
-			return nil, err
-		}
-		if err = s.userRepo.MarkEmailVerified(ctx, newUser.Email); err != nil {
-			return nil, err
-		}
+	// create user and organization
+	err = s.userRepo.OnboardUserWithTransaction(ctx, req, hash)
+	if err != nil {
+		return err
+	}
 
-		// Fetch the newly created user
-		user, err = s.userRepo.GetUserByEmail(ctx, payload.Email)
-		if err != nil {
-			return nil, err
-		}
+	return nil
+}
+func (s *AuthService) OAuthLogin(ctx context.Context, payload *requests.CreateUserRequest) (*models.GetUserResponse, error) {
+	user, err := s.userRepo.GetUserByEmail(ctx, payload.Email)
+	// if err != nil {
+	// 	var appErr *apperrors.ErrorResponse
+	// 	if !errors.As(err, &appErr) || appErr.Code != apperrors.ErrNotFound {
+	// 		return nil, err
+	// 	}
+
+	// 	password, err := utils.GenerateRandomStringForHashing(32)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	hash, err := utils.HashPassword(password)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	newUser := &requests.CreateUserRequest{
+	// 		FirstName: payload.FirstName,
+	// 		LastName:  payload.LastName,
+	// 		Email:     payload.Email,
+	// 		Password:  hash,
+	// 	}
+
+	// 	if err = s.userRepo.CreateUser(ctx, newUser, hash); err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if err = s.userRepo.MarkEmailVerified(ctx, newUser.Email); err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	// Fetch the newly created user
+	// 	user, err = s.userRepo.GetUserByEmail(ctx, payload.Email)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+	if user == nil {
+		return nil, apperrors.NotFoundError("USER NOT FOUND")
 	}
 	if !user.IsVerified {
 		err = s.userRepo.MarkEmailVerified(ctx, payload.Email)

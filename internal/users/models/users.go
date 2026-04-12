@@ -16,6 +16,7 @@ type User struct {
 	Role         types.Role   `json:"role" db:"role"`
 	TwoFactorSecret sql.NullString `json:"two_factor_secret" db:"two_factor_secret"`
 	TwoFactorEnabled bool `json:"two_factor_enabled" db:"two_factor_enabled"`
+	TimeZone sql.NullString `json:"time_zone" db:"time_zone"`
 	CreatedAt    time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt    sql.NullTime `json:"updated_at" db:"updated_at"`
 	DeletedAt    sql.NullTime `json:"deleted_at" db:"deleted_at"`
@@ -37,6 +38,7 @@ type GetUserResponse struct {
 	TwoFactorEnabled bool `json:"two_factor_enabled" db:"two_factor_enabled"`
 	CreatedAt time.Time `json:"created_at"`
 	Organization []GetOrganizationResponse `json:"organization,omitempty"`
+	TimeZone *string `json:"time_zone,omitempty"`
 }
 func(u *User) ToResponse(orgs *[]Organization) *GetUserResponse {
 	var organizationsResp []GetOrganizationResponse
@@ -52,37 +54,8 @@ func(u *User) ToResponse(orgs *[]Organization) *GetUserResponse {
 		Email:     u.Email,
 		Role:      string(u.Role),
 		TwoFactorEnabled: u.TwoFactorEnabled,
+		TimeZone: &u.TimeZone.String,
 		CreatedAt: u.CreatedAt,
 		Organization: organizationsResp,
-	}
-}
-type Organization struct {
-	ID        string    `json:"id" db:"id"`
-	Name      string    `json:"name" db:"name"`
-	OwnerID   string    `json:"owner_id" db:"owner_id"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
-	DeletedAt sql.NullTime `json:"deleted_at" db:"deleted_at"`
-}
-type GetOrganizationResponse struct {
-	ID   string `json:"id"`
-Name string `json:"name"`
-OwnerID string `json:"owner_id"`
-CreatedAt time.Time `json:"created_at"`
-UpdatedAt time.Time `json:"updated_at"`
-DeletedAt *time.Time `json:"deleted_at,omitempty"`
-}
-func (o *Organization) ToResponse() *GetOrganizationResponse {
-	var deletedAt *time.Time
-	if o.DeletedAt.Valid {
-		deletedAt = &o.DeletedAt.Time
-	}
-	return &GetOrganizationResponse{
-		ID: o.ID,
-		Name: o.Name,
-		OwnerID: o.OwnerID,
-		CreatedAt: o.CreatedAt,
-		UpdatedAt: o.UpdatedAt,
-		DeletedAt: deletedAt,
 	}
 }

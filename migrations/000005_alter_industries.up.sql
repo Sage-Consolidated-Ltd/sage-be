@@ -1,0 +1,1 @@
+ALTER TABLE industries ADD CONSTRAINT industries_name_unique UNIQUE (name);

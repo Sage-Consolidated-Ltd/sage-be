@@ -3,6 +3,7 @@ package handlers
 import (
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/errors/apperrors"
+	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/shared/utils"
 	"sage-backend/internal/users/requests"
@@ -10,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
+	"go.uber.org/zap"
 )
 
 type AuthHandler struct {
@@ -27,8 +28,29 @@ func NewAuthHandler(authServ services.AuthServiceInt, oAuthConfig *config.OAuthC
 	}
 }
 
-func (h *AuthHandler) CreateUser(c *fiber.Ctx) error {
-	var req requests.CreateUserRequest
+// func (h *AuthHandler) CreateUser(c *fiber.Ctx) error {
+// 	var req requests.CreateUserRequest
+// 	if err := c.BodyParser(&req); err != nil {
+// 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+// 	}
+// 	if err := utils.Validate.Struct(req); err != nil {
+// 		errs := utils.ValidationErrors(err)
+// 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+// 	}
+
+// 	// create user
+// 	if err := h.authServ.CreateUser(c.Context(), &req); err != nil {
+// 		if err, ok := err.(*apperrors.ErrorResponse); ok {
+// 			return response.Error(c, err.StatusCode, err.Error(), nil)
+// 		}
+// 		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+// 	}
+
+// 	return response.JSON(c, fiber.StatusOK, "User created successfully. A mail has been forwarded to verify account", nil)
+// }
+
+func (a *AuthHandler) CreateUser(c *fiber.Ctx) error {
+	var req requests.OnboardingRequest
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
@@ -37,15 +59,16 @@ func (h *AuthHandler) CreateUser(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
 
-	// create user
-	if err := h.authServ.CreateUser(c.Context(), &req); err != nil {
-		if err, ok := err.(*apperrors.ErrorResponse); ok {
-			return response.Error(c, err.StatusCode, err.Error(), nil)
+	err := a.authServ.CreateUserWithOrganization(c.Context(), &req)
+	if err != nil {
+		logger.Error("Error with AuthHandler.CreateUser: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
-		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
 	}
 
-	return response.JSON(c, fiber.StatusOK, "User created successfully. A mail has been forwarded to verify account", nil)
+	return response.JSON(c, fiber.StatusOK, "User and organization created successfully. A mail has been forwarded to verify account", nil)
 }
 func (a *AuthHandler) BeginAuthLogin(c *fiber.Ctx) error {
 	providerName := c.Params("provider")
@@ -109,6 +132,7 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
+		logger.Error("Error with AuthHandler.AuthCallback: ", zap.Error(err))
 		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
@@ -133,7 +157,7 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
 	}
 
-	return response.JSON(c, fiber.StatusOK, "Login successful", map[string]interface{}{"data": resp})
+	return response.JSON(c, fiber.StatusOK, "Login successful", resp)
 }
 func (a *AuthHandler) Login(c *fiber.Ctx) error {
 	var req requests.LoginRequest
@@ -152,11 +176,10 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 	
 	resp, err := a.authServ.Login(c.Context(), &req)
 	if err != nil {
+		logger.Error("Error with AuthHandler.Login :", zap.Error(err))
 		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
-			log.Errorf("Error occured with login: %s", appErr)
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
-		log.Errorf("Error occured with login: %s", err)
 		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
 	}
 
@@ -174,10 +197,11 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 		Role: string(resp.Role),
 		Email: resp.Email,
 	}); err != nil {
+		logger.Error("Error with AuthHandler.Login: ", zap.Error(err))
 		return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
 	}
 
-	return response.JSON(c, fiber.StatusOK, "Login successful", map[string]interface{}{"data": resp})
+	return response.JSON(c, fiber.StatusOK, "Login successful", resp)
 }
 func (a *AuthHandler) Generate2FA(c *fiber.Ctx) error {
 	sess, err := config.Store.Get(c)
@@ -189,6 +213,7 @@ func (a *AuthHandler) Generate2FA(c *fiber.Ctx) error {
 	
 	fa_secret, qrCode, err := a.authServ.Generate2FA(c.Context(), email)
 	if err != nil {
+		logger.Error("Error with AuthHandler.Generate2FA: ", zap.Error(err))
 		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
@@ -223,6 +248,7 @@ func (a *AuthHandler) Enable2FA(c *fiber.Ctx) error {
 
 	err = a.authServ.Enabled2FA(c.Context(), req.Code, secret, userID)
 	if err != nil {
+		logger.Error("Error with AuthHandler.Enable2FA: ", zap.Error(err))
 		if err, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, err.StatusCode, err.Error(), nil)
 		}
@@ -254,6 +280,7 @@ func (a *AuthHandler) Verify2FA(c *fiber.Ctx) error {
 
 	err = a.authServ.Verify2FA(c.Context(), req.Code, userID)
 	if err != nil {
+		logger.Error("Error with AuthHandler.Verify2FA: ", zap.Error(err))
 		if err, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, err.StatusCode, err.Error(), nil)
 		}
@@ -279,6 +306,7 @@ func (a *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
 
 	err := a.authServ.ForgotPassword(c.Context(), req.Email)
 	if err != nil {
+		logger.Error("Error with AuthHandler.ForgotPassword: ", zap.Error(err))
 		if err, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, err.StatusCode, err.Error(), nil)
 		}
@@ -304,6 +332,7 @@ func (a *AuthHandler) VerifyResetToken(c *fiber.Ctx) error {
 
 	err = a.authServ.VerifyResetToken(c.Context(), req.Token)
 	if err != nil {
+		logger.Error("Error with AuthHandler.VerifyResetToken: ", zap.Error(err))
 		if err, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, err.StatusCode, err.Error(), nil)
 		}
@@ -341,6 +370,7 @@ func (a *AuthHandler) ResetPassword(c *fiber.Ctx) error {
 
 	err = a.authServ.ResetPassword(c.Context(), &req, token.(string))
 	if err != nil {
+		logger.Error("Error with AuthHandler.ResetPassword: ", zap.Error(err))
 		if err, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, err.StatusCode, err.Error(), nil)
 		}

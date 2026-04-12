@@ -96,7 +96,7 @@ http://localhost:3333/api/v1
 Generate Swagger docs:
 
 ```bash
-swag init -g cmd/api/main.go -d ./,internal/users/handlers,internal/users/models,internal/users/requests --parseDependency --parseInternal
+swag init -g cmd/api/main.go --parseDependency --parseInternal
 ```
 
 Once the API is running, open:

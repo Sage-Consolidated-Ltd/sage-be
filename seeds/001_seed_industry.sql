@@ -1,0 +1,28 @@
+INSERT INTO industries (name) VALUES
+  ('Software'),
+  ('Hardware'),
+  ('Artificial Intelligence'),
+  ('Cybersecurity'),
+  ('Cloud Computing'),
+  ('Data & Analytics'),
+  ('Telecommunications'),
+  ('Semiconductors'),
+  ('Consumer Electronics'),
+  ('Internet of Things'),
+  ('Blockchain'),
+  ('Fintech'),
+  ('Healthtech'),
+  ('Edtech'),
+  ('E-Commerce'),
+  ('Gaming'),
+  ('Social Media'),
+  ('Digital Marketing'),
+  ('Robotics'),
+  ('Quantum Computing'),
+  ('AR & VR'),
+  ('Streaming & Media'),
+  ('SaaS'),
+  ('DevOps'),
+  ('IT Consulting')
+
+ON CONFLICT (name) DO NOTHING;

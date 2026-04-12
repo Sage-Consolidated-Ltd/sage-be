@@ -15,7 +15,7 @@ type Generate2FAResponse struct {
 // @Tags Auth
 // @Accept json
 // @Produce json
-// @Param request body requests.CreateUserRequest true "User Details"
+// @Param request body requests.OnboardingRequest true "User Details"
 // @Success 201
 // @Router /auth/register [post]
 func _CreateUser(){}
