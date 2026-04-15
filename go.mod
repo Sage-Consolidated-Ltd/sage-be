@@ -45,6 +45,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pquerna/otp v1.5.0 // indirect
 	github.com/redis/go-redis/v9 v9.18.0 // indirect
+	github.com/resendlabs/resend-go v1.7.0 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/stretchr/codecs v0.0.0-20170403063245-04a5b1e1910d // indirect
 	github.com/stretchr/gomniauth v0.0.0-20170717123514-4b6c822be2eb // indirect

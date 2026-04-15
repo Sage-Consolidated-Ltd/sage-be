@@ -51,21 +51,25 @@ var (
 	INSERT INTO organization_members (
 	organization_id,
 	user_id,
-	role
-	) VALUES ($1, $2, $3)
+	role_id, 
+	status
+	) VALUES ($1, $2, $3, $4)
 	`
 	GET_USER_ORGANIZATIONS = `
 	SELECT 
 	o.id, 
 	o.name, 
 	o.owner_id, 
-	COALESCE(i.name, '') AS industry, 
+	COALESCE(i.name, '') AS industry,
+	COALESCE(r.name, '') AS role, 
+	om.status,
 	o.created_at, 
 	o.updated_at, 
 	o.deleted_at 
 	FROM organizations o
 	JOIN organization_members om ON o.id = om.organization_id
 	LEFT JOIN industries i ON o.industry_id = i.id
+	LEFT JOIN organization_roles r ON om.role_id = r.id
 	WHERE om.user_id = $1
 	`
 	ENABLE_2FA=`
@@ -82,6 +86,27 @@ var (
 	`
 	UPDATE_USER_PASSWORD=`
 	UPDATE users SET password_hash = $1 WHERE email = $2
+	`
+	GET_ORGANIZATION_ROLE_ID = `
+	SELECT id FROM organization_roles WHERE name = $1`
+	INVITE_MEMBER_TO_ORGANIZATION = `
+	INSERT INTO organization_invites (
+		organization_id,
+		email,
+		role_id,
+		invited_by,
+		token_hash,
+		expires_at
+	)
+	SELECT $1, LOWER($2), $3, $4, $5, $6
+	WHERE NOT EXISTS (
+		SELECT 1 FROM organization_invites oi
+		WHERE oi.organization_id = $1
+		AND LOWER(oi.email) = LOWER($2)
+		AND oi.status = 'pending'
+	)
+	ON CONFLICT DO NOTHING
+	RETURNING id;
 	`
 )
 
@@ -149,7 +174,12 @@ func (r *UsersRepository) CreateUserWithOrganization(ctx context.Context, req *r
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, ADD_USER_TO_ORGANIZATION, orgId, userId, "owner")
+	var roleId string
+	if err = tx.QueryRowContext(ctx, GET_ORGANIZATION_ROLE_ID, "owner").Scan(&roleId); err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, ADD_USER_TO_ORGANIZATION, orgId, userId, roleId)
 	if err != nil {
 		return err
 	}
@@ -214,7 +244,12 @@ func (r *UsersRepository) OnboardUserWithTransaction(ctx context.Context, req *r
 		return err
 	}
 
-	_, err = tx.ExecContext(ctx, ADD_USER_TO_ORGANIZATION, orgId, userId, "owner")
+	var roleId string
+	if err = tx.QueryRowContext(ctx, GET_ORGANIZATION_ROLE_ID, "owner").Scan(&roleId); err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, ADD_USER_TO_ORGANIZATION, orgId, userId, roleId, "active")
 	if err != nil {
 		return err
 	}

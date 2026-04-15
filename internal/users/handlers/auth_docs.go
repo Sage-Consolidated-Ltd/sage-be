@@ -98,3 +98,23 @@ func _VerifyResetToken(){}
 // @Success      200
 // @Router       /auth/reset-password [post]
 func _ResetPassword() {}
+
+// @Summary 	Send Verification Email
+// @Description  Sends an email with a verification code to the user's email address
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request   body      requests.SendVerificationEmailRequest true "Email Address"
+// @Success      200
+// @Router       /auth/send-verification-email [post]
+func _SendVerificationEmail() {}
+
+// @Summary 	Verify Email
+// @Description  Verifies the user's email address
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        request   body      requests.VerifyEmailRequest true "Verification Token"
+// @Success      200
+// @Router       /auth/verify-email [post]
+func _VerifyEmail() {}

@@ -68,7 +68,7 @@ func (a *AuthHandler) CreateUser(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
 	}
 
-	return response.JSON(c, fiber.StatusOK, "User and organization created successfully. A mail has been forwarded to verify account", nil)
+	return response.JSON(c, fiber.StatusOK, "User and organization created successfully.", nil)
 }
 func (a *AuthHandler) BeginAuthLogin(c *fiber.Ctx) error {
 	providerName := c.Params("provider")
@@ -382,4 +382,48 @@ func (a *AuthHandler) ResetPassword(c *fiber.Ctx) error {
 	sess.Save()
 
 	return response.JSON(c, fiber.StatusOK, "Password reset successful", nil)
+}
+func (a *AuthHandler) SendVerificationEmail(c *fiber.Ctx) error {
+	var req requests.SendVerificationEmailRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+	
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	err := a.authServ.SendEmailVerification(c.Context(), req.Email)
+	if err != nil {
+		logger.Error("Error with AuthHandler.SendVerificationEmail: ", zap.Error(err))
+		if err, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, err.StatusCode, err.Error(), nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Verification email sent", nil)
+}
+func (a *AuthHandler) VerifyEmail(c *fiber.Ctx) error {
+	var req requests.VerifyEmailRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+	
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	err := a.authServ.VerifyEmail(c.Context(), req.Token)
+	if err != nil {
+		logger.Error("Error with AuthHandler.VerifyEmail: ", zap.Error(err))
+		if err, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, err.StatusCode, err.Error(), nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Email verified successfully", nil)
 }

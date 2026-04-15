@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/errors/apperrors"
+	"sage-backend/internal/shared/mailer"
 	"sage-backend/internal/shared/utils"
 	"sage-backend/internal/users/models"
 	"sage-backend/internal/users/repositories"
@@ -35,6 +36,8 @@ type AuthServiceInt interface {
 	VerifyResetToken(ctx context.Context, token string) error
 	ResetPassword(ctx context.Context, req *requests.ResetPasswordRequest, token string) error
 	CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) error
+	SendEmailVerification(ctx context.Context, email string) error 
+	VerifyEmail(ctx context.Context, token string) error 
 }
 
 type AuthService struct {
@@ -43,6 +46,7 @@ type AuthService struct {
 	appConfig *config.APIConfig
 	redis *redis.Client
 	companyRepo repositories.CompanyRepositoryInt
+	mailer mailer.EmailClientInt
 }
 
 func NewAuthService(
@@ -51,6 +55,7 @@ func NewAuthService(
 	appConfig *config.APIConfig, 
 	redis *redis.Client,
 	companyRepo repositories.CompanyRepositoryInt,
+	mailer mailer.EmailClientInt,
 	) AuthServiceInt {
 	return &AuthService{
 		userRepo:   userRepo,
@@ -58,6 +63,7 @@ func NewAuthService(
 		appConfig: appConfig,
 		redis: redis,
 		companyRepo: companyRepo,
+		mailer: mailer,
 	}
 }
 
@@ -407,6 +413,52 @@ func (s *AuthService) ResetPassword(ctx context.Context, req *requests.ResetPass
 
 	// delete tokens from redis
 	s.redis.Del(ctx, "password_reset:"+token)
+
+	return nil
+}
+func (s *AuthService) SendEmailVerification(ctx context.Context, email string) error {
+	user, err := s.userRepo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return err
+	}
+	if user.IsVerified {
+		return apperrors.BadException("email is already verified")
+	}
+
+	// generate email verification token
+	token := utils.GenerateSecureOTP()
+	// save token in redis with expiry
+	err = s.redis.Set(ctx, "email_verification:"+token, email, 24 * time.Hour).Err()
+	if err != nil {
+		return err
+	}
+
+	// NOTE - should send mail to user for email verification
+	if err := s.mailer.SendVerificationEmail([]string{email}, mailer.VerificationEmailData{
+		Name:      user.FirstName + " " + user.LastName,
+		OTP:       token,
+		ExpiresIn: "24 hours",
+	}); err != nil {
+		return err
+	}
+	log.Println("Email verification token for ", email, " : ", token)
+	return nil
+}
+func (s *AuthService) VerifyEmail(ctx context.Context, token string) error {
+	email, err := s.redis.Get(ctx, "email_verification:"+token).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return apperrors.BadException("invalid or expired token")
+		}
+		return err
+	}
+
+	err = s.userRepo.MarkEmailVerified(ctx, email)
+	if err != nil {
+		return err
+	}
+
+	s.redis.Del(ctx, "email_verification:"+token)
 
 	return nil
 }

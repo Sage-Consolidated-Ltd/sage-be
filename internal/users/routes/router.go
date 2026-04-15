@@ -45,10 +45,17 @@ func RegisterAuthRoutes(router fiber.Router, ah *handlers.AuthHandler, m *middle
 	auth.Post("/forgot-password", ah.ForgotPassword)
 	auth.Post("/verify-reset-token", ah.VerifyResetToken)
 	auth.Post("/reset-password", ah.ResetPassword)
+
+	auth.Post("/send-verification-email", ah.SendVerificationEmail)
+	auth.Post("/verify-email", ah.VerifyEmail)
 }
 
 func RegisterCompanyRoutes(router fiber.Router, ch *handlers.CompanyHandler, m *middlewares.AuthMiddleware) {
 	company := router.Group("/company")
 
 	company.Get("/industries", ch.GetIndustries)
+	company.Get("/organization-roles", ch.GetOrganizationRoles)
+
+	company.Post("/invite", m.RequireAuth, ch.InviteMember)
+	company.Get("/invitations/accept", m.RequireAuth, ch.AcceptInvitation)
 }

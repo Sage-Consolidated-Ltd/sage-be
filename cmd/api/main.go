@@ -11,6 +11,7 @@ import (
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/db/redis"
 	"sage-backend/internal/shared/logger"
+	"sage-backend/internal/shared/mailer"
 	"sage-backend/internal/users/handlers"
 	"sage-backend/internal/users/middlewares"
 	"sage-backend/internal/users/repositories"
@@ -55,6 +56,8 @@ func main() {
 	config.InitSessionStore(cfg)
 
 	logger.Init(&cfg.BaseConfig)
+
+	mailer := mailer.NewEmailClient(&cfg.BaseConfig)
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder: func(v interface{}) ([]byte, error) {
@@ -116,8 +119,8 @@ func main() {
 	companyRepo := repositories.NewCompanyRepository(db)
 
 	// services
-	authServ := services.NewAuthService(userRepo, jwtService, cfg, redis, companyRepo)
-	companyServ := services.NewCompanyServices(companyRepo)
+	authServ := services.NewAuthService(userRepo, jwtService, cfg, redis, companyRepo, mailer)
+	companyServ := services.NewCompanyServices(companyRepo, mailer, redis, &cfg.BaseConfig)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authServ, cfgOAuth, cfg)

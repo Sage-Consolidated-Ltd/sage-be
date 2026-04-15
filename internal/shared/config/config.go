@@ -19,6 +19,9 @@ type BaseConfig struct {
 	AppEncryptionKey string
 	RedisDbUrl string
 	LogLevel Level
+	ResendApiKey string
+	ResendFromEmail string
+	FrontendBaseURL string
 }
 
 type APIConfig struct {
@@ -115,6 +118,9 @@ func loadBase() BaseConfig {
 		AppEncryptionKey: requireEnv("APP_ENCRYPTION_KEY"),
 		RedisDbUrl: requireEnv("REDIS_DB_URL"),
 		LogLevel: levelFromEnv(),
+		ResendApiKey: requireEnv("RESEND_API_KEY"),
+		ResendFromEmail: requireEnv("RESEND_FROM_EMAIL"),
+		FrontendBaseURL: requireEnv("FRONTEND_BASE_URL"),
 	}
 }
 

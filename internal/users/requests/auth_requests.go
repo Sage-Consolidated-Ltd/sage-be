@@ -33,3 +33,9 @@ type ForgotPasswordRequest struct {
 type VerifyResetTokenRequest struct {
 	Token string `json:"token" validate:"required"`
 }
+type SendVerificationEmailRequest struct {
+	Email string `json:"email" validate:"email,required"`
+}
+type VerifyEmailRequest struct {
+	Token string `json:"token" validate:"required"`
+}
