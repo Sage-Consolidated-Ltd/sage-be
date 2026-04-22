@@ -9,5 +9,5 @@ func NewIntegrationHandler() *IntegrationHandler{
 }
 
 func (h *IntegrationHandler) CreateIntegration(c *fiber.Ctx) error {
-	return c.SendString("Create Integration")
+	return c.SendString("Create Integration ")
 }
