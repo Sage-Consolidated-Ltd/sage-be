@@ -13,7 +13,7 @@ import (
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/mailer"
 	"sage-backend/internal/users/handlers"
-	"sage-backend/internal/users/middlewares"
+	"sage-backend/internal/shared/middlewares"
 	"sage-backend/internal/users/repositories"
 	"sage-backend/internal/users/routes"
 	"sage-backend/internal/users/services"

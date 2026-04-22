@@ -3,7 +3,7 @@ package routes
 import (
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/users/handlers"
-	"sage-backend/internal/users/middlewares"
+	"sage-backend/internal/shared/middlewares"
 
 	"github.com/gofiber/fiber/v2"
 )

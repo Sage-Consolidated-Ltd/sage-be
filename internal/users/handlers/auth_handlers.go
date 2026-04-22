@@ -149,10 +149,20 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 		return response.JSON(c, fiber.StatusAccepted, "2FA required", nil)
 	}
 
+	var orgID string
+	if len(resp.Organization) > 0 {
+		for _, org := range resp.Organization {
+			if org.OwnerID == resp.ID {
+				orgID = org.ID
+			}
+		}
+	}
+
 	if _, err := config.SetSession(c, config.SessionParam{
 		ID: resp.ID,
 		Role: string(resp.Role),
 		Email: resp.Email,
+		OrganizationId: orgID,
 	}); err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
 	}
@@ -192,10 +202,20 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 		return response.JSON(c, fiber.StatusAccepted, "2FA required", nil)
 	}
 
+	var orgID string
+	if len(resp.Organization) > 0 {
+		for _, org := range resp.Organization {
+			if org.OwnerID == resp.ID {
+				orgID = org.ID
+			}
+		}
+	}
+
 	if _, err := config.SetSession(c, config.SessionParam{
 		ID: resp.ID,
 		Role: string(resp.Role),
 		Email: resp.Email,
+		OrganizationId: orgID,
 	}); err != nil {
 		logger.Error("Error with AuthHandler.Login: ", zap.Error(err))
 		return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
