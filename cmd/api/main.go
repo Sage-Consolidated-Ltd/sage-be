@@ -38,7 +38,7 @@ import (
 // @contact.url    http://www.swagger.io/support
 // @contact.email  support@swagger.io
 
-// @host      http://16.171.140.125
+// @host      16.171.140.125
 // @BasePath  /api/v1
 func main() {
 	cfg := config.SetupAPI()
