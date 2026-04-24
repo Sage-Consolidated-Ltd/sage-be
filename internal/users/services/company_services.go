@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/mail"
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/mailer"
@@ -11,37 +12,69 @@ import (
 	"sage-backend/internal/users/models"
 	"sage-backend/internal/users/repositories"
 	"sage-backend/internal/users/requests"
+	"strings"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/redis/go-redis/v9"
 )
 
 type CompanyServicesInt interface {
+	// Industries & Roles
 	GetIndustries() (*[]models.GetIndustriesResponse, error)
 	GetOrganizationRoles() (*[]models.GetOrganizationRolesResponse, error)
 	GetOrganizationRoleByID(id string) (*models.GetOrganizationRolesResponse, error)
+
+	// Legacy Invitation Flow
 	InviteUserToOrganization(ctx context.Context, req *requests.BulkInviteMembersRequest, ownerId string) error
 	AcceptInvitation(ctx context.Context, inviteId string, token string, userId string) error
+
+	// Organization Metadata
+	GetOrganization(ctx context.Context, orgID string) (*models.GetOrganizationResponse, error)
+	UpdateOrganization(ctx context.Context, orgID, actorRole string, req *requests.UpdateOrganizationRequest) error
+
+	// Members
+	ListMembers(ctx context.Context, orgID string, req *requests.ListMembersRequest) ([]*models.OrganizationMemberResponse, int, error)
+	InviteMembers(ctx context.Context, orgID, invitedBy string, req *requests.InviteMembersRequest) (*InviteMembersResult, error)
+	UpdateMemberRole(ctx context.Context, memberID, orgID, actorRole, newRole string) error
+	RemoveMember(ctx context.Context, memberID, orgID, actorRole, actorUserID string) error
+
+	// Settings
+	GetOrganizationSettings(ctx context.Context, orgID string) (*models.OrganizationSettingsResponse, error)
+	UpdateOrganizationSettings(ctx context.Context, orgID, actorRole string, req *requests.UpdateOrganizationSettingsRequest) error
+
+	// Role validation helpers
+	CanManageMembers(role string) bool
+	CanUpdateSettings(role string) bool
+}
+
+type InviteMembersResult struct {
+	InvitedCount  int      `json:"invited_count"`
+	SkippedCount  int      `json:"skipped_count"`
+	InvalidEmails []string `json:"invalid_emails"`
 }
 
 type CompanyServices struct {
 	companyRepo repositories.CompanyRepositoryInt
-	mailer mailer.EmailClientInt
+	userRepo    repositories.UsersRepositoryInt
+	mailer      mailer.EmailClientInt
 	redisClient *redis.Client
-	config *config.BaseConfig
+	config      *config.BaseConfig
 }
 
 func NewCompanyServices(
-	companyRepo repositories.CompanyRepositoryInt, 
-	mailer mailer.EmailClientInt, 
+	companyRepo repositories.CompanyRepositoryInt,
+	userRepo repositories.UsersRepositoryInt,
+	mailer mailer.EmailClientInt,
 	redisClient *redis.Client,
 	config *config.BaseConfig,
-	) CompanyServicesInt {
+) CompanyServicesInt {
 	return &CompanyServices{
 		companyRepo: companyRepo,
-		mailer: mailer,
+		userRepo:    userRepo,
+		mailer:      mailer,
 		redisClient: redisClient,
-		config: config,
+		config:      config,
 	}
 }
 
@@ -128,8 +161,8 @@ func (s *CompanyServices) InviteUserToOrganization(ctx context.Context, req *req
 
 		if err := s.mailer.SendMemberInvitationEmail([]string{invite.Email}, mailer.MemberInvitationEmailData{
 			OrganizationName: organization.Name,
-			Role: role.Name,
-			InviteLink: inviteLink,
+			Role:             role.Name,
+			InviteLink:       inviteLink,
 		}); err != nil {
 			return err
 		}
@@ -168,4 +201,176 @@ func (s *CompanyServices) AcceptInvitation(ctx context.Context, inviteId string,
 	}
 
 	return nil
+}
+
+// GetOrganization returns organization details
+func (s *CompanyServices) GetOrganization(ctx context.Context, orgID string) (*models.GetOrganizationResponse, error) {
+	org, err := s.companyRepo.GetOrganizationByID(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return org.ToResponse(), nil
+}
+
+// UpdateOrganization updates organization metadata (owner/admin only)
+func (s *CompanyServices) UpdateOrganization(ctx context.Context, orgID, actorRole string, req *requests.UpdateOrganizationRequest) error {
+	if !s.CanUpdateSettings(actorRole) {
+		return apperrors.NewCustomError("ONLY OWNER OR ADMIN CAN UPDATE ORGANIZATION", fiber.StatusForbidden, "FORBIDDEN")
+	}
+	if req.RiskThresholdDefault < 0 || req.RiskThresholdDefault > 100 {
+		return apperrors.BadException("RISK_THRESHOLD_MUST_BE_BETWEEN_0_AND_100")
+	}
+	return s.companyRepo.UpdateOrganization(ctx, orgID, req)
+}
+
+// ListMembers returns paginated member list
+func (s *CompanyServices) ListMembers(ctx context.Context, orgID string, req *requests.ListMembersRequest) ([]*models.OrganizationMemberResponse, int, error) {
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 || req.PageSize > 100 {
+		req.PageSize = 25
+	}
+	role := strings.ToLower(req.Role)
+	if role != "" && !s.companyRepo.IsValidRole(role) {
+		role = ""
+	}
+
+	members, total, err := s.companyRepo.ListMembers(ctx, orgID, req.Page, req.PageSize, role, req.Search)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	var responses []*models.OrganizationMemberResponse
+	for _, m := range members {
+		responses = append(responses, m.ToResponse())
+	}
+	return responses, total, nil
+}
+
+// InviteMembers invites users to join the organization
+func (s *CompanyServices) InviteMembers(ctx context.Context, orgID, invitedBy string, req *requests.InviteMembersRequest) (*InviteMembersResult, error) {
+	result := &InviteMembersResult{
+		InvitedCount:  0,
+		SkippedCount:  0,
+		InvalidEmails: []string{},
+	}
+
+	for _, invite := range req.Invites {
+		email := strings.ToLower(strings.TrimSpace(invite.Email))
+		if _, err := mail.ParseAddress(email); err != nil {
+			result.InvalidEmails = append(result.InvalidEmails, email)
+			continue
+		}
+
+		user, err := s.userRepo.GetUserByEmail(ctx, email)
+		if err != nil || user == nil {
+			result.SkippedCount++
+			continue
+		}
+
+		_, err = s.companyRepo.AddMember(ctx, orgID, user.ID, invite.Role, invitedBy)
+		if err != nil {
+			if err.Error() == "MEMBER ALREADY EXISTS" || strings.Contains(err.Error(), "duplicate") {
+				result.SkippedCount++
+				continue
+			}
+			result.SkippedCount++
+			continue
+		}
+		result.InvitedCount++
+		// TODO: Send invitation email with invite.FullName, invite.Department, invite.ForceMFA, invite.Message
+	}
+
+	return result, nil
+}
+
+// UpdateMemberRole updates a member's role
+func (s *CompanyServices) UpdateMemberRole(ctx context.Context, memberID, orgID, actorRole, newRole string) error {
+	if !s.CanManageMembers(actorRole) {
+		return apperrors.NewCustomError("ONLY OWNER OR ADMIN CAN UPDATE MEMBER ROLES", fiber.StatusForbidden, "FORBIDDEN")
+	}
+	if !s.companyRepo.IsValidRole(newRole) {
+		return apperrors.BadException("INVALID_ROLE")
+	}
+	if newRole == "owner" {
+		return apperrors.NewCustomError("CANNOT_ASSIGN_OWNER_ROLE", fiber.StatusForbidden, "FORBIDDEN")
+	}
+
+	member, err := s.companyRepo.GetMemberByID(ctx, memberID, orgID)
+	if err != nil {
+		return err
+	}
+	if member.Role == "owner" && actorRole != "owner" {
+		return apperrors.NewCustomError("ONLY_OWNER_CAN_MODIFY_OWNER", fiber.StatusForbidden, "FORBIDDEN")
+	}
+
+	return s.companyRepo.UpdateMemberRole(ctx, memberID, orgID, newRole)
+}
+
+// RemoveMember removes a member from the organization
+func (s *CompanyServices) RemoveMember(ctx context.Context, memberID, orgID, actorRole, actorUserID string) error {
+	if !s.CanManageMembers(actorRole) {
+		return apperrors.NewCustomError("ONLY OWNER OR ADMIN CAN REMOVE MEMBERS", fiber.StatusForbidden, "FORBIDDEN")
+	}
+
+	member, err := s.companyRepo.GetMemberByID(ctx, memberID, orgID)
+	if err != nil {
+		return err
+	}
+
+	if member.UserID == actorUserID {
+		ownerCount, err := s.companyRepo.GetMemberCountByRole(ctx, orgID, "owner")
+		if err != nil {
+			return err
+		}
+		if ownerCount <= 1 && member.Role == "owner" {
+			return apperrors.NewCustomError("CANNOT_REMOVE_LAST_OWNER", fiber.StatusForbidden, "FORBIDDEN")
+		}
+	}
+
+	if member.Role == "owner" && actorRole != "owner" {
+		return apperrors.NewCustomError("ONLY_OWNER_CAN_REMOVE_OWNER", fiber.StatusForbidden, "FORBIDDEN")
+	}
+
+	return s.companyRepo.RemoveMember(ctx, memberID, orgID)
+}
+
+// GetOrganizationSettings returns org settings
+func (s *CompanyServices) GetOrganizationSettings(ctx context.Context, orgID string) (*models.OrganizationSettingsResponse, error) {
+	settings, err := s.companyRepo.GetOrganizationSettings(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return settings.ToResponse(), nil
+}
+
+// UpdateOrganizationSettings updates org settings
+func (s *CompanyServices) UpdateOrganizationSettings(ctx context.Context, orgID, actorRole string, req *requests.UpdateOrganizationSettingsRequest) error {
+	if !s.CanUpdateSettings(actorRole) {
+		return apperrors.NewCustomError("ONLY OWNER OR ADMIN CAN UPDATE SETTINGS", fiber.StatusForbidden, "FORBIDDEN")
+	}
+
+	validSeverities := map[string]bool{"low": true, "medium": true, "high": true, "critical": true}
+	if req.DefaultAlertSeverityThreshold != "" && !validSeverities[req.DefaultAlertSeverityThreshold] {
+		return apperrors.BadException("INVALID_SEVERITY_THRESHOLD")
+	}
+	if req.AutoContainmentThreshold < 0 || req.AutoContainmentThreshold > 100 {
+		return apperrors.BadException("CONTAINMENT_THRESHOLD_MUST_BE_BETWEEN_0_AND_100")
+	}
+	if req.SessionTimeoutMinutes < 5 || req.SessionTimeoutMinutes > 1440 {
+		return apperrors.BadException("SESSION_TIMEOUT_MUST_BE_BETWEEN_5_AND_1440_MINUTES")
+	}
+
+	return s.companyRepo.UpdateOrganizationSettings(ctx, orgID, req)
+}
+
+// CanManageMembers checks if role can manage members
+func (s *CompanyServices) CanManageMembers(role string) bool {
+	return s.companyRepo.CanManageMembers(role)
+}
+
+// CanUpdateSettings checks if role can update settings
+func (s *CompanyServices) CanUpdateSettings(role string) bool {
+	return s.companyRepo.CanUpdateSettings(role)
 }
