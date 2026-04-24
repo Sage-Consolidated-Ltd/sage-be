@@ -13,6 +13,7 @@ import (
 type UsersRepositoryInt interface {
 	CreateUser(ctx context.Context, req *requests.CreateUserRequest, hash string) error
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
+	GetUserByID(ctx context.Context, id string) (*models.User, error)
 	MarkEmailVerified(ctx context.Context, email string) error
 	CreateUserWithOrganization(ctx context.Context, req *requests.CreateUserRequest, hash string) error
 	GetUserOrganizations(ctx context.Context, userId string) (*[]models.Organization, error)
@@ -20,6 +21,7 @@ type UsersRepositoryInt interface {
 	GetTOTPSecret(ctx context.Context, userID string) (string, error)
 	UpdateUserPassword(ctx context.Context, email string, hash string) error
 	OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) error
+	UpdateUser(ctx context.Context, id string, req *requests.UpdateProfileRequest) error
 }
 
 var (
@@ -36,10 +38,13 @@ var (
 	GET_USER_BY_EMAIL = `
 	SELECT * FROM users WHERE email = $1
 	`
+	GET_USER_BY_ID = `
+	SELECT * FROM users WHERE id = $1
+	`
 	MARK_EMAIL_VERIFIED = `
 	UPDATE users SET is_verified = true WHERE email = $1
 	`
-	CREATE_ORGANIZATION=`
+	CREATE_ORGANIZATION = `
 	INSERT INTO organizations (
 	name,
 	owner_id,
@@ -47,7 +52,7 @@ var (
 	) VALUES ($1, $2, $3)
 	RETURNING id;
 	`
-	ADD_USER_TO_ORGANIZATION=`
+	ADD_USER_TO_ORGANIZATION = `
 	INSERT INTO organization_members (
 	organization_id,
 	user_id,
@@ -72,20 +77,28 @@ var (
 	LEFT JOIN organization_roles r ON om.role_id = r.id
 	WHERE om.user_id = $1
 	`
-	ENABLE_2FA=`
+	ENABLE_2FA = `
 		UPDATE users 
 		SET 
 			two_factor_enabled = true,
 			two_factor_secret = $1
 		WHERE id = $2`
-	GET_TOTP_SECRET=`
+	GET_TOTP_SECRET = `
 	SELECT two_factor_secret FROM users 
 	WHERE id = $1 
 	AND two_factor_enabled = true
 	AND is_verified = true
 	`
-	UPDATE_USER_PASSWORD=`
+	UPDATE_USER_PASSWORD = `
 	UPDATE users SET password_hash = $1 WHERE email = $2
+	`
+	UPDATE_USER = `
+	UPDATE users SET 
+		first_name = $1,
+		last_name = $2,
+		time_zone = $3,
+		updated_at = NOW()
+	WHERE id = $4
 	`
 	GET_ORGANIZATION_ROLE_ID = `
 	SELECT id FROM organization_roles WHERE name = $1`
@@ -147,6 +160,27 @@ func (r *UsersRepository) GetUserByEmail(ctx context.Context, email string) (*mo
 	return &user, nil
 }
 
+func (r *UsersRepository) GetUserByID(ctx context.Context, id string) (*models.User, error) {
+	var user models.User
+
+	err := r.db.GetContext(ctx, &user, GET_USER_BY_ID, id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperrors.NotFoundError("USER NOT FOUND")
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UsersRepository) UpdateUser(ctx context.Context, id string, req *requests.UpdateProfileRequest) error {
+	_, err := r.db.ExecContext(ctx, UPDATE_USER, req.FirstName, req.LastName, req.TimeZone, id)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *UsersRepository) MarkEmailVerified(ctx context.Context, email string) error {
 	_, err := r.db.ExecContext(ctx, MARK_EMAIL_VERIFIED, email)
 	if err != nil {
@@ -169,7 +203,7 @@ func (r *UsersRepository) CreateUserWithOrganization(ctx context.Context, req *r
 	}
 
 	var orgId string
-	err = tx.QueryRowContext(ctx, CREATE_ORGANIZATION, req.FirstName + " 's Org", userId).Scan(&orgId)
+	err = tx.QueryRowContext(ctx, CREATE_ORGANIZATION, req.FirstName+" 's Org", userId).Scan(&orgId)
 	if err != nil {
 		return err
 	}
