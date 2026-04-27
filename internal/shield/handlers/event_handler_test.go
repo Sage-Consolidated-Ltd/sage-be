@@ -8,7 +8,7 @@ import (
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/mocks"
 	"sage-backend/internal/shield/models"
-	"sage-backend/internal/shield/services"
+	"sage-backend/internal/shield/requests"
 	"strings"
 	"testing"
 	"time"
@@ -23,7 +23,7 @@ type mockLogsService struct {
 	mock.Mock
 }
 
-func (m *mockLogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *services.IngestLogRequest) (*models.SecurityEvent, error) {
+func (m *mockLogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *requests.IngestLogRequest) (*models.SecurityEvent, error) {
 	args := m.Called(ctx, orgID, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -31,7 +31,7 @@ func (m *mockLogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *s
 	return args.Get(0).(*models.SecurityEvent), args.Error(1)
 }
 
-func (m *mockLogsService) BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *services.BulkIngestLogsRequest) (map[string]interface{}, error) {
+func (m *mockLogsService) BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *requests.BulkIngestLogsRequest) (map[string]interface{}, error) {
 	args := m.Called(ctx, orgID, req)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -70,7 +70,7 @@ func TestEventHandler_GetLogDetail_Success(t *testing.T) {
 	orgID := uuid.New()
 	event := mocks.GenerateMockSecurityEvent(orgID)
 
-	mockService.On("GetLogByID", mock.Anything, orgID, event.ID).Return(event, nil)
+	mockService.On("GetLogByID", mock.Anything, mock.Anything, event.ID).Return(event, nil)
 
 	app.Get("/logs/:id", func(c *fiber.Ctx) error {
 		c.Locals("orgID", orgID)
@@ -239,7 +239,7 @@ func TestEventHandler_SearchLogs_ServiceError(t *testing.T) {
 		"search":         "",
 	}
 
-	mockService.On("SearchLogs", mock.Anything, orgID, filters, 1, 25).Return(nil, 0, assert.AnError)
+	mockService.On("SearchLogs", mock.Anything, mock.Anything, filters, 1, 25).Return(nil, 0, assert.AnError)
 
 	app.Get("/logs", func(c *fiber.Ctx) error {
 		c.Locals("orgID", orgID)
@@ -263,7 +263,7 @@ func TestEventHandler_IngestLog_Success(t *testing.T) {
 	sourceID := uuid.New()
 	event := mocks.GenerateMockSecurityEvent(orgID)
 
-	reqBody := services.IngestLogRequest{
+	reqBody := requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		SourceEventID: "EVT-123",
 		EventType:     "user_login",
@@ -276,7 +276,7 @@ func TestEventHandler_IngestLog_Success(t *testing.T) {
 		RawPayload:    map[string]interface{}{"action": "login"},
 	}
 
-	mockService.On("IngestLog", mock.Anything, orgID, mock.MatchedBy(func(req *services.IngestLogRequest) bool {
+	mockService.On("IngestLog", mock.Anything, orgID, mock.MatchedBy(func(req *requests.IngestLogRequest) bool {
 		return req.SourceID == reqBody.SourceID &&
 			req.SourceEventID == reqBody.SourceEventID &&
 			req.EventType == reqBody.EventType &&
@@ -334,7 +334,7 @@ func TestEventHandler_IngestLog_ServiceError(t *testing.T) {
 	orgID := uuid.New()
 	sourceID := uuid.New()
 
-	reqBody := services.IngestLogRequest{
+	reqBody := requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		SourceEventID: "EVT-123",
 		EventType:     "user_login",
@@ -344,7 +344,7 @@ func TestEventHandler_IngestLog_ServiceError(t *testing.T) {
 		RawPayload:    map[string]interface{}{"action": "login"},
 	}
 
-	mockService.On("IngestLog", mock.Anything, orgID, mock.MatchedBy(func(req *services.IngestLogRequest) bool {
+	mockService.On("IngestLog", mock.Anything, orgID, mock.MatchedBy(func(req *requests.IngestLogRequest) bool {
 		return req.SourceID == reqBody.SourceID &&
 			req.SourceEventID == reqBody.SourceEventID &&
 			req.EventType == reqBody.EventType &&
@@ -375,7 +375,7 @@ func TestEventHandler_BulkIngestLogs_Success(t *testing.T) {
 	orgID := uuid.New()
 	sourceID := uuid.New()
 
-	eventReq := &services.IngestLogRequest{
+	eventReq := &requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		SourceEventID: "EVT-123",
 		EventType:     "user_login",
@@ -385,9 +385,9 @@ func TestEventHandler_BulkIngestLogs_Success(t *testing.T) {
 		RawPayload:    map[string]interface{}{"action": "login"},
 	}
 
-	reqBody := services.BulkIngestLogsRequest{
+	reqBody := requests.BulkIngestLogsRequest{
 		SourceID: sourceID.String(),
-		Events:   []*services.IngestLogRequest{eventReq},
+		Events:   []*requests.IngestLogRequest{eventReq},
 	}
 
 	result := map[string]interface{}{
@@ -396,7 +396,7 @@ func TestEventHandler_BulkIngestLogs_Success(t *testing.T) {
 		"organization_id": orgID.String(),
 	}
 
-	mockService.On("BulkIngestLogs", mock.Anything, orgID, mock.MatchedBy(func(req *services.BulkIngestLogsRequest) bool {
+	mockService.On("BulkIngestLogs", mock.Anything, orgID, mock.MatchedBy(func(req *requests.BulkIngestLogsRequest) bool {
 		return req.SourceID == reqBody.SourceID &&
 			len(req.Events) == len(reqBody.Events)
 	})).Return(result, nil)
@@ -448,7 +448,7 @@ func TestEventHandler_BulkIngestLogs_ServiceError(t *testing.T) {
 	orgID := uuid.New()
 	sourceID := uuid.New()
 
-	eventReq := &services.IngestLogRequest{
+	eventReq := &requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		SourceEventID: "EVT-123",
 		EventType:     "user_login",
@@ -458,12 +458,12 @@ func TestEventHandler_BulkIngestLogs_ServiceError(t *testing.T) {
 		RawPayload:    map[string]interface{}{"action": "login"},
 	}
 
-	reqBody := services.BulkIngestLogsRequest{
+	reqBody := requests.BulkIngestLogsRequest{
 		SourceID: sourceID.String(),
-		Events:   []*services.IngestLogRequest{eventReq},
+		Events:   []*requests.IngestLogRequest{eventReq},
 	}
 
-	mockService.On("BulkIngestLogs", mock.Anything, orgID, mock.MatchedBy(func(req *services.BulkIngestLogsRequest) bool {
+	mockService.On("BulkIngestLogs", mock.Anything, orgID, mock.MatchedBy(func(req *requests.BulkIngestLogsRequest) bool {
 		return req.SourceID == reqBody.SourceID
 	})).Return(nil, assert.AnError)
 

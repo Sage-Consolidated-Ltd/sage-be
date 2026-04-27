@@ -8,13 +8,14 @@ import (
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/repositories"
+	"sage-backend/internal/shield/requests"
 
 	"github.com/google/uuid"
 )
 
 type LogsServiceInt interface {
-	IngestLog(ctx context.Context, orgID uuid.UUID, req *IngestLogRequest) (*models.SecurityEvent, error)
-	BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *BulkIngestLogsRequest) (map[string]interface{}, error)
+	IngestLog(ctx context.Context, orgID uuid.UUID, req *requests.IngestLogRequest) (*models.SecurityEvent, error)
+	BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *requests.BulkIngestLogsRequest) (map[string]interface{}, error)
 	SearchLogs(ctx context.Context, orgID uuid.UUID, filters map[string]interface{}, page, pageSize int) ([]*models.SecurityEvent, int, error)
 	GetLogByID(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*models.SecurityEvent, error)
 }
@@ -37,28 +38,7 @@ func NewLogsService(
 	}
 }
 
-// Request DTOs
-type IngestLogRequest struct {
-	SourceID      string                 `json:"source_id" validate:"required,uuid"`
-	SourceEventID string                 `json:"source_event_id,omitempty"`
-	EventType     string                 `json:"event_type" validate:"required"`
-	EventCategory string                 `json:"event_category" validate:"required"`
-	Severity      types.Severity         `json:"severity" validate:"required,oneof=low medium high critical"`
-	ActorEmail    string                 `json:"actor_email,omitempty"`
-	ActorUsername string                 `json:"actor_username,omitempty"`
-	IPAddress     string                 `json:"ip_address,omitempty"`
-	GeoCountry    string                 `json:"geo_country,omitempty"`
-	GeoCity       string                 `json:"geo_city,omitempty"`
-	OccurredAt    time.Time              `json:"occurred_at" validate:"required"`
-	RawPayload    map[string]interface{} `json:"raw_payload" validate:"required"`
-}
-
-type BulkIngestLogsRequest struct {
-	SourceID string              `json:"source_id" validate:"required,uuid"`
-	Events   []*IngestLogRequest `json:"events" validate:"required,min=1,dive"`
-}
-
-func (s *LogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *IngestLogRequest) (*models.SecurityEvent, error) {
+func (s *LogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *requests.IngestLogRequest) (*models.SecurityEvent, error) {
 	sourceUUID, err := uuid.Parse(req.SourceID)
 	if err != nil {
 		return nil, apperrors.BadException("INVALID_SOURCE_ID")
@@ -102,7 +82,7 @@ func (s *LogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *Inges
 	return event, nil
 }
 
-func (s *LogsService) BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *BulkIngestLogsRequest) (map[string]interface{}, error) {
+func (s *LogsService) BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *requests.BulkIngestLogsRequest) (map[string]interface{}, error) {
 	sourceUUID, err := uuid.Parse(req.SourceID)
 	if err != nil {
 		return nil, apperrors.BadException("INVALID_SOURCE_ID")

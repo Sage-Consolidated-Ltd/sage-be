@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/models"
+	"sage-backend/internal/shield/requests"
 	"testing"
 	"time"
 
@@ -201,7 +202,7 @@ func TestLogsService_IngestLog_Success(t *testing.T) {
 		Status:         "active",
 	}
 
-	req := &IngestLogRequest{
+	req := &requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		SourceEventID: "EVT-123",
 		EventType:     "user_login",
@@ -241,7 +242,7 @@ func TestLogsService_IngestLog_InvalidSourceID(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
 
-	req := &IngestLogRequest{
+	req := &requests.IngestLogRequest{
 		SourceID:      "invalid-uuid",
 		EventType:     "user_login",
 		EventCategory: "authentication",
@@ -265,7 +266,7 @@ func TestLogsService_IngestLog_SourceNotFound(t *testing.T) {
 	orgID := uuid.New()
 	sourceID := uuid.New()
 
-	req := &IngestLogRequest{
+	req := &requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		EventType:     "user_login",
 		EventCategory: "authentication",
@@ -301,7 +302,7 @@ func TestLogsService_IngestLog_RepositoryError(t *testing.T) {
 		Status:         "active",
 	}
 
-	req := &IngestLogRequest{
+	req := &requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		EventType:     "user_login",
 		EventCategory: "authentication",
@@ -339,7 +340,7 @@ func TestLogsService_BulkIngestLogs_Success(t *testing.T) {
 		Status:         "active",
 	}
 
-	eventReq := &IngestLogRequest{
+	eventReq := &requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		SourceEventID: "EVT-123",
 		EventType:     "user_login",
@@ -349,9 +350,9 @@ func TestLogsService_BulkIngestLogs_Success(t *testing.T) {
 		RawPayload:    map[string]interface{}{"action": "login"},
 	}
 
-	req := &BulkIngestLogsRequest{
+	req := &requests.BulkIngestLogsRequest{
 		SourceID: sourceID.String(),
-		Events:   []*IngestLogRequest{eventReq},
+		Events:   []*requests.IngestLogRequest{eventReq},
 	}
 
 	mockDataSourceRepo.On("GetDataSourceByID", ctx, sourceID, orgID).Return(dataSource, nil)
@@ -380,9 +381,9 @@ func TestLogsService_BulkIngestLogs_InvalidSourceID(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
 
-	req := &BulkIngestLogsRequest{
+	req := &requests.BulkIngestLogsRequest{
 		SourceID: "invalid-uuid",
-		Events:   []*IngestLogRequest{},
+		Events:   []*requests.IngestLogRequest{},
 	}
 
 	_, err := service.BulkIngestLogs(ctx, orgID, req)
@@ -400,7 +401,7 @@ func TestLogsService_BulkIngestLogs_SourceNotFound(t *testing.T) {
 	orgID := uuid.New()
 	sourceID := uuid.New()
 
-	eventReq := &IngestLogRequest{
+	eventReq := &requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		EventType:     "user_login",
 		EventCategory: "authentication",
@@ -409,9 +410,9 @@ func TestLogsService_BulkIngestLogs_SourceNotFound(t *testing.T) {
 		RawPayload:    map[string]interface{}{"action": "login"},
 	}
 
-	req := &BulkIngestLogsRequest{
+	req := &requests.BulkIngestLogsRequest{
 		SourceID: sourceID.String(),
-		Events:   []*IngestLogRequest{eventReq},
+		Events:   []*requests.IngestLogRequest{eventReq},
 	}
 
 	mockDataSourceRepo.On("GetDataSourceByID", ctx, sourceID, orgID).Return(nil, errors.New("source not found"))
@@ -441,7 +442,7 @@ func TestLogsService_BulkIngestLogs_RepositoryError(t *testing.T) {
 		Status:         "active",
 	}
 
-	eventReq := &IngestLogRequest{
+	eventReq := &requests.IngestLogRequest{
 		SourceID:      sourceID.String(),
 		EventType:     "user_login",
 		EventCategory: "authentication",
@@ -450,9 +451,9 @@ func TestLogsService_BulkIngestLogs_RepositoryError(t *testing.T) {
 		RawPayload:    map[string]interface{}{"action": "login"},
 	}
 
-	req := &BulkIngestLogsRequest{
+	req := &requests.BulkIngestLogsRequest{
 		SourceID: sourceID.String(),
-		Events:   []*IngestLogRequest{eventReq},
+		Events:   []*requests.IngestLogRequest{eventReq},
 	}
 
 	mockDataSourceRepo.On("GetDataSourceByID", ctx, sourceID, orgID).Return(dataSource, nil)
