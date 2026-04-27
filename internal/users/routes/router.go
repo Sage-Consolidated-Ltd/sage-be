@@ -76,6 +76,17 @@ func RegisterCompanyRoutes(router fiber.Router, ch *handlers.CompanyHandler, m *
 	settings := org.Group("/settings")
 	settings.Get("/", ch.GetOrganizationSettings)
 	settings.Patch("/", ch.UpdateOrganizationSettings)
+
+	// Permissions & Custom Roles
+	org.Get("/permissions", ch.ListPermissions)
+	org.Get("/permission-groups", ch.ListPermissionGroups)
+
+	customRoles := org.Group("/custom-roles")
+	customRoles.Get("/", ch.ListCustomRoles)
+	customRoles.Post("/", ch.CreateCustomRole)
+	customRoles.Get("/:id", ch.GetCustomRole)
+	customRoles.Patch("/:id", ch.UpdateCustomRole)
+	customRoles.Delete("/:id", ch.DeleteCustomRole)
 }
 
 func RegisterProfileRoutes(router fiber.Router, ph *handlers.ProfileHandler, m *middlewares.AuthMiddleware) {

@@ -24,24 +24,6 @@ func NewCompanyHandler(companyServ services.CompanyServicesInt) *CompanyHandler 
 	}
 }
 
-// getSessionInfo extracts orgID, userID, and role from session
-func getSessionInfo(c *fiber.Ctx) (orgID, userID, role string, ok bool) {
-	sess, err := config.Store.Get(c)
-	if err != nil {
-		return "", "", "", false
-	}
-
-	if sess.Get("organizationID") == nil || sess.Get("userID") == nil || sess.Get("role") == nil {
-		return "", "", "", false
-	}
-
-	orgID = sess.Get("organizationID").(string)
-	userID = sess.Get("userID").(string)
-	role = sess.Get("role").(string)
-
-	return orgID, userID, role, true
-}
-
 func (h *CompanyHandler) GetIndustries(c *fiber.Ctx) error {
 	industries, err := h.companyServ.GetIndustries()
 	if err != nil {
@@ -352,4 +334,179 @@ func (h *CompanyHandler) UpdateOrganizationSettings(c *fiber.Ctx) error {
 	}
 
 	return response.JSON(c, fiber.StatusOK, "Settings updated successfully", nil)
+}
+
+// ListPermissions returns all available permissions
+// GET /api/v1/organization/permissions
+func (h *CompanyHandler) ListPermissions(c *fiber.Ctx) error {
+	permissions, err := h.companyServ.ListPermissions(c.Context())
+	if err != nil {
+		logger.Error("Error with CompanyHandler.ListPermissions: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Permissions retrieved successfully", permissions)
+}
+
+// ListPermissionGroups returns all permission groups
+// GET /api/v1/organization/permission-groups
+func (h *CompanyHandler) ListPermissionGroups(c *fiber.Ctx) error {
+	groups, err := h.companyServ.ListPermissionGroups(c.Context())
+	if err != nil {
+		logger.Error("Error with CompanyHandler.ListPermissionGroups: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Permission groups retrieved successfully", groups)
+}
+
+// ListCustomRoles returns all custom roles for the organization
+// GET /api/v1/organization/custom-roles
+func (h *CompanyHandler) ListCustomRoles(c *fiber.Ctx) error {
+	orgID, _, _, ok := getSessionInfo(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	roles, err := h.companyServ.ListCustomRoles(c.Context(), orgID)
+	if err != nil {
+		logger.Error("Error with CompanyHandler.ListCustomRoles: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Custom roles retrieved successfully", roles)
+}
+
+// GetCustomRole returns a specific custom role
+// GET /api/v1/organization/custom-roles/:id
+func (h *CompanyHandler) GetCustomRole(c *fiber.Ctx) error {
+	orgID, _, _, ok := getSessionInfo(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	roleID := c.Params("id")
+	if roleID == "" {
+		return response.Error(c, fiber.StatusBadRequest, "role id is required", nil)
+	}
+
+	role, err := h.companyServ.GetCustomRole(c.Context(), roleID, orgID)
+	if err != nil {
+		logger.Error("Error with CompanyHandler.GetCustomRole: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Custom role retrieved successfully", role)
+}
+
+// CreateCustomRole creates a new custom role
+// POST /api/v1/organization/custom-roles
+func (h *CompanyHandler) CreateCustomRole(c *fiber.Ctx) error {
+	orgID, _, role, ok := getSessionInfo(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	if !h.companyServ.CanManageMembers(role) {
+		return response.Error(c, fiber.StatusForbidden, "only owner or admin can create custom roles", nil)
+	}
+
+	var req requests.CreateCustomRoleRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	roleResp, err := h.companyServ.CreateCustomRole(c.Context(), orgID, &req)
+	if err != nil {
+		logger.Error("Error with CompanyHandler.CreateCustomRole: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusCreated, "Custom role created successfully", roleResp)
+}
+
+// UpdateCustomRole updates a custom role
+// PATCH /api/v1/organization/custom-roles/:id
+func (h *CompanyHandler) UpdateCustomRole(c *fiber.Ctx) error {
+	orgID, _, role, ok := getSessionInfo(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	if !h.companyServ.CanManageMembers(role) {
+		return response.Error(c, fiber.StatusForbidden, "only owner or admin can update custom roles", nil)
+	}
+
+	roleID := c.Params("id")
+	if roleID == "" {
+		return response.Error(c, fiber.StatusBadRequest, "role id is required", nil)
+	}
+
+	var req requests.UpdateCustomRoleRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	if err := h.companyServ.UpdateCustomRole(c.Context(), roleID, orgID, &req); err != nil {
+		logger.Error("Error with CompanyHandler.UpdateCustomRole: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Custom role updated successfully", nil)
+}
+
+// DeleteCustomRole deletes a custom role
+// DELETE /api/v1/organization/custom-roles/:id
+func (h *CompanyHandler) DeleteCustomRole(c *fiber.Ctx) error {
+	orgID, _, role, ok := getSessionInfo(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	if !h.companyServ.CanManageMembers(role) {
+		return response.Error(c, fiber.StatusForbidden, "only owner or admin can delete custom roles", nil)
+	}
+
+	roleID := c.Params("id")
+	if roleID == "" {
+		return response.Error(c, fiber.StatusBadRequest, "role id is required", nil)
+	}
+
+	if err := h.companyServ.DeleteCustomRole(c.Context(), roleID, orgID); err != nil {
+		logger.Error("Error with CompanyHandler.DeleteCustomRole: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Custom role deleted successfully", nil)
 }

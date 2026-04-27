@@ -46,6 +46,15 @@ type CompanyServicesInt interface {
 	// Role validation helpers
 	CanManageMembers(role string) bool
 	CanUpdateSettings(role string) bool
+
+	// Permissions & Custom Roles
+	ListPermissions(ctx context.Context) ([]models.Permission, error)
+	ListPermissionGroups(ctx context.Context) ([]models.PermissionGroup, error)
+	ListCustomRoles(ctx context.Context, orgID string) ([]models.CustomRoleResponse, error)
+	GetCustomRole(ctx context.Context, roleID, orgID string) (*models.CustomRoleResponse, error)
+	CreateCustomRole(ctx context.Context, orgID string, req *requests.CreateCustomRoleRequest) (*models.CustomRoleResponse, error)
+	UpdateCustomRole(ctx context.Context, roleID, orgID string, req *requests.UpdateCustomRoleRequest) error
+	DeleteCustomRole(ctx context.Context, roleID, orgID string) error
 }
 
 type InviteMembersResult struct {
@@ -373,4 +382,110 @@ func (s *CompanyServices) CanManageMembers(role string) bool {
 // CanUpdateSettings checks if role can update settings
 func (s *CompanyServices) CanUpdateSettings(role string) bool {
 	return s.companyRepo.CanUpdateSettings(role)
+}
+
+// ListPermissions returns all permissions
+func (s *CompanyServices) ListPermissions(ctx context.Context) ([]models.Permission, error) {
+	return s.companyRepo.ListPermissions(ctx)
+}
+
+// ListPermissionGroups returns all permission groups
+func (s *CompanyServices) ListPermissionGroups(ctx context.Context) ([]models.PermissionGroup, error) {
+	return s.companyRepo.ListPermissionGroups(ctx)
+}
+
+// ListCustomRoles returns all custom roles for an organization
+func (s *CompanyServices) ListCustomRoles(ctx context.Context, orgID string) ([]models.CustomRoleResponse, error) {
+	roles, err := s.companyRepo.ListCustomRoles(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	var responses []models.CustomRoleResponse
+	for _, role := range roles {
+		resp := models.CustomRoleResponse{
+			ID:           role.ID,
+			Name:         role.Name,
+			Description:  role.Description,
+			IsSystemRole: role.IsSystemRole,
+			CreatedAt:    role.CreatedAt,
+			UpdatedAt:    role.UpdatedAt,
+		}
+
+		// Get permission groups
+		groups, _ := s.companyRepo.GetRolePermissionGroups(ctx, role.ID)
+		resp.PermissionGroups = groups
+
+		// Get permissions
+		permissions, _ := s.companyRepo.GetRolePermissions(ctx, role.ID)
+		resp.Permissions = permissions
+
+		responses = append(responses, resp)
+	}
+
+	return responses, nil
+}
+
+// GetCustomRole returns a custom role by ID
+func (s *CompanyServices) GetCustomRole(ctx context.Context, roleID, orgID string) (*models.CustomRoleResponse, error) {
+	role, err := s.companyRepo.GetCustomRoleByID(ctx, roleID, orgID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &models.CustomRoleResponse{
+		ID:           role.ID,
+		Name:         role.Name,
+		Description:  role.Description,
+		IsSystemRole: role.IsSystemRole,
+		CreatedAt:    role.CreatedAt,
+		UpdatedAt:    role.UpdatedAt,
+	}
+
+	// Get permission groups
+	groups, _ := s.companyRepo.GetRolePermissionGroups(ctx, role.ID)
+	resp.PermissionGroups = groups
+
+	// Get permissions
+	permissions, _ := s.companyRepo.GetRolePermissions(ctx, role.ID)
+	resp.Permissions = permissions
+
+	return resp, nil
+}
+
+// CreateCustomRole creates a new custom role
+func (s *CompanyServices) CreateCustomRole(ctx context.Context, orgID string, req *requests.CreateCustomRoleRequest) (*models.CustomRoleResponse, error) {
+	role, err := s.companyRepo.CreateCustomRole(ctx, orgID, req)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &models.CustomRoleResponse{
+		ID:           role.ID,
+		Name:         role.Name,
+		Description:  role.Description,
+		IsSystemRole: role.IsSystemRole,
+		CreatedAt:    role.CreatedAt,
+		UpdatedAt:    role.UpdatedAt,
+	}
+
+	// Get permission groups
+	groups, _ := s.companyRepo.GetRolePermissionGroups(ctx, role.ID)
+	resp.PermissionGroups = groups
+
+	// Get permissions
+	permissions, _ := s.companyRepo.GetRolePermissions(ctx, role.ID)
+	resp.Permissions = permissions
+
+	return resp, nil
+}
+
+// UpdateCustomRole updates a custom role
+func (s *CompanyServices) UpdateCustomRole(ctx context.Context, roleID, orgID string, req *requests.UpdateCustomRoleRequest) error {
+	return s.companyRepo.UpdateCustomRole(ctx, roleID, orgID, req)
+}
+
+// DeleteCustomRole deletes a custom role
+func (s *CompanyServices) DeleteCustomRole(ctx context.Context, roleID, orgID string) error {
+	return s.companyRepo.DeleteCustomRole(ctx, roleID, orgID)
 }

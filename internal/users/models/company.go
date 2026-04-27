@@ -227,3 +227,52 @@ func (r *OrganizationRole) ToGetOrganizationRolesResponse() GetOrganizationRoles
 		Description: r.Description,
 	}
 }
+
+type Permission struct {
+	ID          string    `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
+	Category    string    `json:"category" db:"category"`
+	Resource    string    `json:"resource" db:"resource"`
+	Action      string    `json:"action" db:"action"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type PermissionGroup struct {
+	ID          string    `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
+	Category    string    `json:"category" db:"category"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type PermissionGroupResponse struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Category    string   `json:"category"`
+	Permissions []string `json:"permissions,omitempty"`
+}
+
+type CustomRole struct {
+	ID             string    `json:"id" db:"id"`
+	OrganizationID string    `json:"organization_id" db:"organization_id"`
+	Name           string    `json:"name" db:"name"`
+	Description    string    `json:"description" db:"description"`
+	IsSystemRole   bool      `json:"is_system_role" db:"is_system_role"`
+	CreatedAt      time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at" db:"updated_at"`
+}
+
+type CustomRoleResponse struct {
+	ID               string    `json:"id"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	IsSystemRole     bool      `json:"is_system_role"`
+	PermissionGroups []string  `json:"permission_groups,omitempty"`
+	Permissions      []string  `json:"permissions,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}

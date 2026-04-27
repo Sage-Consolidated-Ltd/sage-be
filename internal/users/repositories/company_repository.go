@@ -48,6 +48,17 @@ type CompanyRepositoryInt interface {
 
 	// Role helpers
 	GetValidRoles() []string
+	ListPermissions(ctx context.Context) ([]models.Permission, error)
+	ListPermissionGroups(ctx context.Context) ([]models.PermissionGroup, error)
+	ListCustomRoles(ctx context.Context, orgID string) ([]models.CustomRole, error)
+	GetCustomRoleByID(ctx context.Context, roleID, orgID string) (*models.CustomRole, error)
+	CreateCustomRole(ctx context.Context, orgID string, req *requests.CreateCustomRoleRequest) (*models.CustomRole, error)
+	UpdateCustomRole(ctx context.Context, roleID, orgID string, req *requests.UpdateCustomRoleRequest) error
+	DeleteCustomRole(ctx context.Context, roleID, orgID string) error
+	GetRolePermissions(ctx context.Context, roleID string) ([]string, error)
+	GetRolePermissionGroups(ctx context.Context, roleID string) ([]string, error)
+	SetRolePermissionGroups(ctx context.Context, roleID string, groupIDs []string) error
+	SetRolePermissions(ctx context.Context, roleID string, permissionIDs []string) error
 	IsValidRole(role string) bool
 	CanManageMembers(actorRole string) bool
 	CanUpdateSettings(actorRole string) bool
@@ -247,7 +258,7 @@ var (
 )
 
 // Valid organization roles per spec
-var validRoles = []string{"owner", "admin", "analyst", "viewer"}
+var validRoles = []string{"owner", "admin", "analyst", "viewer", "automation_admin", "billing_admin"}
 
 func NewCompanyRepository(db *db.DB) CompanyRepositoryInt {
 	return &CompanyRepository{
@@ -585,6 +596,305 @@ func (r *CompanyRepository) IsValidRole(role string) bool {
 		}
 	}
 	return false
+}
+
+// Custom Roles & Permissions SQL
+var (
+	listPermissionsSQL = `
+		SELECT id, name, description, category, resource, action, created_at, updated_at
+		FROM permissions
+		ORDER BY category, name
+	`
+	listPermissionGroupsSQL = `
+		SELECT pg.id, pg.name, pg.description, pg.category, pg.created_at, pg.updated_at
+		FROM permission_groups pg
+		ORDER BY pg.category, pg.name
+	`
+	listCustomRolesSQL = `
+		SELECT id, organization_id, name, description, is_system_role, created_at, updated_at
+		FROM custom_roles
+		WHERE organization_id = $1
+		ORDER BY is_system_role DESC, name ASC
+	`
+	getCustomRoleByIDSQL = `
+		SELECT id, organization_id, name, description, is_system_role, created_at, updated_at
+		FROM custom_roles
+		WHERE id = $1 AND organization_id = $2
+	`
+	createCustomRoleSQL = `
+		INSERT INTO custom_roles (organization_id, name, description, is_system_role)
+		VALUES ($1, $2, $3, false)
+		RETURNING id, organization_id, name, description, is_system_role, created_at, updated_at
+	`
+	updateCustomRoleSQL = `
+		UPDATE custom_roles
+		SET name = COALESCE($2, name),
+		    description = COALESCE($3, description),
+		    updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1 AND organization_id = $4
+		RETURNING id, organization_id, name, description, is_system_role, created_at, updated_at
+	`
+	deleteCustomRoleSQL = `
+		DELETE FROM custom_roles
+		WHERE id = $1 AND organization_id = $2 AND is_system_role = false
+	`
+	getRolePermissionsSQL = `
+		SELECT p.name
+		FROM custom_role_permissions crp
+		JOIN permissions p ON crp.permission_id = p.id
+		WHERE crp.custom_role_id = $1
+		ORDER BY p.name
+	`
+	getRolePermissionGroupsSQL = `
+		SELECT pg.name
+		FROM custom_role_permission_groups crpg
+		JOIN permission_groups pg ON crpg.permission_group_id = pg.id
+		WHERE crpg.custom_role_id = $1
+		ORDER BY pg.name
+	`
+	setRolePermissionGroupsSQL = `
+		DELETE FROM custom_role_permission_groups WHERE custom_role_id = $1
+	`
+	setRolePermissionsSQL = `
+		DELETE FROM custom_role_permissions WHERE custom_role_id = $1
+	`
+)
+
+// ListPermissions returns all permissions
+func (r *CompanyRepository) ListPermissions(ctx context.Context) ([]models.Permission, error) {
+	rows, err := r.db.QueryContext(ctx, listPermissionsSQL)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var permissions []models.Permission
+	for rows.Next() {
+		var p models.Permission
+		if err := rows.Scan(&p.ID, &p.Name, &p.Description, &p.Category, &p.Resource, &p.Action, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		permissions = append(permissions, p)
+	}
+	return permissions, nil
+}
+
+// ListPermissionGroups returns all permission groups
+func (r *CompanyRepository) ListPermissionGroups(ctx context.Context) ([]models.PermissionGroup, error) {
+	rows, err := r.db.QueryContext(ctx, listPermissionGroupsSQL)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []models.PermissionGroup
+	for rows.Next() {
+		var g models.PermissionGroup
+		if err := rows.Scan(&g.ID, &g.Name, &g.Description, &g.Category, &g.CreatedAt, &g.UpdatedAt); err != nil {
+			return nil, err
+		}
+		groups = append(groups, g)
+	}
+	return groups, nil
+}
+
+// ListCustomRoles returns all custom roles for an organization
+func (r *CompanyRepository) ListCustomRoles(ctx context.Context, orgID string) ([]models.CustomRole, error) {
+	rows, err := r.db.QueryContext(ctx, listCustomRolesSQL, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roles []models.CustomRole
+	for rows.Next() {
+		var role models.CustomRole
+		if err := rows.Scan(&role.ID, &role.OrganizationID, &role.Name, &role.Description, &role.IsSystemRole, &role.CreatedAt, &role.UpdatedAt); err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+	return roles, nil
+}
+
+// GetCustomRoleByID returns a custom role by ID
+func (r *CompanyRepository) GetCustomRoleByID(ctx context.Context, roleID, orgID string) (*models.CustomRole, error) {
+	var role models.CustomRole
+	err := r.db.QueryRowContext(ctx, getCustomRoleByIDSQL, roleID, orgID).Scan(
+		&role.ID, &role.OrganizationID, &role.Name, &role.Description, &role.IsSystemRole, &role.CreatedAt, &role.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperrors.NotFoundError("CUSTOM ROLE NOT FOUND")
+		}
+		return nil, err
+	}
+	return &role, nil
+}
+
+// CreateCustomRole creates a new custom role
+func (r *CompanyRepository) CreateCustomRole(ctx context.Context, orgID string, req *requests.CreateCustomRoleRequest) (*models.CustomRole, error) {
+	var role models.CustomRole
+	err := r.db.QueryRowContext(ctx, createCustomRoleSQL, orgID, req.Name, req.Description).Scan(
+		&role.ID, &role.OrganizationID, &role.Name, &role.Description, &role.IsSystemRole, &role.CreatedAt, &role.UpdatedAt,
+	)
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate") {
+			return nil, apperrors.ConflictError("ROLE NAME ALREADY EXISTS")
+		}
+		return nil, err
+	}
+
+	// Set permission groups if provided
+	if len(req.PermissionGroups) > 0 {
+		if err := r.SetRolePermissionGroups(ctx, role.ID, req.PermissionGroups); err != nil {
+			return nil, err
+		}
+	}
+
+	// Set permissions if provided
+	if len(req.Permissions) > 0 {
+		if err := r.SetRolePermissions(ctx, role.ID, req.Permissions); err != nil {
+			return nil, err
+		}
+	}
+
+	return &role, nil
+}
+
+// UpdateCustomRole updates a custom role
+func (r *CompanyRepository) UpdateCustomRole(ctx context.Context, roleID, orgID string, req *requests.UpdateCustomRoleRequest) error {
+	var role models.CustomRole
+	err := r.db.QueryRowContext(ctx, updateCustomRoleSQL, roleID, req.Name, req.Description, orgID).Scan(
+		&role.ID, &role.OrganizationID, &role.Name, &role.Description, &role.IsSystemRole, &role.CreatedAt, &role.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return apperrors.NotFoundError("CUSTOM ROLE NOT FOUND")
+		}
+		return err
+	}
+
+	// Update permission groups if provided
+	if req.PermissionGroups != nil {
+		if err := r.SetRolePermissionGroups(ctx, roleID, req.PermissionGroups); err != nil {
+			return err
+		}
+	}
+
+	// Update permissions if provided
+	if req.Permissions != nil {
+		if err := r.SetRolePermissions(ctx, roleID, req.Permissions); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// DeleteCustomRole deletes a custom role
+func (r *CompanyRepository) DeleteCustomRole(ctx context.Context, roleID, orgID string) error {
+	result, err := r.db.ExecContext(ctx, deleteCustomRoleSQL, roleID, orgID)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return apperrors.NotFoundError("CUSTOM ROLE NOT FOUND OR CANNOT DELETE SYSTEM ROLE")
+	}
+	return nil
+}
+
+// GetRolePermissions returns permissions for a role
+func (r *CompanyRepository) GetRolePermissions(ctx context.Context, roleID string) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, getRolePermissionsSQL, roleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var permissions []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		permissions = append(permissions, name)
+	}
+	return permissions, nil
+}
+
+// GetRolePermissionGroups returns permission groups for a role
+func (r *CompanyRepository) GetRolePermissionGroups(ctx context.Context, roleID string) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, getRolePermissionGroupsSQL, roleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var groups []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
+		}
+		groups = append(groups, name)
+	}
+	return groups, nil
+}
+
+// SetRolePermissionGroups sets permission groups for a role
+func (r *CompanyRepository) SetRolePermissionGroups(ctx context.Context, roleID string, groupIDs []string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Clear existing
+	if _, err := tx.ExecContext(ctx, setRolePermissionGroupsSQL, roleID); err != nil {
+		return err
+	}
+
+	// Add new
+	for _, groupID := range groupIDs {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO custom_role_permission_groups (custom_role_id, permission_group_id)
+			VALUES ($1, $2)
+		`, roleID, groupID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// SetRolePermissions sets permissions for a role
+func (r *CompanyRepository) SetRolePermissions(ctx context.Context, roleID string, permissionIDs []string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Clear existing
+	if _, err := tx.ExecContext(ctx, setRolePermissionsSQL, roleID); err != nil {
+		return err
+	}
+
+	// Add new
+	for _, permID := range permissionIDs {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO custom_role_permissions (custom_role_id, permission_id)
+			VALUES ($1, $2)
+		`, roleID, permID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 // CanManageMembers checks if role can invite/remove members

@@ -23,7 +23,7 @@ type UpdateOrganizationRequest struct {
 type ListMembersRequest struct {
 	Page     int    `query:"page"`
 	PageSize int    `query:"page_size"`
-	Role     string `query:"role,omitempty" validate:"omitempty,oneof=owner admin analyst viewer"`
+	Role     string `query:"role,omitempty" validate:"omitempty,oneof=owner admin analyst viewer automation_admin billing_admin"`
 	Search   string `query:"search,omitempty"`
 }
 
@@ -32,7 +32,7 @@ type MemberInvite struct {
 	FullName   string `json:"full_name" validate:"required,min=2,max=100"`
 	Email      string `json:"email" validate:"required,email"`
 	Department string `json:"department,omitempty"`
-	Role       string `json:"role" validate:"required,oneof=admin analyst viewer"`
+	Role       string `json:"role" validate:"required,oneof=admin analyst viewer automation_admin billing_admin"`
 	ForceMFA   bool   `json:"force_mfa"`
 	Message    string `json:"message,omitempty" validate:"omitempty,max=500"`
 }
@@ -44,7 +44,7 @@ type InviteMembersRequest struct {
 
 // UpdateMemberRoleRequest updates a member's role
 type UpdateMemberRoleRequest struct {
-	Role string `json:"role" validate:"required,oneof=admin analyst viewer"`
+	Role string `json:"role" validate:"required,oneof=admin analyst viewer automation_admin billing_admin"`
 }
 
 // UpdateOrganizationSettingsRequest updates org-level configuration
@@ -55,4 +55,20 @@ type UpdateOrganizationSettingsRequest struct {
 	AllowedIPRanges               []string `json:"allowed_ip_ranges,omitempty"`
 	SessionTimeoutMinutes         int      `json:"session_timeout_minutes,omitempty" validate:"omitempty,min=5,max=1440"`
 	AuditLoggingEnabled           bool     `json:"audit_logging_enabled"`
+}
+
+// CreateCustomRoleRequest creates a custom role
+type CreateCustomRoleRequest struct {
+	Name             string   `json:"name" validate:"required,min=2,max=100"`
+	Description      string   `json:"description,omitempty" validate:"omitempty,max=500"`
+	PermissionGroups []string `json:"permission_groups,omitempty"`
+	Permissions      []string `json:"permissions,omitempty"`
+}
+
+// UpdateCustomRoleRequest updates a custom role
+type UpdateCustomRoleRequest struct {
+	Name             string   `json:"name,omitempty" validate:"omitempty,min=2,max=100"`
+	Description      string   `json:"description,omitempty" validate:"omitempty,max=500"`
+	PermissionGroups []string `json:"permission_groups,omitempty"`
+	Permissions      []string `json:"permissions,omitempty"`
 }
