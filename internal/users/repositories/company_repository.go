@@ -16,11 +16,11 @@ type CompanyRepositoryInt interface {
 	GetOrganizationRoles(ctx context.Context) (*[]models.OrganizationRole, error)
 	GetOrganizationRoleByID(ctx context.Context, id string) (*models.OrganizationRole, error)
 	GetIndustryByID(ctx context.Context, id string) (*models.Industry, error)
-	InviteMemberToOrganization(ctx context.Context, req *requests.InviteMemberRequest, organizationId string, owner_id string, tokenHash *string, expiresAt time.Time) (*string, error) 
-	GetByID(ctx context.Context, id string) (*models.OrganizationInvite, error) 
-	MarkAccepted(ctx context.Context, id string) error 
-	MarkExpired(ctx context.Context, id string) error 
-	GetMemberByEmail(ctx context.Context, email string, organizationId string) (*models.OrganizationMember, error) 
+	InviteMemberToOrganization(ctx context.Context, req *requests.InviteMemberRequest, organizationId string, owner_id string, tokenHash *string, expiresAt time.Time) (*string, error)
+	GetByID(ctx context.Context, id string) (*models.OrganizationInvite, error)
+	MarkAccepted(ctx context.Context, id string) error
+	MarkExpired(ctx context.Context, id string) error
+	GetMemberByEmail(ctx context.Context, email string, organizationId string) (*models.OrganizationMember, error)
 	GetOrganizationByOwnerID(ctx context.Context, ownerId string) (*models.Organization, error)
 	AddMemberToOrganization(ctx context.Context, organizationId string, userId string, roleId string) error
 }
@@ -30,11 +30,11 @@ type CompanyRepository struct {
 }
 
 var (
-	GET_INDUSTRIES=`
+	GET_INDUSTRIES = `
 		SELECT id, name FROM industries ORDER BY name ASC`
-	GET_INDUSTRY_BY_ID=`
+	GET_INDUSTRY_BY_ID = `
 		SELECT id, name FROM industries WHERE id = $1`
-	GET_INVITATION_BY_ID=`
+	GET_INVITATION_BY_ID = `
 	SELECT id, organization_id, email, role_id, status, invited_by,
 	       token_hash, expires_at, created_at, updated_at
 	FROM organization_invites
@@ -66,11 +66,11 @@ var (
 		AND expires_at < NOW()`
 	GET_ORGANIZATION_ROLES = `
 		SELECT * FROM organization_roles
-	`	
+	`
 	GET_ORGANIZATION_ROLE_BY_ID = `
 		SELECT * FROM organization_roles WHERE id = $1
 	`
-	GET_ORGANIZATION_BY_OWNER_ID=`
+	GET_ORGANIZATION_BY_OWNER_ID = `
 		SELECT 
 			o.id, 
 			o.name, 
@@ -113,7 +113,7 @@ func (r *CompanyRepository) GetIndustryByID(ctx context.Context, id string) (*mo
 	var industry models.Industry
 	err := r.db.GetContext(ctx, &industry, GET_INDUSTRY_BY_ID, id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows){
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, apperrors.NotFoundError("Industry not found")
 		}
 		return nil, err

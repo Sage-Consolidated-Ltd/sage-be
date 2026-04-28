@@ -1,16 +1,16 @@
 package routes
 
 import (
+	"sage-backend/internal/shared/middlewares"
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/users/handlers"
-	"sage-backend/internal/shared/middlewares"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func Setup(
-	app *fiber.App, 
-	ah *handlers.AuthHandler, 
+	app *fiber.App,
+	ah *handlers.AuthHandler,
 	ch *handlers.CompanyHandler,
 	m *middlewares.AuthMiddleware) {
 	app.Get("/", func(c *fiber.Ctx) error {

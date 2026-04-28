@@ -1,7 +1,7 @@
-package requests 
+package requests
 
 type InviteMemberRequest struct {
-	Email string `json:"email" validate:"email,required"`
+	Email  string `json:"email" validate:"email,required"`
 	RoleId string `json:"role_id" validate:"required"`
 }
 

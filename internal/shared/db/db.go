@@ -2,10 +2,10 @@ package db
 
 import (
 	"fmt"
+	_ "github.com/lib/pq"
 	"log"
 	"sage-backend/internal/shared/config"
 	"time"
-	_ "github.com/lib/pq"
 
 	"github.com/jmoiron/sqlx"
 )

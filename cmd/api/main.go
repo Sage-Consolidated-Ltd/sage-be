@@ -12,8 +12,8 @@ import (
 	"sage-backend/internal/shared/db/redis"
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/mailer"
-	"sage-backend/internal/users/handlers"
 	"sage-backend/internal/shared/middlewares"
+	"sage-backend/internal/users/handlers"
 	"sage-backend/internal/users/repositories"
 	"sage-backend/internal/users/routes"
 	"sage-backend/internal/users/services"
@@ -53,7 +53,7 @@ func main() {
 		log.Fatalf("Error connecting redis: %s", err)
 	}
 
-	config.InitSessionStore(cfg)
+	config.InitSessionStore(&cfg.BaseConfig)
 
 	logger.Init(&cfg.BaseConfig)
 
@@ -61,31 +61,31 @@ func main() {
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder: func(v interface{}) ([]byte, error) {
-        	buf := &bytes.Buffer{}
-        	encoder := json.NewEncoder(buf)
-        	encoder.SetEscapeHTML(false)
-        	err := encoder.Encode(v)
-        	return bytes.TrimRight(buf.Bytes(), "\n"), err
-    	},
+			buf := &bytes.Buffer{}
+			encoder := json.NewEncoder(buf)
+			encoder.SetEscapeHTML(false)
+			err := encoder.Encode(v)
+			return bytes.TrimRight(buf.Bytes(), "\n"), err
+		},
 		EnableTrustedProxyCheck: true,
 		TrustedProxies:          []string{"0.0.0.0/0"},
 		BodyLimit:               5 * 1024 * 1024,
 	})
 	app.Use(cors.New(cors.Config{
 		AllowOriginsFunc: func(origin string) bool {
-        return true
-    	},
-		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS,PATCH",
+			return true
+		},
+		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS,PATCH",
 		AllowCredentials: true,
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization, session_id",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, session_id",
 	}))
 	app.Use(recover.New())
 
 	swaggerConfig := swagger.Config{
 		BasePath: "/api/v1",
 		FilePath: "./docs/swagger.json",
-		Path: "docs",
-		Title: "Sage API Documentation",
+		Path:     "docs/api-docs",
+		Title:    "Sage API Documentation",
 	}
 
 	app.Use(swagger.New(swaggerConfig))
@@ -94,14 +94,13 @@ func main() {
 		return c.SendStatus(fiber.StatusNoContent)
 	})
 
-
 	jwtService := &jwt.JwtService{
 		JwtSecret: cfg.JWTSecret,
 	}
 
 	cfgOAuth := config.NewOAuthConfig(
-		cfg.GoogleClientId, 
-		cfg.GoogleClientSecret, 
+		cfg.GoogleClientId,
+		cfg.GoogleClientSecret,
 		cfg.GoogleRedirectUrl,
 		cfg.GitHubClientId,
 		cfg.GitHubClientSecret,

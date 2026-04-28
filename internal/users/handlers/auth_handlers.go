@@ -15,16 +15,16 @@ import (
 )
 
 type AuthHandler struct {
-	authServ services.AuthServiceInt
+	authServ    services.AuthServiceInt
 	oAuthConfig *config.OAuthConfig
-	appConfig *config.APIConfig
+	appConfig   *config.APIConfig
 }
 
 func NewAuthHandler(authServ services.AuthServiceInt, oAuthConfig *config.OAuthConfig, appConfig *config.APIConfig) *AuthHandler {
 	return &AuthHandler{
-		authServ: authServ,
+		authServ:    authServ,
 		oAuthConfig: oAuthConfig,
-		appConfig: appConfig,
+		appConfig:   appConfig,
 	}
 }
 
@@ -62,7 +62,7 @@ func (a *AuthHandler) CreateUser(c *fiber.Ctx) error {
 	err := a.authServ.CreateUserWithOrganization(c.Context(), &req)
 	if err != nil {
 		logger.Error("Error with AuthHandler.CreateUser: ", zap.Error(err))
-		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
 		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
@@ -75,21 +75,21 @@ func (a *AuthHandler) BeginAuthLogin(c *fiber.Ctx) error {
 	authConf := a.oAuthConfig.GetConfig(providerName)
 
 	if authConf == nil {
-        return response.Error(c, fiber.StatusBadRequest, "Unsupported auth provider", nil)
-    }
-	
+		return response.Error(c, fiber.StatusBadRequest, "Unsupported auth provider", nil)
+	}
+
 	state, err := utils.GenerateRandomStringForHashing(32)
 	if err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
 	c.Cookie(&fiber.Cookie{
-		Name: "oauth_state",
-		Value: state,
+		Name:     "oauth_state",
+		Value:    state,
 		Expires:  time.Now().Add(15 * time.Minute),
-        HTTPOnly: true,
-        Secure:   a.appConfig.APP_ENV == "production",
-        SameSite: "Lax",
+		HTTPOnly: true,
+		Secure:   a.appConfig.APP_ENV == "production",
+		SameSite: "Lax",
 	})
 	loginUrl := authConf.AuthCodeURL(state)
 
@@ -133,7 +133,7 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 
 	if err != nil {
 		logger.Error("Error with AuthHandler.AuthCallback: ", zap.Error(err))
-		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
 
@@ -159,9 +159,9 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 	}
 
 	if _, err := config.SetSession(c, config.SessionParam{
-		ID: resp.ID,
-		Role: string(resp.Role),
-		Email: resp.Email,
+		ID:             resp.ID,
+		Role:           string(resp.Role),
+		Email:          resp.Email,
 		OrganizationId: orgID,
 	}); err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
@@ -183,11 +183,11 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 	if sess.Get("userID") != nil && sess.Get("pending_2fa") == nil {
 		return response.JSON(c, fiber.StatusOK, "Login successful", nil)
 	}
-	
+
 	resp, err := a.authServ.Login(c.Context(), &req)
 	if err != nil {
 		logger.Error("Error with AuthHandler.Login :", zap.Error(err))
-		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
 		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
@@ -212,9 +212,9 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	if _, err := config.SetSession(c, config.SessionParam{
-		ID: resp.ID,
-		Role: string(resp.Role),
-		Email: resp.Email,
+		ID:             resp.ID,
+		Role:           string(resp.Role),
+		Email:          resp.Email,
 		OrganizationId: orgID,
 	}); err != nil {
 		logger.Error("Error with AuthHandler.Login: ", zap.Error(err))
@@ -225,12 +225,12 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 }
 func (a *AuthHandler) Generate2FA(c *fiber.Ctx) error {
 	sess, err := config.Store.Get(c)
-    if err != nil || sess.Get("userID") == nil {
-        return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
-    }
+	if err != nil || sess.Get("userID") == nil {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
 
-	email := sess.Get("email").(string) 
-	
+	email := sess.Get("email").(string)
+
 	fa_secret, qrCode, err := a.authServ.Generate2FA(c.Context(), email)
 	if err != nil {
 		logger.Error("Error with AuthHandler.Generate2FA: ", zap.Error(err))
@@ -241,14 +241,14 @@ func (a *AuthHandler) Generate2FA(c *fiber.Ctx) error {
 	sess.Save()
 
 	return response.JSON(c, fiber.StatusOK, "scan QR with Google Authenticator", map[string]interface{}{
-        "qr_code": "data:image/png;base64," + qrCode,
-    })
+		"qr_code": "data:image/png;base64," + qrCode,
+	})
 }
 func (a *AuthHandler) Enable2FA(c *fiber.Ctx) error {
 	sess, err := config.Store.Get(c)
 	if err != nil || sess.Get("userID") == nil {
-        return response.Error(c, fiber.StatusUnauthorized, "not authenticated", nil)
-    }
+		return response.Error(c, fiber.StatusUnauthorized, "not authenticated", nil)
+	}
 	userID := sess.Get("userID").(string)
 
 	var req requests.GoogleAuthenticatorRequest
@@ -262,9 +262,9 @@ func (a *AuthHandler) Enable2FA(c *fiber.Ctx) error {
 	}
 
 	secret, ok := sess.Get("pending_totp_secret").(string)
-    if !ok || secret == "" {
-        return response.Error(c, fiber.StatusBadRequest, "no pending 2FA setup", nil)
-    }
+	if !ok || secret == "" {
+		return response.Error(c, fiber.StatusBadRequest, "no pending 2FA setup", nil)
+	}
 
 	err = a.authServ.Enabled2FA(c.Context(), req.Code, secret, userID)
 	if err != nil {
@@ -276,27 +276,27 @@ func (a *AuthHandler) Enable2FA(c *fiber.Ctx) error {
 	}
 
 	sess.Delete("pending_totp_secret")
-    sess.Save()
+	sess.Save()
 
 	return response.JSON(c, fiber.StatusOK, "2FA Enabled", nil)
 }
 func (a *AuthHandler) Verify2FA(c *fiber.Ctx) error {
 	sess, err := config.Store.Get(c)
 	if err != nil || sess.Get("pending_2fa") == nil {
-        return response.Error(c, fiber.StatusUnauthorized, "not authenticated", nil)
-    }
+		return response.Error(c, fiber.StatusUnauthorized, "not authenticated", nil)
+	}
 
 	var req requests.GoogleAuthenticatorRequest
-    if err := c.BodyParser(&req); err != nil {
-        return response.Error(c, fiber.StatusBadRequest, "invalid body", nil)
-    }
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "invalid body", nil)
+	}
 
 	if err := utils.Validate.Struct(req); err != nil {
 		errs := utils.ValidationErrors(err)
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
 
-    userID := sess.Get("userID").(string)
+	userID := sess.Get("userID").(string)
 
 	err = a.authServ.Verify2FA(c.Context(), req.Code, userID)
 	if err != nil {
@@ -308,8 +308,8 @@ func (a *AuthHandler) Verify2FA(c *fiber.Ctx) error {
 	}
 
 	sess.Delete("pending_2fa")
-    sess.Set("verified", true)
-    sess.Save()
+	sess.Set("verified", true)
+	sess.Save()
 
 	return response.JSON(c, fiber.StatusOK, "2FA Verified", nil)
 }
@@ -318,7 +318,7 @@ func (a *AuthHandler) ForgotPassword(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
-	
+
 	if err := utils.Validate.Struct(req); err != nil {
 		errs := utils.ValidationErrors(err)
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
@@ -344,7 +344,7 @@ func (a *AuthHandler) VerifyResetToken(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
-	
+
 	if err := utils.Validate.Struct(req); err != nil {
 		errs := utils.ValidationErrors(err)
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
@@ -373,7 +373,7 @@ func (a *AuthHandler) ResetPassword(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
-	
+
 	if err := utils.Validate.Struct(req); err != nil {
 		errs := utils.ValidationErrors(err)
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
@@ -408,7 +408,7 @@ func (a *AuthHandler) SendVerificationEmail(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
-	
+
 	if err := utils.Validate.Struct(req); err != nil {
 		errs := utils.ValidationErrors(err)
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
@@ -430,7 +430,7 @@ func (a *AuthHandler) VerifyEmail(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
-	
+
 	if err := utils.Validate.Struct(req); err != nil {
 		errs := utils.ValidationErrors(err)
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)

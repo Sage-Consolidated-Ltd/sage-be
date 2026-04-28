@@ -28,24 +28,24 @@ func MapCreateIntegration(req CreateIntegrationRequest, tenantID string) models.
 }
 
 func MapIntegrationResponse(payload *models.Integration) *models.IntegrationResponse {
-    config := make(map[string]interface{})
-    
-    if len(payload.Config) > 0 {
-        err := json.Unmarshal(payload.Config, &config)
-        if err != nil {
-            fmt.Printf("failed to unmarshal config: %v\n", err)
-        }
-    }
+	config := make(map[string]interface{})
 
-    return &models.IntegrationResponse{
-        ID:             payload.ID,
-        Name:           payload.Name,
-        Provider:       payload.Provider,
-        ConnectionType: payload.ConnectionType,
-        Status:         payload.Status,
-        Config:         config,
-        CreatedAt:      payload.CreatedAt,
-    }
+	if len(payload.Config) > 0 {
+		err := json.Unmarshal(payload.Config, &config)
+		if err != nil {
+			fmt.Printf("failed to unmarshal config: %v\n", err)
+		}
+	}
+
+	return &models.IntegrationResponse{
+		ID:             payload.ID,
+		Name:           payload.Name,
+		Provider:       payload.Provider,
+		ConnectionType: payload.ConnectionType,
+		Status:         payload.Status,
+		Config:         config,
+		CreatedAt:      payload.CreatedAt,
+	}
 }
 
 type CredentialInput struct {

@@ -9,13 +9,13 @@ import (
 type UserServicesInt interface {
 }
 type UserServices struct {
-	userRepo repositories.UsersRepositoryInt
+	userRepo    repositories.UsersRepositoryInt
 	redisClient *redis.Client
 }
 
 func NewUsersServices(usersRepo repositories.UsersRepositoryInt, redisClient *redis.Client) UserServicesInt {
 	return &UserServices{
-		userRepo: usersRepo,
+		userRepo:    usersRepo,
 		redisClient: redisClient,
 	}
 }

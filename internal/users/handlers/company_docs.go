@@ -1,9 +1,9 @@
 package handlers
 
 import (
+	_ "sage-backend/internal/shared/response"
 	"sage-backend/internal/users/models"
 	_ "sage-backend/internal/users/requests"
-	_ "sage-backend/internal/shared/response"
 )
 
 type IndustriesResponse struct {
@@ -19,7 +19,7 @@ type IndustriesResponse struct {
 // @Produce json
 // @Success 200 {object} IndustriesResponse
 // @Router /company/industries [get]
-func _GetIndustries(){}
+func _GetIndustries() {}
 
 // @Summary Get Organization Roles
 // @Description Retrieve a list of organization roles for company profiles.
@@ -28,7 +28,7 @@ func _GetIndustries(){}
 // @Produce json
 // @Success 200 {object} models.GetOrganizationRolesResponse
 // @Router /company/organization-roles [get]
-func _GetOrganizationRoles(){}
+func _GetOrganizationRoles() {}
 
 // @Summary Invite Member to Organization
 // @Description Invite a member to the organization by email. Only organization owners can invite members.
@@ -38,7 +38,7 @@ func _GetOrganizationRoles(){}
 // @Param request body requests.BulkInviteMembersRequest true "Bulk Invite Members Request"
 // @Success 200 {object} response.Response
 // @Router /company/invite [post]
-func _InviteMember(){}
+func _InviteMember() {}
 
 // @Summary Accept Organization Invitation
 // @Description Accept an invitation to join an organization using the invite ID and token sent via email.
@@ -49,4 +49,4 @@ func _InviteMember(){}
 // @Param token query string true "Invitation Token"
 // @Success 200 {object} response.Response
 // @Router /company/invitations/accept [post]
-func _AcceptInvitation(){}
+func _AcceptInvitation() {}

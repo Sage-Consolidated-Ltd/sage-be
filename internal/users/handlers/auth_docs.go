@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	_ "sage-backend/internal/users/requests"
 	_ "sage-backend/internal/users/models"
+	_ "sage-backend/internal/users/requests"
 )
 
 type Generate2FAResponse struct {
-    QRCode string `json:"qr_code" example:"data:image/png;base64,..."`
-    Secret string `json:"secret" example:"JBSWY3DPEHPK3PXP....."`
+	QRCode string `json:"qr_code" example:"data:image/png;base64,..."`
+	Secret string `json:"secret" example:"JBSWY3DPEHPK3PXP....."`
 }
 
 // @Summary Create User
@@ -18,7 +18,7 @@ type Generate2FAResponse struct {
 // @Param request body requests.OnboardingRequest true "User Details"
 // @Success 201
 // @Router /auth/register [post]
-func _CreateUser(){}
+func _CreateUser() {}
 
 // @Summary      Login User with OAUTH
 // @Description  Logs in a user using OAUTH (Google, Github)
@@ -28,7 +28,7 @@ func _CreateUser(){}
 // @Param        provider  path      string  true  "OAuth Provider (e.g. google, github)"
 // @Success      200
 // @Router       /auth/login/{provider} [get]
-func _BeginAuthLogin(){}
+func _BeginAuthLogin() {}
 
 // @Summary      Login User
 // @Description  Logs in a user using email and password
@@ -38,7 +38,7 @@ func _BeginAuthLogin(){}
 // @Param        request   body      requests.LoginRequest true "Login Credentials"
 // @Success      200       {object}  models.GetUserResponse
 // @Router       /auth/login [post]
-func _Login(){}
+func _Login() {}
 
 // @Summary      Generate 2FA Secret
 // @Description  Generates a 2FA secret for the user and returns the otpauth URL and the base32 secret
@@ -47,7 +47,7 @@ func _Login(){}
 // @Produce      json
 // @Success      200     {object}  Generate2FAResponse
 // @Router       /auth/generate-2fa [get]
-func _Generate2FA(){}
+func _Generate2FA() {}
 
 // @Summary      Enable 2FA
 // @Description  Enables 2FA for the user after verifying the provided TOTP code
@@ -77,7 +77,7 @@ func _Verify2FA() {}
 // @Param        request   body      requests.ForgotPasswordRequest true "Email Address"
 // @Success      200
 // @Router       /auth/forgot-password [post]
-func _ForgotPassword(){}
+func _ForgotPassword() {}
 
 // @Summary 	Verify Reset Token
 // @Description  Verifies the password reset token
@@ -87,7 +87,7 @@ func _ForgotPassword(){}
 // @Param        request   body      requests.VerifyResetTokenRequest true "Reset Token"
 // @Success      200
 // @Router       /auth/verify-reset-token [post]
-func _VerifyResetToken(){}
+func _VerifyResetToken() {}
 
 // @Summary 	Reset Password
 // @Description  Resets the user's password

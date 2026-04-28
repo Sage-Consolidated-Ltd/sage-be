@@ -68,7 +68,7 @@ func (h *CompanyHandler) InviteMember(c *fiber.Ctx) error {
 
 	if err := h.companyServ.InviteUserToOrganization(c.Context(), &req, ownerId); err != nil {
 		logger.Error("Error with CompanyHandler:InviteMember, ", zap.Error(err))
-		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
 		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
@@ -97,7 +97,7 @@ func (h *CompanyHandler) AcceptInvitation(c *fiber.Ctx) error {
 
 	if err := h.companyServ.AcceptInvitation(c.Context(), inviteId, token, userId); err != nil {
 		logger.Error("Error with CompanyHandler.AcceptInvitation: ", zap.Error(err))
-		if appErr, ok := err.(*apperrors.ErrorResponse); ok{
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
 		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)

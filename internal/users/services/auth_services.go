@@ -36,34 +36,34 @@ type AuthServiceInt interface {
 	VerifyResetToken(ctx context.Context, token string) error
 	ResetPassword(ctx context.Context, req *requests.ResetPasswordRequest, token string) error
 	CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) error
-	SendEmailVerification(ctx context.Context, email string) error 
-	VerifyEmail(ctx context.Context, token string) error 
+	SendEmailVerification(ctx context.Context, email string) error
+	VerifyEmail(ctx context.Context, token string) error
 }
 
 type AuthService struct {
-	userRepo   repositories.UsersRepositoryInt
-	jwtService *jwt.JwtService
-	appConfig *config.APIConfig
-	redis *redis.Client
+	userRepo    repositories.UsersRepositoryInt
+	jwtService  *jwt.JwtService
+	appConfig   *config.APIConfig
+	redis       *redis.Client
 	companyRepo repositories.CompanyRepositoryInt
-	mailer mailer.EmailClientInt
+	mailer      mailer.EmailClientInt
 }
 
 func NewAuthService(
-	userRepo repositories.UsersRepositoryInt, 
-	jwtService *jwt.JwtService, 
-	appConfig *config.APIConfig, 
+	userRepo repositories.UsersRepositoryInt,
+	jwtService *jwt.JwtService,
+	appConfig *config.APIConfig,
 	redis *redis.Client,
 	companyRepo repositories.CompanyRepositoryInt,
 	mailer mailer.EmailClientInt,
-	) AuthServiceInt {
+) AuthServiceInt {
 	return &AuthService{
-		userRepo:   userRepo,
-		jwtService: jwtService,
-		appConfig: appConfig,
-		redis: redis,
+		userRepo:    userRepo,
+		jwtService:  jwtService,
+		appConfig:   appConfig,
+		redis:       redis,
 		companyRepo: companyRepo,
-		mailer: mailer,
+		mailer:      mailer,
 	}
 }
 
@@ -96,7 +96,7 @@ func (s *AuthService) CreateUser(ctx context.Context, req *requests.CreateUserRe
 	return nil
 }
 func (s *AuthService) CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) error {
-	// check if email already exists 
+	// check if email already exists
 	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
 	if user != nil {
 		return apperrors.ConflictError("EMAIL ALREADY EXISTS")
@@ -299,12 +299,12 @@ func (s *AuthService) fetchGithubEmail(accessToken string) (string, error) {
 }
 func (s *AuthService) Generate2FA(ctx context.Context, email string) (string, string, error) {
 	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer: "Sage",
+		Issuer:      "Sage",
 		AccountName: email,
 	})
 	if err != nil {
-        return "", "", err
-    }
+		return "", "", err
+	}
 
 	fa_secret, err := utils.Encrypt(key.Secret(), []byte(s.appConfig.AppEncryptionKey))
 	if err != nil {
@@ -312,13 +312,13 @@ func (s *AuthService) Generate2FA(ctx context.Context, email string) (string, st
 	}
 
 	img, err := key.Image(200, 200)
-    if err != nil {
-        return "", "", err
-    }
+	if err != nil {
+		return "", "", err
+	}
 
-    var buf bytes.Buffer
-    png.Encode(&buf, img)
-    qr := base64.StdEncoding.EncodeToString(buf.Bytes())
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
+	qr := base64.StdEncoding.EncodeToString(buf.Bytes())
 
 	return fa_secret, qr, nil
 }
@@ -328,12 +328,12 @@ func (s *AuthService) Enabled2FA(ctx context.Context, code string, secret string
 		return fmt.Errorf("Error decrypting secret: %v", err)
 	}
 	if !totp.Validate(code, decryptedSecret) {
-        return fmt.Errorf("Invalid code")
-    }
+		return fmt.Errorf("Invalid code")
+	}
 
 	if err := s.userRepo.Enable2FA(ctx, secret, userID); err != nil {
-        return fmt.Errorf("Error enabling 2FA: %v", err)
-    }	
+		return fmt.Errorf("Error enabling 2FA: %v", err)
+	}
 
 	return nil
 }
@@ -348,7 +348,6 @@ func (s *AuthService) Verify2FA(ctx context.Context, code, userID string) error 
 		return fmt.Errorf("Error decrypting secret: %v", err)
 	}
 
-
 	if !totp.Validate(code, decryptedSecret) {
 		return fmt.Errorf("Invalid 2FA code")
 	}
@@ -359,7 +358,7 @@ func (s *AuthService) ForgotPassword(ctx context.Context, email string) error {
 	// generate password reset token
 	token := utils.GenerateSecureOTP()
 	// save token in redis with expiry
-	err := s.redis.Set(ctx, "password_reset:"+token, email, 15 * 60 * time.Second).Err()
+	err := s.redis.Set(ctx, "password_reset:"+token, email, 15*60*time.Second).Err()
 	if err != nil {
 		return err
 	}
@@ -376,7 +375,7 @@ func (s *AuthService) VerifyResetToken(ctx context.Context, token string) error 
 			return apperrors.BadException("invalid or expired token")
 		}
 		return err
-	} 
+	}
 	return nil
 }
 func (s *AuthService) ResetPassword(ctx context.Context, req *requests.ResetPasswordRequest, token string) error {
@@ -428,7 +427,7 @@ func (s *AuthService) SendEmailVerification(ctx context.Context, email string) e
 	// generate email verification token
 	token := utils.GenerateSecureOTP()
 	// save token in redis with expiry
-	err = s.redis.Set(ctx, "email_verification:"+token, email, 24 * time.Hour).Err()
+	err = s.redis.Set(ctx, "email_verification:"+token, email, 24*time.Hour).Err()
 	if err != nil {
 		return err
 	}

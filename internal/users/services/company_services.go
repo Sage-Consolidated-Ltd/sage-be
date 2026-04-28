@@ -26,22 +26,22 @@ type CompanyServicesInt interface {
 
 type CompanyServices struct {
 	companyRepo repositories.CompanyRepositoryInt
-	mailer mailer.EmailClientInt
+	mailer      mailer.EmailClientInt
 	redisClient *redis.Client
-	config *config.BaseConfig
+	config      *config.BaseConfig
 }
 
 func NewCompanyServices(
-	companyRepo repositories.CompanyRepositoryInt, 
-	mailer mailer.EmailClientInt, 
+	companyRepo repositories.CompanyRepositoryInt,
+	mailer mailer.EmailClientInt,
 	redisClient *redis.Client,
 	config *config.BaseConfig,
-	) CompanyServicesInt {
+) CompanyServicesInt {
 	return &CompanyServices{
 		companyRepo: companyRepo,
-		mailer: mailer,
+		mailer:      mailer,
 		redisClient: redisClient,
-		config: config,
+		config:      config,
 	}
 }
 
@@ -128,8 +128,8 @@ func (s *CompanyServices) InviteUserToOrganization(ctx context.Context, req *req
 
 		if err := s.mailer.SendMemberInvitationEmail([]string{invite.Email}, mailer.MemberInvitationEmailData{
 			OrganizationName: organization.Name,
-			Role: role.Name,
-			InviteLink: inviteLink,
+			Role:             role.Name,
+			InviteLink:       inviteLink,
 		}); err != nil {
 			return err
 		}

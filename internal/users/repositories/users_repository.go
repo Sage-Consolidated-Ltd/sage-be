@@ -39,7 +39,7 @@ var (
 	MARK_EMAIL_VERIFIED = `
 	UPDATE users SET is_verified = true WHERE email = $1
 	`
-	CREATE_ORGANIZATION=`
+	CREATE_ORGANIZATION = `
 	INSERT INTO organizations (
 	name,
 	owner_id,
@@ -47,7 +47,7 @@ var (
 	) VALUES ($1, $2, $3)
 	RETURNING id;
 	`
-	ADD_USER_TO_ORGANIZATION=`
+	ADD_USER_TO_ORGANIZATION = `
 	INSERT INTO organization_members (
 	organization_id,
 	user_id,
@@ -72,19 +72,19 @@ var (
 	LEFT JOIN organization_roles r ON om.role_id = r.id
 	WHERE om.user_id = $1
 	`
-	ENABLE_2FA=`
+	ENABLE_2FA = `
 		UPDATE users 
 		SET 
 			two_factor_enabled = true,
 			two_factor_secret = $1
 		WHERE id = $2`
-	GET_TOTP_SECRET=`
+	GET_TOTP_SECRET = `
 	SELECT two_factor_secret FROM users 
 	WHERE id = $1 
 	AND two_factor_enabled = true
 	AND is_verified = true
 	`
-	UPDATE_USER_PASSWORD=`
+	UPDATE_USER_PASSWORD = `
 	UPDATE users SET password_hash = $1 WHERE email = $2
 	`
 	GET_ORGANIZATION_ROLE_ID = `
@@ -169,7 +169,7 @@ func (r *UsersRepository) CreateUserWithOrganization(ctx context.Context, req *r
 	}
 
 	var orgId string
-	err = tx.QueryRowContext(ctx, CREATE_ORGANIZATION, req.FirstName + " 's Org", userId).Scan(&orgId)
+	err = tx.QueryRowContext(ctx, CREATE_ORGANIZATION, req.FirstName+" 's Org", userId).Scan(&orgId)
 	if err != nil {
 		return err
 	}
