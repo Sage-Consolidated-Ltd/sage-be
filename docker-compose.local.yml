@@ -1,0 +1,90 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: sage-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sage_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sage_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-sage_db}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-sage_user} -d $${POSTGRES_DB:-sage_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sage-network
+
+  redis:
+    image: docker.io/redis:7.2
+    container_name: sage-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sage-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sage-api
+    restart: unless-stopped
+    command: ["./api"]
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL and REDIS_DB_URL for internal docker networking
+      DATABASE_URL: postgres://${POSTGRES_USER:-sage_user}:${POSTGRES_PASSWORD:-sage_dev_password}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
+      REDIS_DB_URL: redis://redis:6379/0
+      REDIS_ADDR: redis:6379
+    ports:
+      - "${PORT:-3333}:${PORT:-3333}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sage-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sage-worker
+    restart: unless-stopped
+    command: ["./worker"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-sage_user}:${POSTGRES_PASSWORD:-sage_dev_password}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      REDIS_DB_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sage-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  sage-network:
+    driver: bridge

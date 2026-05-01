@@ -20,10 +20,7 @@ var Store *session.Store
 
 func InitSessionStore(cfg *BaseConfig) {
 	storage := redis.New(redis.Config{
-		Host:     "localhost",
-		Port:     6379,
-		Password: "",
-		Database: 0,
+		URL: cfg.RedisDbUrl,
 	})
 	Store = session.New(session.Config{
 		Storage:        storage,
