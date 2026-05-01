@@ -41,8 +41,9 @@ INSERT INTO permissions (name, description, category, resource, action) VALUES
 
 -- Settings permissions
 ('settings.read', 'View system settings', 'settings', 'settings', 'read'),
-('settings.write', 'Edit system settings', 'settings', 'settings', 'write');
+('settings.write', 'Edit system settings', 'settings', 'settings', 'write')
+ON CONFLICT (name) DO NOTHING;
 
 -- Create indexes
-CREATE INDEX idx_permissions_category ON permissions(category);
-CREATE INDEX idx_permissions_resource ON permissions(resource);
+CREATE INDEX IF NOT EXISTS idx_permissions_category ON permissions(category);
+CREATE INDEX IF NOT EXISTS idx_permissions_resource ON permissions(resource);
