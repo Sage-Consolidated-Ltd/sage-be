@@ -50,3 +50,102 @@ func _InviteMember() {}
 // @Success 200 {object} response.Response
 // @Router /company/invitations/accept [post]
 func _AcceptInvitation() {}
+
+type PermissionsResponse struct {
+	Success bool                `json:"success"`
+	Message string              `json:"message"`
+	Data    []models.Permission `json:"data"`
+}
+
+// @Summary List Permissions
+// @Description Retrieve all available permissions in the system.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} PermissionsResponse
+// @Router /organization/permissions [get]
+func _ListPermissions() {}
+
+type PermissionGroupsResponse struct {
+	Success bool                     `json:"success"`
+	Message string                   `json:"message"`
+	Data    []models.PermissionGroup `json:"data"`
+}
+
+// @Summary List Permission Groups
+// @Description Retrieve all available permission groups in the system.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} PermissionGroupsResponse
+// @Router /organization/permission-groups [get]
+func _ListPermissionGroups() {}
+
+type CustomRolesResponse struct {
+	Success bool                        `json:"success"`
+	Message string                      `json:"message"`
+	Data    []models.CustomRoleResponse `json:"data"`
+}
+
+// @Summary List Custom Roles
+// @Description Retrieve all custom roles for the current organization.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} CustomRolesResponse
+// @Router /organization/custom-roles [get]
+func _ListCustomRoles() {}
+
+type CustomRoleResponse struct {
+	Success bool                      `json:"success"`
+	Message string                    `json:"message"`
+	Data    models.CustomRoleResponse `json:"data"`
+}
+
+// @Summary Get Custom Role
+// @Description Retrieve a specific custom role by ID.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Custom Role ID"
+// @Success 200 {object} CustomRoleResponse
+// @Router /organization/custom-roles/{id} [get]
+func _GetCustomRole() {}
+
+// @Summary Create Custom Role
+// @Description Create a new custom role for the organization. Only owners and admins can create custom roles.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CreateCustomRoleRequest true "Create Custom Role Request"
+// @Success 201 {object} CustomRoleResponse
+// @Router /organization/custom-roles [post]
+func _CreateCustomRole() {}
+
+// @Summary Update Custom Role
+// @Description Update an existing custom role. Only owners and admins can update custom roles.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Custom Role ID"
+// @Param request body requests.UpdateCustomRoleRequest true "Update Custom Role Request"
+// @Success 200 {object} response.Response
+// @Router /organization/custom-roles/{id} [patch]
+func _UpdateCustomRole() {}
+
+// @Summary Delete Custom Role
+// @Description Delete a custom role. Only owners and admins can delete custom roles. System roles cannot be deleted.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Custom Role ID"
+// @Success 200 {object} response.Response
+// @Router /organization/custom-roles/{id} [delete]
+func _DeleteCustomRole() {}

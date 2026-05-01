@@ -119,13 +119,16 @@ func main() {
 
 	// services
 	authServ := services.NewAuthService(userRepo, jwtService, cfg, redis, companyRepo, mailer)
-	companyServ := services.NewCompanyServices(companyRepo, mailer, redis, &cfg.BaseConfig)
+	companyServ := services.NewCompanyServices(companyRepo, userRepo, mailer, redis, &cfg.BaseConfig)
+	profileRepo := repositories.NewProfileRepository(db)
+	userServ := services.NewUsersServices(userRepo, profileRepo, redis)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authServ, cfgOAuth, cfg)
 	companyHandler := handlers.NewCompanyHandler(companyServ)
+	profileHandler := handlers.NewProfileHandler(userServ)
 
-	routes.Setup(app, authHandler, companyHandler, authMiddleware)
+	routes.Setup(app, authHandler, companyHandler, profileHandler, authMiddleware)
 
 	port := strings.TrimSpace(cfg.PORT)
 

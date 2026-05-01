@@ -12,6 +12,7 @@ func Setup(
 	app *fiber.App,
 	ah *handlers.AuthHandler,
 	ch *handlers.CompanyHandler,
+	ph *handlers.ProfileHandler,
 	m *middlewares.AuthMiddleware) {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Welcome to SAGE API SERVICE")
@@ -25,6 +26,7 @@ func Setup(
 
 	RegisterAuthRoutes(v1, ah, m)
 	RegisterCompanyRoutes(v1, ch, m)
+	RegisterProfileRoutes(v1, ph, m)
 	app.Use(func(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusNotFound, "route not found", nil)
 	})
@@ -51,11 +53,65 @@ func RegisterAuthRoutes(router fiber.Router, ah *handlers.AuthHandler, m *middle
 }
 
 func RegisterCompanyRoutes(router fiber.Router, ch *handlers.CompanyHandler, m *middlewares.AuthMiddleware) {
+	// Legacy /company routes
 	company := router.Group("/company")
-
 	company.Get("/industries", ch.GetIndustries)
 	company.Get("/organization-roles", ch.GetOrganizationRoles)
-
 	company.Post("/invite", m.RequireAuth, ch.InviteMember)
 	company.Get("/invitations/accept", m.RequireAuth, ch.AcceptInvitation)
+
+	// Organization routes per AGENTS.md spec
+	org := router.Group("/organization", m.RequireAuth)
+	org.Get("/", ch.GetOrganization)
+	org.Patch("/", ch.UpdateOrganization)
+
+	// Members
+	members := org.Group("/members")
+	members.Get("/", ch.ListMembers)
+	members.Post("/invite", ch.InviteMembers)
+	members.Patch("/:id/role", ch.UpdateMemberRole)
+	members.Delete("/:id", ch.RemoveMember)
+
+	// Settings
+	settings := org.Group("/settings")
+	settings.Get("/", ch.GetOrganizationSettings)
+	settings.Patch("/", ch.UpdateOrganizationSettings)
+
+	// Permissions & Custom Roles
+	org.Get("/permissions", ch.ListPermissions)
+	org.Get("/permission-groups", ch.ListPermissionGroups)
+
+	customRoles := org.Group("/custom-roles")
+	customRoles.Get("/", ch.ListCustomRoles)
+	customRoles.Post("/", ch.CreateCustomRole)
+	customRoles.Get("/:id", ch.GetCustomRole)
+	customRoles.Patch("/:id", ch.UpdateCustomRole)
+	customRoles.Delete("/:id", ch.DeleteCustomRole)
+}
+
+func RegisterProfileRoutes(router fiber.Router, ph *handlers.ProfileHandler, m *middlewares.AuthMiddleware) {
+	profile := router.Group("/profile", m.RequireAuth)
+
+	// Identity - /api/v1/profile
+	profile.Get("/", ph.GetProfile)
+	profile.Patch("/", ph.UpdateProfile)
+
+	// Legacy compatibility - /api/v1/profile/me
+	profile.Get("/me", ph.GetProfile)
+	profile.Patch("/me", ph.UpdateProfile)
+
+	// Preferences - /api/v1/profile/preferences
+	profile.Get("/preferences", ph.GetPreferences)
+	profile.Patch("/preferences", ph.UpdatePreferences)
+
+	// Notifications - /api/v1/profile/notifications
+	profile.Get("/notifications", ph.GetNotifications)
+	profile.Patch("/notifications", ph.UpdateNotifications)
+
+	// Sessions - /api/v1/profile/sessions
+	profile.Get("/sessions", ph.GetSessions)
+	profile.Delete("/sessions/:id", ph.RevokeSession)
+
+	// Activity - /api/v1/profile/activity
+	profile.Get("/activity", ph.GetActivity)
 }
