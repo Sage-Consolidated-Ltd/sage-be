@@ -20,6 +20,15 @@ RUN CGO_ENABLED=1 GOOS=linux go build -o /app/api .
 WORKDIR /app/cmd/worker
 RUN CGO_ENABLED=1 GOOS=linux go build -o /app/worker .
 
+WORKDIR /app/cmd/shield
+RUN CGO_ENABLED=1 GOOS=linux go build -o /app/shield .
+
+WORKDIR /app/cmd/offensive
+RUN CGO_ENABLED=1 GOOS=linux go build -o /app/offensive .
+
+WORKDIR /app/cmd/vision
+RUN CGO_ENABLED=1 GOOS=linux go build -o /app/vision .
+
 # Final stage - minimal runtime image
 FROM alpine:3.19
 
@@ -31,6 +40,9 @@ WORKDIR /app
 # Copy the compiled binaries from builder stage
 COPY --from=builder /app/api .
 COPY --from=builder /app/worker .
+COPY --from=builder /app/shield .
+COPY --from=builder /app/offensive .
+COPY --from=builder /app/vision .
 COPY --from=builder /app/docs ./docs
 
 # Run as non-root user for security

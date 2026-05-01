@@ -38,7 +38,6 @@ import (
 // @contact.url    http://www.swagger.io/support
 // @contact.email  support@swagger.io
 
-// @host      backend.sageconsolidated.com
 // @BasePath  /api/v1
 func main() {
 	cfg := config.SetupAPI()
@@ -82,7 +81,7 @@ func main() {
 	app.Use(recover.New())
 
 	swaggerConfig := swagger.Config{
-		BasePath: "/api/v1",
+		// BasePath: "/api/v1",
 		FilePath: "./docs/swagger.json",
 		Path:     "docs/api-docs",
 		Title:    "Sage API Documentation",

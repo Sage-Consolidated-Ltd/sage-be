@@ -88,11 +88,12 @@ var (
 		    u.first_name,
 		    u.last_name,
 		    COALESCE(u.avatar_url, '') as avatar_url,
-		    om.role,
+		    COALESCE(orole.name, 'member') AS role,
 		    om.status,
 		    om.created_at
 		FROM organization_members om
 		JOIN users u ON u.id = om.user_id
+		LEFT JOIN organization_roles orole ON om.role_id = orole.id
 		WHERE u.email = $1
 		AND om.organization_id = $2;`
 	MARK_INVITATION_ACCEPTED = `
@@ -155,7 +156,7 @@ var (
 		    u.first_name,
 		    u.last_name,
 		    COALESCE(u.avatar_url, '') as avatar_url,
-		    om.role::text,
+		    COALESCE(orole.name, 'member') AS role,
 		    om.department,
 		    om.status::text,
 		    om.invited_by,
@@ -166,8 +167,9 @@ var (
 		    om.updated_at
 		FROM organization_members om
 		JOIN users u ON u.id = om.user_id
+		LEFT JOIN organization_roles orole ON om.role_id = orole.id
 		WHERE om.organization_id = $1
-		  AND ($2 = '' OR om.role::text = $2)
+		  AND ($2 = '' OR orole.name = $2)
 		  AND ($3 = '' OR u.email ILIKE '%' || $3 || '%' OR u.first_name ILIKE '%' || $3 || '%' OR u.last_name ILIKE '%' || $3 || '%')
 		  AND om.status != 'removed'
 		ORDER BY om.created_at DESC
@@ -177,8 +179,9 @@ var (
 		SELECT COUNT(*)
 		FROM organization_members om
 		JOIN users u ON u.id = om.user_id
+		LEFT JOIN organization_roles orole ON om.role_id = orole.id
 		WHERE om.organization_id = $1
-		  AND ($2 = '' OR om.role::text = $2)
+		  AND ($2 = '' OR orole.name = $2)
 		  AND ($3 = '' OR u.email ILIKE '%' || $3 || '%' OR u.first_name ILIKE '%' || $3 || '%' OR u.last_name ILIKE '%' || $3 || '%')
 		  AND om.status != 'removed'
 	`
@@ -191,7 +194,7 @@ var (
 		    u.first_name,
 		    u.last_name,
 		    COALESCE(u.avatar_url, '') as avatar_url,
-		    om.role::text,
+		    COALESCE(orole.name, 'member') AS role,
 		    om.department,
 		    om.status::text,
 		    om.invited_by,
@@ -202,16 +205,17 @@ var (
 		    om.updated_at
 		FROM organization_members om
 		JOIN users u ON u.id = om.user_id
+		LEFT JOIN organization_roles orole ON om.role_id = orole.id
 		WHERE om.id = $1 AND om.organization_id = $2
 	`
 	addMemberSQL = `
-		INSERT INTO organization_members (organization_id, user_id, role, status, invited_by, invited_at)
-		VALUES ($1, $2, $3::organization_role, 'invited', $4, NOW())
-		RETURNING id, organization_id, user_id, role::text, status::text, invited_by, invited_at, created_at, updated_at
+		INSERT INTO organization_members (organization_id, user_id, role_id, status, invited_by, invited_at)
+		VALUES ($1, $2, (SELECT id FROM organization_roles WHERE name = $3 LIMIT 1), 'invited', $4, NOW())
+		RETURNING id, organization_id, user_id, status::text, invited_by, invited_at, created_at, updated_at
 	`
 	updateMemberRoleSQL = `
 		UPDATE organization_members
-		SET role = $3::organization_role,
+		SET role_id = (SELECT id FROM organization_roles WHERE name = $3 LIMIT 1),
 		    updated_at = NOW()
 		WHERE id = $1 AND organization_id = $2
 		RETURNING id
@@ -225,8 +229,9 @@ var (
 	`
 	countMembersByRoleSQL = `
 		SELECT COUNT(*)
-		FROM organization_members
-		WHERE organization_id = $1 AND role::text = $2 AND status != 'removed'
+		FROM organization_members om
+		LEFT JOIN organization_roles orole ON om.role_id = orole.id
+		WHERE om.organization_id = $1 AND orole.name = $2 AND om.status != 'removed'
 	`
 	getOrganizationSettingsSQL = `
 		SELECT id, organization_id, default_alert_severity_threshold,
@@ -476,7 +481,6 @@ func (r *CompanyRepository) AddMember(ctx context.Context, orgID, userID, role, 
 		&member.ID,
 		&member.OrganizationID,
 		&member.UserID,
-		&member.Role,
 		&member.Status,
 		&member.InvitedBy,
 		&member.InvitedAt,

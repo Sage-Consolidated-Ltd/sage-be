@@ -64,7 +64,7 @@ func main() {
 	app.Use(recover.New())
 
 	swaggerConfig := swagger.Config{
-		BasePath: "/api/v1",
+		// BasePath: "/api/v1",
 		FilePath: "./docs/swagger.json",
 		Path:     "docs/shield-docs",
 		Title:    "Sage API Documentation",
@@ -83,13 +83,27 @@ func main() {
 
 	authMiddleware := &middlewares.AuthMiddleware{}
 
+	// Wiring repositories
 	integrationRepo := repositories.NewIntegrationRepository(db)
+	dsRepo := repositories.NewDataSourceRepository(db.DB)
+	eventRepo := repositories.NewSecurityEventRepository(db.DB)
+	jobRepo := repositories.NewIngestionJobRepository(db.DB)
+	parserRepo := repositories.NewParserRepository(db.DB)
+	qualityRepo := repositories.NewDataQualityRepository(db.DB)
 
+	// Wiring services
 	integrationServ := services.NewIntegrationService(integrationRepo, encryptor)
+	logsDataServ := services.NewLogsDataService(dsRepo, eventRepo, jobRepo)
+	parserServ := services.NewParserService(parserRepo, eventRepo, dsRepo, jobRepo)
+	qualityServ := services.NewDataQualityService(qualityRepo, parserRepo, dsRepo, jobRepo)
 
+	// Wiring handlers
 	integrationHandler := handlers.NewIntegrationHandler(integrationServ)
+	logsDataHandler := handlers.NewLogsDataHandlerWithService(logsDataServ)
+	parserHandler := handlers.NewParserHandler(parserServ)
+	qualityHandler := handlers.NewQualityHandler(qualityServ)
 
-	routes.Setup(app, integrationHandler, authMiddleware)
+	routes.Setup(app, integrationHandler, logsDataHandler, parserHandler, qualityHandler, authMiddleware)
 
 	port := strings.TrimSpace(cfg.PORT)
 

@@ -128,7 +128,7 @@ const (
 
 	revokeUserSessionSQL = `
 		UPDATE user_sessions 
-		SET is_revoked = true, updated_at = NOW()
+		SET is_revoked = true
 		WHERE id = $1 AND user_id = $2
 	`
 

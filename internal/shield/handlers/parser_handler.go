@@ -299,7 +299,7 @@ func (h *ParserHandler) DisableParser(c *fiber.Ctx) error {
 
 // @Summary Validate Parser
 // @Description Queues validation for a parser against recent logs.
-// @Tags Lmiddlewares.Ggs & Data
+// @Tags Logs & Data
 // @Accept json
 // @Produce json
 // @Param id path string true "Parser ID"

@@ -3,53 +3,59 @@
 set shell := ["sh", "-cu"]
 
 # Go bin path (for migrate CLI)
-GOBIN := "/Users/navicsteinchinemerem/go/bin"
+GOBIN := `go env GOPATH` + "/bin"
+COMPOSE_FILE := "docker-compose.local.yml"
+
 up args='':
-  docker-compose up -d {{args}}
+  docker-compose -f {{COMPOSE_FILE}} up -d {{args}}
 
 # Stop services
 down args='':
-  docker-compose down {{args}}
+  docker-compose -f {{COMPOSE_FILE}} down {{args}}
+
+# Restart services
+restart args='':
+  docker-compose -f {{COMPOSE_FILE}} restart {{args}}
 
 # Rebuild and start services
 build service='':
   @if [ -z "{{service}}" ]; then \
-    docker-compose build --no-cache && docker-compose up -d; \
+    docker-compose -f {{COMPOSE_FILE}} build --no-cache && docker-compose -f {{COMPOSE_FILE}} up -d; \
   else \
-    docker-compose build --no-cache {{service}} && docker-compose up -d {{service}}; \
+    docker-compose -f {{COMPOSE_FILE}} build --no-cache {{service}} && docker-compose -f {{COMPOSE_FILE}} up -d {{service}}; \
   fi
 
 # View logs (pass service name as argument, e.g., `just logs postgres`)
 logs service='':
   @if [ -z "{{service}}" ]; then \
-    docker-compose logs -f; \
+    docker-compose -f {{COMPOSE_FILE}} logs -f; \
   else \
-    docker-compose logs -f {{service}}; \
+    docker-compose -f {{COMPOSE_FILE}} logs -f {{service}}; \
   fi
 
 # Run management/CLI commands inside containers
 # Usage: just manage postgres psql -U sage_user -d sage_db
 manage container *cmd:
-  docker-compose exec {{container}} {{cmd}}
+  docker-compose -f {{COMPOSE_FILE}} exec {{container}} {{cmd}}
 
 # Run one-off commands with service dependencies
 run service *cmd:
-  docker-compose run --rm {{service}} {{cmd}}
+  docker-compose -f {{COMPOSE_FILE}} run --rm {{service}} {{cmd}}
 
 # PostgreSQL-specific shortcuts
 psql *args:
-  docker-compose exec postgres psql -U sage_user -d sage_db {{args}}
+  docker-compose -f {{COMPOSE_FILE}} exec postgres psql -U sage_user -d sage_db {{args}}
 
 pg_dump *args:
-  docker-compose exec postgres pg_dump -U sage_user -d sage_db {{args}}
+  docker-compose -f {{COMPOSE_FILE}} exec postgres pg_dump -U sage_user -d sage_db {{args}}
 
 # Manual migrations (requires migrate CLI)
 # Install: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 migrate *args='up':
-  {{GOBIN}}/migrate -path ./migrations -database "postgres://sage_user:sage_dev_password@localhost:5432/sage_db?sslmode=disable" {{args}}
+  {{GOBIN}}/migrate -path ./migrations -database "postgres://sage_user:sage_dev_password@localhost:5433/sage_db?sslmode=disable" {{args}}
 
 migrate-down:
-  {{GOBIN}}/migrate -path ./migrations -database "postgres://sage_user:sage_dev_password@localhost:5432/sage_db?sslmode=disable" down
+  {{GOBIN}}/migrate -path ./migrations -database "postgres://sage_user:sage_dev_password@localhost:5433/sage_db?sslmode=disable" down
 
 # Build and run the application locally (outside Docker)
 run-local:
@@ -80,22 +86,22 @@ generate:
 
 # Health check
 health:
-  docker-compose exec -T postgres pg_isready -U sage_user -d sage_db
+  docker-compose -f {{COMPOSE_FILE}} exec -T postgres pg_isready -U sage_user -d sage_db
 
 # Show service status
 status:
-  docker-compose ps
+  docker-compose -f {{COMPOSE_FILE}} ps
 
 # Clean everything (WARNING: destructive)
 clean:
-  docker-compose down -v --remove-orphans
+  docker-compose -f {{COMPOSE_FILE}} down -v --remove-orphans
 
 # Prune unused resources
 prune service='':
   @if [ -z "{{service}}" ]; then \
-    docker-compose down -v --remove-orphans; \
+    docker-compose -f {{COMPOSE_FILE}} down -v --remove-orphans; \
   else \
-    docker-compose down -v {{service}}; \
+    docker-compose -f {{COMPOSE_FILE}} down -v {{service}}; \
   fi
 
 # Show help
