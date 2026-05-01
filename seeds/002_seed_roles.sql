@@ -11,5 +11,7 @@ INSERT INTO roles (name, description) VALUES
     ('admin',   'Manages users, settings, and resources'),
     ('analyst', 'Can view and analyze data'),
     ('member',  'Standard access to organization resources'),
-    ('viewer',  'Read-only access')
-ON CONFLICT (name) DO NOTHING;
+    ('viewer',  'Read-only access'),
+    ('automation_admin', 'Responsible for managing automated processes'),
+    ('billing_admin', 'Responsible for managing billing and financial operations')
+  ON CONFLICT (name) DO NOTHING;

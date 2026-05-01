@@ -1,20 +1,35 @@
--- Create permission_groups table
-CREATE TABLE IF NOT EXISTS permission_groups (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL UNIQUE,
-    description TEXT,
-    category TEXT NOT NULL, -- e.g., 'Alert Management', 'User Management', 'Automation'
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+-- Insert default permissions
+INSERT INTO permissions (name, description, category, resource, action) VALUES
+-- Alert permissions
+('alerts.read', 'View alerts and incidents', 'alerts', 'alerts', 'read'),
+('alerts.write', 'Create and edit alerts', 'alerts', 'alerts', 'write'),
+('alerts.delete', 'Delete alerts', 'alerts', 'alerts', 'delete'),
+('alerts.resolve', 'Resolve alerts', 'alerts', 'alerts', 'resolve'),
 
--- Create junction table for permission_groups <-> permissions
-CREATE TABLE IF NOT EXISTS permission_group_permissions (
-    permission_group_id UUID NOT NULL REFERENCES permission_groups(id) ON DELETE CASCADE,
-    permission_id UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (permission_group_id, permission_id)
-);
+-- User permissions
+('users.read', 'View users', 'users', 'users', 'read'),
+('users.write', 'Create and edit users', 'users', 'users', 'write'),
+('users.delete', 'Delete users', 'users', 'users', 'delete'),
+('users.invite', 'Invite users', 'users', 'users', 'invite'),
+
+-- Organization permissions
+('org.read', 'View organization settings', 'org', 'organization', 'read'),
+('org.write', 'Edit organization settings', 'org', 'organization', 'write'),
+('org.manage_roles', 'Manage roles and permissions', 'org', 'organization', 'manage_roles'),
+
+-- Automation permissions
+('automation.read', 'View playbooks and automations', 'automation', 'playbooks', 'read'),
+('automation.write', 'Create and edit playbooks', 'automation', 'playbooks', 'write'),
+('automation.execute', 'Execute playbooks', 'automation', 'playbooks', 'execute'),
+('automation.delete', 'Delete playbooks', 'automation', 'playbooks', 'delete'),
+
+-- Billing permissions
+('billing.read', 'View billing information', 'billing', 'billing', 'read'),
+('billing.write', 'Edit billing information', 'billing', 'billing', 'write'),
+
+-- Settings permissions
+('settings.read', 'View system settings', 'settings', 'settings', 'read'),
+('settings.write', 'Edit system settings', 'settings', 'settings', 'write');
 
 -- Insert default permission groups
 INSERT INTO permission_groups (name, description, category) VALUES
@@ -55,8 +70,3 @@ WHERE pg.name = 'Billing' AND p.category = 'billing';
 INSERT INTO permission_group_permissions (permission_group_id, permission_id)
 SELECT pg.id, p.id FROM permission_groups pg, permissions p 
 WHERE pg.name = 'Settings' AND p.category = 'settings';
-
--- Create indexes
-CREATE INDEX idx_permission_groups_category ON permission_groups(category);
-CREATE INDEX idx_permission_group_permissions_group ON permission_group_permissions(permission_group_id);
-CREATE INDEX idx_permission_group_permissions_permission ON permission_group_permissions(permission_id);

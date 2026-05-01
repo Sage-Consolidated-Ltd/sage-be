@@ -1,6 +1,6 @@
 # Sage Backend
 
-Backend services for the Sage platform, implemented in Go.
+Backend services for the Sage platform, implemented in Go. A comprehensive security and data management platform with multi-tenant organization support, log ingestion, parsing, and data quality analysis.
 
 ## Tech Stack
 
@@ -9,17 +9,137 @@ Backend services for the Sage platform, implemented in Go.
 - PostgreSQL
 - Redis
 - Swaggo (Swagger)
+- Session Authentication
+- Resend (Email Service)
 
 ## Repository Layout
 
-- `cmd/api/main.go`: main API entrypoint
-- `cmd/offensive/main.go`: offensive service entrypoint (placeholder)
-- `cmd/shield/main.go`: shield service entrypoint (in progress)
-- `cmd/vision/main.go`: vision service entrypoint (placeholder)
+- `cmd/api/main.go`: main API entrypoint (port 3333)
+- `cmd/shield/main.go`: security/log processing service (port 3335)
+- `cmd/offensive/main.go`: offensive security service (port 3334, placeholder)
+- `cmd/vision/main.go`: vision/analytics service (port 3336, placeholder)
 - `internal/`: domain modules and shared application code
-- `migrations/`: SQL migrations and migration/seed runner
+  - `users/`: User authentication, profiles, and session management
+  - `shared/`: Organization, roles, permissions, and multi-tenancy
+  - `shield/`: Log ingestion, parsing, quality analysis, and integrations
+  - `offensive/`: Offensive security module (placeholder)
+  - `vision/`: Vision/analytics module (placeholder)
+- `migrations/`: SQL migrations (33+ migrations) and migration/seed runner
 - `seeds/`: SQL seed scripts
 - `docs/`: generated Swagger artifacts
+
+## Features
+
+### Users & Authentication Service
+
+- **Authentication**
+  - User registration with organization creation
+  - Email/password login with JWT tokens
+  - OAuth 2.0 integrations (Google, GitHub, Azure)
+  - Two-factor authentication (TOTP-based)
+  - Password management (forgot password, reset, change)
+  - Email verification flow
+
+- **Profile & Identity**
+  - Profile management (name, email, avatar)
+  - User preferences (theme, notifications, etc.)
+  - Activity/audit logging with IP tracking
+  - Session management (create, list, revoke sessions)
+
+### Organization & Access Control
+
+- **Organization Management**
+  - Create and update organizations
+  - Organization metadata and settings
+  - Industries catalog
+  - Multi-tenant support
+
+- **Member Management**
+  - Invite members by email (bulk and single)
+  - List members with pagination and filtering
+  - Update member roles and departments
+  - Remove members
+  - Accept invitations with token validation
+
+- **Role & Permissions System**
+  - Built-in roles: Owner, Admin, Member
+  - Custom roles with granular permissions
+  - Permission groups and access control
+  - Role-based authorization throughout the platform
+
+### Shield Service - Security & Log Processing
+
+- **Log/Event Ingestion**
+  - Single and bulk event ingestion
+  - Advanced event search and filtering
+  - Event detail retrieval with parser history
+  - Batch processing capabilities
+
+- **Data Source Management**
+  - Create and register log data sources
+  - Health monitoring with metrics (events/day, total events, errors)
+  - Per-source log retrieval and analysis
+  - Aggregated health dashboard
+  - Sync and disconnect sources
+
+- **Advanced Parser Engine**
+  - Multiple parser types: Regex, JSON, CSV, Key-Value, AI/NLP
+  - Create, read, update, list, delete parsers
+  - Test parsers with sample logs
+  - Preview parsing logic without saving
+  - Parser validation and versioning
+  - Import/Export parser configurations
+  - Track 24h parse count and error rates
+  - Parser status tracking (active, warning, error, disabled)
+
+- **Data Quality Management**
+  - Run comprehensive quality analysis scans
+  - Metrics: overall quality score, parsing errors, missing fields, duplicates, unmapped logs
+  - AI-powered insights and recommendations
+  - Automated fixes with diff preview
+  - Export quality reports (CSV, PDF, JSON)
+  - Track quality metrics over time
+
+- **Ingestion Job Management**
+  - Track job status (queued, running, completed, failed, cancelled)
+  - Job types: parse, sync, validate
+  - Event processing metrics and error tracking
+  - Job history and scheduling
+
+- **Health Monitoring & Notifications**
+  - Real-time ingestion health dashboard
+  - Total events, active sources, delayed sources, error sources
+  - Event volume analytics (by hour/day)
+  - Download health reports (CSV, PDF, JSON)
+  - Alert notifications on ingestion issues
+
+- **Integration Management**
+  - Create provider-specific integrations (Kafka, S3, API, etc.)
+  - Encrypted credential storage per integration
+  - Stream tracking with last offset/checkpoint
+  - Integration status monitoring
+  - Event buffering for reliability
+  - Connection testing before activation
+
+### Cross-Service Features
+
+- **Security & Authentication**
+  - JWT authentication middleware
+  - Session management with Redis
+  - Audit logging with IP tracking
+
+- **Email & Notifications**
+  - Transactional emails via Resend API
+  - User notification preferences
+  - Multi-channel support (Email, Push, Slack)
+
+- **API Documentation**
+  - Swagger/OpenAPI integration
+  - Auto-generated API documentation
+
+- **Health & Status**
+  - Health check endpoints on all services
+  - Structured logging with configurable levels
 
 ## Prerequisites
 
