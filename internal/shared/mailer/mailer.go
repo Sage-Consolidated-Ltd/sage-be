@@ -9,7 +9,7 @@ import (
 
 type EmailClient struct {
 	client *resend.Client
-	from string
+	from   string
 }
 type EmailClientInt interface {
 	SendEmail(to []string, subject, templateName, rawTemplate string, data any) error
@@ -30,17 +30,17 @@ func (e *EmailClient) SendEmail(to []string, subject, templateName, rawTemplate 
 		return fmt.Errorf("failed to render email template: %w", err)
 	}
 
-    _, err = e.client.Emails.Send(&resend.SendEmailRequest{
-        From:    e.from,
-        To:      to,
-        Subject: subject,
-        Html:    html,
-    })
-    if err != nil {
-        return fmt.Errorf("failed to send email: %w", err)
-    }
+	_, err = e.client.Emails.Send(&resend.SendEmailRequest{
+		From:    e.from,
+		To:      to,
+		Subject: subject,
+		Html:    html,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to send email: %w", err)
+	}
 
-    return nil
+	return nil
 }
 func (e *EmailClient) SendMemberInvitationEmail(to []string, data MemberInvitationEmailData) error {
 	subject := fmt.Sprintf("You're invited to join %s on Sage!", data.OrganizationName)

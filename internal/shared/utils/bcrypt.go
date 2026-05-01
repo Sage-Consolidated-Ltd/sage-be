@@ -13,7 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-
 func HashPassword(password string) (string, error) {
 	cost := bcrypt.DefaultCost
 
@@ -58,9 +57,9 @@ func Encrypt(plainText string, key []byte) (string, error) {
 
 func Decrypt(encryptedText string, key []byte) (string, error) {
 	ciphertext, err := base64.StdEncoding.DecodeString(encryptedText)
-    if err != nil {
-        return "", err
-    }
+	if err != nil {
+		return "", err
+	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err

@@ -36,8 +36,7 @@ func (v KafkaValidator) Validate(config map[string]interface{}) error {
 }
 
 var Validators = map[string]ProviderValidator{
-	"aws":     AWSValidator{},
+	"aws": AWSValidator{},
 	// "webhook": WebhookValidator{},
 	// "kafka":   KafkaValidator{},
 }
-

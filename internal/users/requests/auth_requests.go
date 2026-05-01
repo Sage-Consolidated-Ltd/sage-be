@@ -1,13 +1,13 @@
 package requests
 
 type OnboardingRequest struct {
-	FirstName string `json:"first_name" validate:"required"`
-	LastName  string `json:"last_name" validate:"required"`
-	Email     string `json:"email" validate:"email,required"`
-	Password  string `json:"password" validate:"password,required"`
-	IndustryId string `json:"industry_id" validate:"required"`
-	CompanyName string `json:"company_name" validate:"required"`
-	TimeZone *string `json:"time_zone,omitempty"`
+	FirstName   string  `json:"first_name" validate:"required"`
+	LastName    string  `json:"last_name" validate:"required"`
+	Email       string  `json:"email" validate:"email,required"`
+	Password    string  `json:"password" validate:"password,required"`
+	IndustryId  string  `json:"industry_id" validate:"required"`
+	CompanyName string  `json:"company_name" validate:"required"`
+	TimeZone    *string `json:"time_zone,omitempty"`
 }
 
 type CreateUserRequest struct {
@@ -24,7 +24,7 @@ type GoogleAuthenticatorRequest struct {
 	Code string `json:"code" validate:"required"`
 }
 type ResetPasswordRequest struct {
-	Password string `json:"password" validate:"password,required"`
+	Password        string `json:"password" validate:"password,required"`
 	ConfirmPassword string `json:"confirm_password" validate:"password,required"`
 }
 type ForgotPasswordRequest struct {

@@ -1,13 +1,21 @@
 package handlers
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"sage-backend/internal/shield/services"
 
-type IntegrationHandler struct{}
+	"github.com/gofiber/fiber/v2"
+)
 
-func NewIntegrationHandler() *IntegrationHandler{
-	return &IntegrationHandler{}
+type IntegrationHandler struct {
+	integrationServ services.IntegrationServiceInt
+}
+
+func NewIntegrationHandler(integrationServ services.IntegrationServiceInt) *IntegrationHandler {
+	return &IntegrationHandler{
+		integrationServ: integrationServ,
+	}
 }
 
 func (h *IntegrationHandler) CreateIntegration(c *fiber.Ctx) error {
-	return c.SendString("Create Integration")
+	return c.SendString("Create Integration ")
 }

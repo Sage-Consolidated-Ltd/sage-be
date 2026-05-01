@@ -38,7 +38,7 @@ import (
 // @contact.url    http://www.swagger.io/support
 // @contact.email  support@swagger.io
 
-// @host      localhost:3333
+// @host      backend.sageconsolidated.com
 // @BasePath  /api/v1
 func main() {
 	cfg := config.SetupAPI()
@@ -53,7 +53,7 @@ func main() {
 		log.Fatalf("Error connecting redis: %s", err)
 	}
 
-	config.InitSessionStore(cfg)
+	config.InitSessionStore(&cfg.BaseConfig)
 
 	logger.Init(&cfg.BaseConfig)
 
@@ -84,7 +84,7 @@ func main() {
 	swaggerConfig := swagger.Config{
 		BasePath: "/api/v1",
 		FilePath: "./docs/swagger.json",
-		Path:     "docs",
+		Path:     "docs/api-docs",
 		Title:    "Sage API Documentation",
 	}
 

@@ -17,11 +17,11 @@ type BaseConfig struct {
 	DBMAXIdleConns   int
 	DBConnMAXLife    int
 	AppEncryptionKey string
-	RedisDbUrl string
-	LogLevel Level
-	ResendApiKey string
-	ResendFromEmail string
-	FrontendBaseURL string
+	RedisDbUrl       string
+	LogLevel         Level
+	ResendApiKey     string
+	ResendFromEmail  string
+	FrontendBaseURL  string
 }
 
 type APIConfig struct {
@@ -67,7 +67,6 @@ const (
 	ErrorLevel = zapcore.ErrorLevel
 	FatalLevel = zapcore.FatalLevel
 )
-
 
 func requireEnv(key string) string {
 	v := os.Getenv(key)
@@ -116,14 +115,13 @@ func loadBase() BaseConfig {
 		DBMAXIdleConns:   getEnvInt("DB_MAX_IDLE_CONNS", 25),
 		DBConnMAXLife:    getEnvInt("DB_CONN_MAX_LIFE", 300),
 		AppEncryptionKey: requireEnv("APP_ENCRYPTION_KEY"),
-		RedisDbUrl: requireEnv("REDIS_DB_URL"),
-		LogLevel: levelFromEnv(),
-		ResendApiKey: requireEnv("RESEND_API_KEY"),
-		ResendFromEmail: requireEnv("RESEND_FROM_EMAIL"),
-		FrontendBaseURL: requireEnv("FRONTEND_BASE_URL"),
+		RedisDbUrl:       requireEnv("REDIS_DB_URL"),
+		LogLevel:         levelFromEnv(),
+		ResendApiKey:     requireEnv("RESEND_API_KEY"),
+		ResendFromEmail:  requireEnv("RESEND_FROM_EMAIL"),
+		FrontendBaseURL:  requireEnv("FRONTEND_BASE_URL"),
 	}
 }
-
 
 func SetupAPI() *APIConfig {
 	_ = godotenv.Load(".env")
@@ -147,23 +145,23 @@ func SetupAPI() *APIConfig {
 func SetupOffense() *OffenseConfig {
 	_ = godotenv.Load(".env")
 	return &OffenseConfig{
-		BaseConfig:       loadBase(),
-		PORT:             getEnv("OFFENSE_PORT", "3334"),
+		BaseConfig: loadBase(),
+		PORT:       getEnv("OFFENSE_PORT", "3334"),
 	}
 }
 
 func SetupShield() *ShieldConfig {
 	_ = godotenv.Load(".env")
 	return &ShieldConfig{
-		BaseConfig:       loadBase(),
-		PORT:             getEnv("SHIELD_PORT", "3335"),
+		BaseConfig: loadBase(),
+		PORT:       getEnv("SHIELD_PORT", "3335"),
 	}
 }
 
 func SetupVision() *VisionConfig {
 	_ = godotenv.Load(".env")
 	return &VisionConfig{
-		BaseConfig:       loadBase(),
-		PORT:             getEnv("VISION_PORT", "3336"),
+		BaseConfig: loadBase(),
+		PORT:       getEnv("VISION_PORT", "3336"),
 	}
 }

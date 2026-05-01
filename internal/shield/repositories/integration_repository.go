@@ -28,13 +28,13 @@ var (
 	SET status = $1, updated_at = now()
 	WHERE id = $2
 	`
-	CREATE_INTEGRATION_CREDENTIALS=`
+	CREATE_INTEGRATION_CREDENTIALS = `
 	INSERT INTO integration_credentials (
 		id, integration_id, key, encrypted_value, expires_at
 	)
 	VALUES ($1,$2,$3,$4,$5)
 	`
-	GET_CREDENTIALS_BY_INTEGRATION=`
+	GET_CREDENTIALS_BY_INTEGRATION = `
 	SELECT id, integration_id, key, encrypted_value, expires_at, created_at
 	FROM integration_credentials
 	WHERE integration_id = $1
@@ -42,9 +42,9 @@ var (
 )
 
 type IntegrationRepositoryInt interface {
-	CreateIntegration(ctx context.Context, integration *models.Integration) error 
-	GetIntegrationById(ctx context.Context, id string) (*models.Integration, error) 
-	UpdateIntegrationStatus(ctx context.Context, id string, status string) error 
+	CreateIntegration(ctx context.Context, integration *models.Integration) error
+	GetIntegrationById(ctx context.Context, id string) (*models.Integration, error)
+	UpdateIntegrationStatus(ctx context.Context, id string, status string) error
 	CreateCredential(ctx context.Context, c *models.IntegrationCredentials) error
 	GetCredentialsByIntegration(ctx context.Context, integrationID string) ([]models.IntegrationCredentials, error)
 }
@@ -61,7 +61,7 @@ func NewIntegrationRepository(db *db.DB) IntegrationRepositoryInt {
 
 func (r *IntegrationRepository) CreateIntegration(ctx context.Context, integration *models.Integration) error {
 	_, err := r.db.ExecContext(
-		ctx, 
+		ctx,
 		CREATE_INTEGRATION,
 		&integration.ID,
 		&integration.TenantId,
@@ -101,7 +101,7 @@ func (r *IntegrationRepository) UpdateIntegrationStatus(ctx context.Context, id 
 	return err
 }
 func (r *IntegrationRepository) CreateCredential(ctx context.Context, c *models.IntegrationCredentials) error {
-	_, err := r.db.ExecContext(ctx, 
+	_, err := r.db.ExecContext(ctx,
 		CREATE_INTEGRATION_CREDENTIALS,
 		c.ID,
 		c.IntegrationId,
