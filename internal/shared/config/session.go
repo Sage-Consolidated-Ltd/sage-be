@@ -25,13 +25,19 @@ func InitSessionStore(cfg *BaseConfig) {
 		Password: "",
 		Database: 0,
 	})
+	var sameSite string
+	if cfg.APP_ENV == "production" {
+		sameSite = "Lax"
+	}else {
+		sameSite = "None"
+	}
 	Store = session.New(session.Config{
 		Storage:        storage,
 		Expiration:     24 * time.Hour,
 		KeyLookup:      "cookie:session_id",
 		CookieHTTPOnly: true,
 		CookieSecure:   cfg.APP_ENV == "production",
-		CookieSameSite: "Lax",
+		CookieSameSite: sameSite,
 		// CookieDomain: "localhost",
 	})
 }

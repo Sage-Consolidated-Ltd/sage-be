@@ -20,13 +20,7 @@ func NewParserHandler(service services.ParserServiceInt) *ParserHandler {
 	return &ParserHandler{service: service}
 }
 
-// @Summary Get Parser Summary
-// @Description Returns parser library summary metrics including total parsers, active parsers, error rate, and last updated timestamp.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/summary [get]
+
 func (h *ParserHandler) GetParserSummary(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -44,20 +38,6 @@ func (h *ParserHandler) GetParserSummary(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Parser summary", summary)
 }
-
-// @Summary List Custom Parsers
-// @Description Returns custom parsers with status, parsed event count, error rate, owner, and last updated time.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param page query int false "Page number"
-// @Param page_size query int false "Page size"
-// @Param search query string false "Search parser name"
-// @Param status query string false "Parser status"
-// @Param data_source query string false "Data source"
-// @Param parser_type query string false "Parser type"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers [get]
 func (h *ParserHandler) ListParsers(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -87,15 +67,6 @@ func (h *ParserHandler) ListParsers(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Parsers retrieved", paginated)
 }
-
-// @Summary Get Parser Detail
-// @Description Returns full parser details including parser logic, tags, field mappings, status, and metrics.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Parser ID"
-// @Success 200 {object} response.Response
-// @Routermiddl/wares.Gelogs-data/parsers/{id} [get]
 func (h *ParserHandler) GetParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -112,15 +83,6 @@ func (h *ParserHandler) GetParser(c *fiber.Ctx) error {
 	// Fetch owner name if needed; omitted
 	return response.JSON(c, fiber.StatusOK, "Parser details", parser.ToResponse(nil))
 }
-
-// @Summary Create Custom Parser
-// @Description Creates a custom parser for extracting, structuring, and normalizing raw logs.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param request body requests.CreateParserRequest true "Create Parser Request"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers [post]
 func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -146,16 +108,6 @@ func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusCreated, "Parser created", parser.ToResponse(nil))
 }
-
-// @Summary Update Custom Parser
-// @Description Updates parser configuration, logic, mappings, tags, or status. Creates a parser version before saving changes.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Parser ID"
-// @Param request body requests.UpdateParserRequest true "Update Parser Request"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id} [patch]
 func (h *ParserHandler) UpdateParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	id, err := uuid.Parse(c.Params("id"))
@@ -204,16 +156,6 @@ func (h *ParserHandler) UpdateParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Parser updated", existing.ToResponse(nil))
 }
-
-// @Summary Test Parser
-// @Description Tests a parser against a sample log and returns parsed output, normalized output, errors, and field mappings.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Parser ID"
-// @Param request body requests.TestParserRequest true "Test Parser Request"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/test [post]
 func (h *ParserHandler) TestParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	id, err := uuid.Parse(c.Params("id"))
@@ -230,15 +172,6 @@ func (h *ParserHandler) TestParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Test result", result)
 }
-
-// @Summary Preview Parser
-// @Description Previews parser output before saving a new parser.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param request body requests.PreviewParserRequest true "Preview Parser Request"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/preview [post]
 func (h *ParserHandler) PreviewParser(c *fiber.Ctx) error {
 	var req requests.PreviewParserRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -250,15 +183,6 @@ func (h *ParserHandler) PreviewParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Preview result", result)
 }
-
-// @Summary Enable Parser
-// @Description Enables a custom parser for future log ingestion.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Parser ID"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/enable [post]
 func (h *ParserHandler) EnableParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -273,15 +197,6 @@ func (h *ParserHandler) EnableParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Parser enabled", nil)
 }
-
-// @Summary Disable Parser
-// @Description Disables a custom parser without deleting it.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Parser ID"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/disable [post]
 func (h *ParserHandler) DisableParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -296,15 +211,6 @@ func (h *ParserHandler) DisableParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Parser disabled", nil)
 }
-
-// @Summary Validate Parser
-// @Description Queues validation for a parser against recent logs.
-// @Tags Lmiddlewares.Ggs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Parser ID"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/validate [post]
 func (h *ParserHandler) ValidateParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -320,14 +226,6 @@ func (h *ParserHandler) ValidateParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Validation queued", result)
 }
-
-// @Summary Validate All Parsers
-// @Descrimiddlewares.Gtion Queues validation for all custom parsers.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/validate [post]
 func (h *ParserHandler) ValidateAllParsers(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -339,15 +237,6 @@ func (h *ParserHandler) ValidateAllParsers(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Validation queued for all parsers", result)
 }
-
-// @Summary Import Parser
-// @Description Imports a custom parser definition from JSON payload or uploaded parser configuration.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param middlewares.Gequest body requests.ImportParserRequest true "Import Parser Request"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/import [post]
 func (h *ParserHandler) ImportParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -373,15 +262,6 @@ func (h *ParserHandler) ImportParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusCreated, "Parser imported", parser.ToResponse(nil))
 }
-
-// @Summary Export Parser
-// @Description Exports a parser definition as JSON.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Parser ID"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/export [get]
 func (h *ParserHandler) ExportParser(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {
@@ -397,18 +277,6 @@ func (h *ParserHandler) ExportParser(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Parser exported", parser)
 }
-
-// @Summary List Sample Logs
-// @Description Returns sample raw logs for parser testing and preview.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param source_id query string false "Data source ID"
-// @Param parser_id query string false "Parser ID"
-// @Param page query int false "Page number"
-// @Param page_size query int false "Page size"
-// @Success 200 {object} response.Response
-// @Router /logs-data/parsers/sample-logs [get]
 func (h *ParserHandler) ListSampleLogs(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {

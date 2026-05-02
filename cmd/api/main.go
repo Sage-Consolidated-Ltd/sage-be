@@ -38,6 +38,10 @@ import (
 // @contact.url    http://www.swagger.io/support
 // @contact.email  support@swagger.io
 
+// @securityDefinitions.apikey SessionAuth
+// @in cookie
+// @name session_id
+
 // @host      backend.sageconsolidated.com
 // @BasePath  /api/v1
 func main() {

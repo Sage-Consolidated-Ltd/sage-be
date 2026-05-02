@@ -47,13 +47,6 @@ func getSessionInfo(c *fiber.Ctx) (orgID uuid.UUID, userID string, role string, 
 	return orgUUID, uid, r, true
 }
 
-// @Summary Get Ingestion Health Summary
-// @Description Returns ingestion health metrics including total events ingested, active sources, delayed sources, and ingestion errors.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Success 200 {object} response.Response
-// @Router /logs-data/ingestion-health [get]
 func (h *LogsDataHandler) GetIngestionHealth(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -65,14 +58,6 @@ func (h *LogsDataHandler) GetIngestionHealth(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Ingestion health retrieved", health)
 }
-
-// @Summary Refresh Ingestion Health
-// @Description Queues a background job to refresh ingestion health metrics.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Success 200 {object} response.Response
-// @Router /logs-data/ingestion-health/refresh [post]
 func (h *LogsDataHandler) RefreshIngestionHealth(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -84,19 +69,6 @@ func (h *LogsDataHandler) RefreshIngestionHealth(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Refresh queued", result)
 }
-
-// @Summary List Data Sources
-// @Description Returns connected data sources with ingestion status, events today, last event time, and health status.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param page query int false "Page number"
-// @Param page_size query int false "Page size"
-// @Param search query string false "Search by source name or description"
-// @Param type query string false "Source type"
-// @Param status query string false "Source status"
-// @Success 200 {object} response.Response
-// @Router /logs-data/sources [get]
 func (h *LogsDataHandler) ListSources(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -125,15 +97,6 @@ func (h *LogsDataHandler) ListSources(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Sources retrieved", paginated)
 }
-
-// @Summary Get Data Source Detail
-// @Description Returns detailed health and metadata for a single data source.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Data Source ID"
-// @Success 200 {object} response.Response
-// @Router /logs-data/sources/{id} [get]
 func (h *LogsDataHandler) GetSource(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -149,15 +112,6 @@ func (h *LogsDataHandler) GetSource(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Source retrieved", source.ToResponse())
 }
-
-// @Summary Sync Data Source
-// @Description Manually queues a sync job for a data source.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Data Source ID"
-// @Success 200 {object} response.Response
-// @Router /logs-data/sources/{id}/sync [post]
 func (h *LogsDataHandler) SyncSource(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -173,15 +127,6 @@ func (h *LogsDataHandler) SyncSource(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Sync queued", result)
 }
-
-// @Summary Disconnect Data Source
-// @Description Disconnects a data source and stops future ingestion while preserving historical logs.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Data Source ID"
-// @Success 200 {object} response.Response
-// @Router /logs-data/sources/{id}/disconnect [post]
 func (h *LogsDataHandler) DisconnectSource(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -196,21 +141,6 @@ func (h *LogsDataHandler) DisconnectSource(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Source disconnected", nil)
 }
-
-// @Summary View Source Logs
-// @Description Returns logs ingested from a specific data source.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param id path string true "Data Source ID"
-// @Param page query int false "Page number"
-// @Param page_size query int false "Page size"
-// @Param event_type query string false "Event type"
-// @Param severity query string false "Severity"
-// @Param start_time query string false "Start time"
-// @Param end_time query string false "End time"
-// @Success 200 {object} response.Response
-// @Router /logs-data/sources/{id}/logs [get]
 func (h *LogsDataHandler) GetSourceLogs(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -244,18 +174,6 @@ func (h *LogsDataHandler) GetSourceLogs(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Logs retrieved", paginated)
 }
-
-// @Summary Get Ingestion Volume Over Time
-// @Description Returns time-series ingestion volume for charts, optionally filtered by source.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Param start_time query string false "Start time"
-// @Param end_time query string false "End time"
-// @Param interval query string false "Aggregation interval"
-// @Param source_id query string false "Data source ID"
-// @Success 200 {object} response.Response
-// @Router /logs-data/ingestion-health/volume [get]
 func (h *LogsDataHandler) GetIngestionVolume(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -285,14 +203,6 @@ func (h *LogsDataHandler) GetIngestionVolume(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Volume retrieved", volume)
 }
-
-// @Summary Get Ingestion Notifications
-// @Description Returns ingestion warnings and AI insights related to source delays, drops, parsing errors, and schema changes.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Success 200 {object} response.Response
-// @Router /logs-data/ingestion-health/notifications [get]
 func (h *LogsDataHandler) GetIngestionNotifications(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {
@@ -304,17 +214,6 @@ func (h *LogsDataHandler) GetIngestionNotifications(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Notifications retrieved", notifs)
 }
-
-// @Summary Download Ingestion Health Report
-// @Description Downloads ingestion health report in csv, pdf, or json format.
-// @Tags Logs & Data
-// @Accept json
-// @Produce application/octet-stream
-// @Param format query string false "Report format"
-// @Param start_time query string false "Start time"
-// @Param end_time query string false "End time"
-// @Success 200 {file} file
-// @Router /logs-data/ingestion-health/report [get]
 func (h *LogsDataHandler) DownloadIngestionHealthReport(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
 	if !ok {

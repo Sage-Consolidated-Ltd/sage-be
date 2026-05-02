@@ -45,6 +45,7 @@ func _Login() {}
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
+// @Security 	SessionAuth
 // @Success      200     {object}  Generate2FAResponse
 // @Router       /auth/generate-2fa [get]
 func _Generate2FA() {}
@@ -55,6 +56,7 @@ func _Generate2FA() {}
 // @Accept       json
 // @Produce      json
 // @Param        request   body      requests.GoogleAuthenticatorRequest true "TOTP Code"
+// @Security 	SessionAuth
 // @Success      200
 // @Router       /auth/enable-2fa [post]
 func _Enable2FA() {}
@@ -65,6 +67,7 @@ func _Enable2FA() {}
 // @Accept       json
 // @Produce      json
 // @Param        request   body      requests.GoogleAuthenticatorRequest true "TOTP Code"
+// @Security 	SessionAuth
 // @Success      200
 // @Router       /auth/verify-2fa [post]
 func _Verify2FA() {}
