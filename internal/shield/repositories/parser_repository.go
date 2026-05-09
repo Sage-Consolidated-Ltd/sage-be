@@ -5,12 +5,12 @@ import (
 	"database/sql"
 	"time"
 
+	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/models"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 type ParserRepositoryInt interface {
@@ -29,10 +29,10 @@ type ParserRepositoryInt interface {
 }
 
 type ParserRepository struct {
-	db *sqlx.DB
+	db *db.DB
 }
 
-func NewParserRepository(db *sqlx.DB) ParserRepositoryInt {
+func NewParserRepository(db *db.DB) ParserRepositoryInt {
 	return &ParserRepository{db: db}
 }
 

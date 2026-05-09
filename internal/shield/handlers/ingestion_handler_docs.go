@@ -10,8 +10,9 @@ import (
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Success 200 {object} response.Response
-// @Router /logs-data/ingestion-health [get]
+// @Router /integrations/logs-data/ingestion-health [get]
 func _GetIngestionHealth(){}
 
 // @Summary Refresh Ingestion Health
@@ -19,8 +20,9 @@ func _GetIngestionHealth(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Success 200 {object} response.Response
-// @Router /logs-data/ingestion-health/refresh [post]
+// @Router /integrations/logs-data/ingestion-health/refresh [post]
 func _RefreshIngestionHealth(){}
 
 // @Summary List Data Sources
@@ -28,13 +30,14 @@ func _RefreshIngestionHealth(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param page query int false "Page number"
 // @Param page_size query int false "Page size"
 // @Param search query string false "Search by source name or description"
 // @Param type query string false "Source type"
 // @Param status query string false "Source status"
 // @Success 200 {object} response.Response
-// @Router /logs-data/sources [get]
+// @Router /integrations/logs-data/sources [get]
 func _ListSources(){}
 
 // @Summary Get Data Source Detail
@@ -42,9 +45,10 @@ func _ListSources(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Data Source ID"
 // @Success 200 {object} response.Response
-// @Router /logs-data/sources/{id} [get]
+// @Router /integrations/logs-data/sources/{id} [get]
 func _GetSource(){}
 
 // @Summary Sync Data Source
@@ -52,9 +56,10 @@ func _GetSource(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Data Source ID"
 // @Success 200 {object} response.Response
-// @Router /logs-data/sources/{id}/sync [post]
+// @Router /integrations/logs-data/sources/{id}/sync [post]
 func _SyncSource(){}
 
 // @Summary Disconnect Data Source
@@ -62,9 +67,10 @@ func _SyncSource(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Data Source ID"
 // @Success 200 {object} response.Response
-// @Router /logs-data/sources/{id}/disconnect [post]
+// @Router /integrations/logs-data/sources/{id}/disconnect [post]
 func _DisconnectSource(){}
 
 // @Summary View Source Logs
@@ -72,6 +78,7 @@ func _DisconnectSource(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Data Source ID"
 // @Param page query int false "Page number"
 // @Param page_size query int false "Page size"
@@ -80,7 +87,7 @@ func _DisconnectSource(){}
 // @Param start_time query string false "Start time"
 // @Param end_time query string false "End time"
 // @Success 200 {object} response.Response
-// @Router /logs-data/sources/{id}/logs [get]
+// @Router /integrations/logs-data/sources/{id}/logs [get]
 func _GetSourceLogs(){}
 
 // @Summary Get Ingestion Volume Over Time
@@ -88,12 +95,13 @@ func _GetSourceLogs(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param start_time query string false "Start time"
 // @Param end_time query string false "End time"
 // @Param interval query string false "Aggregation interval"
 // @Param source_id query string false "Data source ID"
 // @Success 200 {object} response.Response
-// @Router /logs-data/ingestion-health/volume [get]
+// @Router /integrations/logs-data/ingestion-health/volume [get]
 func _GetIngestionVolume(){}
 
 // @Summary Get Ingestion Notifications
@@ -101,8 +109,9 @@ func _GetIngestionVolume(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Success 200 {object} response.Response
-// @Router /logs-data/ingestion-health/notifications [get]
+// @Router /integrations/logs-data/ingestion-health/notifications [get]
 func _GetIngestionNotifications(){}
 
 // @Summary Download Ingestion Health Report
@@ -110,9 +119,10 @@ func _GetIngestionNotifications(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce application/octet-stream
+// @Security SessionAuth
 // @Param format query string false "Report format"
 // @Param start_time query string false "Start time"
 // @Param end_time query string false "End time"
 // @Success 200 {file} file
-// @Router /logs-data/ingestion-health/report [get]
+// @Router /integrations/logs-data/ingestion-health/report [get]
 func _DownloadIngestionHealthReport(){}

@@ -9,6 +9,7 @@ import (
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param page query int false "Page number"
 // @Param page_size query int false "Page size"
 // @Param source_id query string false "Data source ID"
@@ -20,7 +21,7 @@ import (
 // @Param end_time query string false "End time"
 // @Param search query string false "Search text"
 // @Success 200 {object} response.Response
-// @Router /logs [get]
+// @Router /events/logs [get]
 func _SearchLogs(){}
 
 // @Summary Get Log Detail
@@ -28,9 +29,10 @@ func _SearchLogs(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Log Event ID"
 // @Success 200 {object} response.Response
-// @Router /logs/{id} [get]
+// @Router /events/logs/{id} [get]
 func _GetLogDetail(){}
 
 // @Summary Ingest Log Event
@@ -38,6 +40,7 @@ func _GetLogDetail(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param request body requests.IngestLogRequest true "Ingest Log Request"
 // @Success 200 {object} response.Response
 // @Router /logs/ingest [post]
@@ -48,6 +51,7 @@ func _IngestLog(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param request body requests.BulkIngestLogsRequest true "Bulk Ingest Logs Request"
 // @Success 200 {object} response.Response
 // @Router /logs/bulk-ingest [post]

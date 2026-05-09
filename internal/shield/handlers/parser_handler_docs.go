@@ -9,8 +9,9 @@ import (
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/summary [get]
+// @Router /integrations/logs-data/parsers/summary [get]
 func _GetParserSummary(){}
 
 // @Summary List Custom Parsers
@@ -18,6 +19,7 @@ func _GetParserSummary(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param page query int false "Page number"
 // @Param page_size query int false "Page size"
 // @Param search query string false "Search parser name"
@@ -25,7 +27,7 @@ func _GetParserSummary(){}
 // @Param data_source query string false "Data source"
 // @Param parser_type query string false "Parser type"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers [get]
+// @Router /integrations/logs-data/parsers [get]
 func _ListParsers(){}
 
 // @Summary Get Parser Detail
@@ -33,6 +35,7 @@ func _ListParsers(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
 // @Routermiddl/wares.Gelogs-data/parsers/{id} [get]
@@ -43,9 +46,10 @@ func _GetParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param request body requests.CreateParserRequest true "Create Parser Request"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers [post]
+// @Router /integrations/logs-data/parsers [post]
 func _CreateParser(){}
 
 // @Summary Update Custom Parser
@@ -53,10 +57,11 @@ func _CreateParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Parser ID"
 // @Param request body requests.UpdateParserRequest true "Update Parser Request"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id} [patch]
+// @Router /integrations/logs-data/parsers/{id} [patch]
 func _UpdateParser(){}
 
 // @Summary Test Parser
@@ -64,10 +69,11 @@ func _UpdateParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Parser ID"
 // @Param request body requests.TestParserRequest true "Test Parser Request"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/test [post]
+// @Router /integrations/logs-data/parsers/{id}/test [post]
 func _TestParser(){}
 
 // @Summary Preview Parser
@@ -75,9 +81,10 @@ func _TestParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param request body requests.PreviewParserRequest true "Preview Parser Request"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/preview [post]
+// @Router /integrations/logs-data/parsers/preview [post]
 func _PreviewParser(){}
 
 // @Summary Enable Parser
@@ -85,9 +92,10 @@ func _PreviewParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/enable [post]
+// @Router /integrations/logs-data/parsers/{id}/enable [post]
 func _EnableParser(){}
 
 // @Summary Disable Parser
@@ -95,9 +103,10 @@ func _EnableParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/disable [post]
+// @Router /integrations/logs-data/parsers/{id}/disable [post]
 func _DisableParser(){}
 
 // @Summary Validate Parser
@@ -105,9 +114,10 @@ func _DisableParser(){}
 // @Tags Lmiddlewares.Ggs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/validate [post]
+// @Router /integrations/logs-data/parsers/{id}/validate [post]
 func _ValidateParser(){}
 
 // @Summary Validate All Parsers
@@ -115,8 +125,9 @@ func _ValidateParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/validate [post]
+// @Router /integrations/logs-data/parsers/validate [post]
 func _ValidateAllParsers(){}
 
 // @Summary Import Parser
@@ -124,9 +135,10 @@ func _ValidateAllParsers(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param middlewares.Gequest body requests.ImportParserRequest true "Import Parser Request"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/import [post]
+// @Router /integrations/logs-data/parsers/import [post]
 func _ImportParser(){}
 
 // @Summary Export Parser
@@ -134,9 +146,10 @@ func _ImportParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/{id}/export [get]
+// @Router /integrations/logs-data/parsers/{id}/export [get]
 func _ExportParser(){}
 
 // @Summary List Sample Logs
@@ -144,11 +157,12 @@ func _ExportParser(){}
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
+// @Security SessionAuth
 // @Param source_id query string false "Data source ID"
 // @Param parser_id query string false "Parser ID"
 // @Param page query int false "Page number"
 // @Param page_size query int false "Page size"
 // @Success 200 {object} response.Response
-// @Router /logs-data/parsers/sample-logs [get]
+// @Router /integrations/logs-data/parsers/sample-logs [get]
 func _ListSampleLogs(){}
 

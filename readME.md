@@ -245,9 +245,11 @@ go run migrations/main.go --seed-file seeds/001_seed_industry.sql
 Generate docs:
 
 ```bash
-swag init -g main.go -d ./cmd/api,./internal/users,./internal/shared --parseInternal
-swag init -g cmd/shield/main.go --parseDependency --parseInternal
+swag init -g main.go -d ./cmd/api,./internal/users,./internal/shared --parseInternal -o ./docs/users
+swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
 ```
+
+backend.sageconsolidated.com - Deployment
 
 After starting the API, open: `http://localhost:3333/api/v1docs`
 

@@ -1,6 +1,7 @@
 package mocks
 
 import (
+	"encoding/json"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/models"
 	"time"
@@ -89,7 +90,7 @@ func GenerateMockDataSource(orgID uuid.UUID) *models.DataSource {
 		LastSyncAt:       &lastSyncAt,
 		ErrorCount:       3,
 		DelayedByMinutes: 2,
-		Metadata:         map[string]interface{}{"tenant_id": "tenant-123"},
+		Metadata:         json.RawMessage(`{"tenant_id": "tenant-123"}`),
 		CreatedAt:        time.Now().Add(-30 * 24 * time.Hour),
 		UpdatedAt:        time.Now(),
 	}

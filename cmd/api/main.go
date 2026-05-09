@@ -21,7 +21,7 @@ import (
 	"strings"
 	"syscall"
 
-	_ "sage-backend/docs"
+	_ "sage-backend/docs/users"
 
 	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
@@ -31,7 +31,7 @@ import (
 
 // @title           Sage API
 // @version         1.0
-// @description     Documentation for the Sage API.
+// @description     Documentation for the Sage API (Users).
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -42,7 +42,7 @@ import (
 // @in cookie
 // @name session_id
 
-// @host      backend.sageconsolidated.com
+// @host      localhost:3333
 // @BasePath  /api/v1
 func main() {
 	cfg := config.SetupAPI()
@@ -87,9 +87,9 @@ func main() {
 
 	swaggerConfig := swagger.Config{
 		BasePath: "/api/v1",
-		FilePath: "./docs/swagger.json",
+		FilePath: "./docs/users/swagger.json",
 		Path:     "docs/api-docs",
-		Title:    "Sage API Documentation",
+		Title:    "Sage Users API Documentation",
 	}
 
 	app.Use(swagger.New(swaggerConfig))

@@ -27,3 +27,10 @@ type BulkIngestLogsRequest struct {
 	SourceID string              `json:"source_id" validate:"required,uuid"`
 	Events   []*IngestLogRequest `json:"events" validate:"required,min=1,dive"`
 }
+
+type IntegrateDataSource struct {
+	Provider string `json:"provider" validate:"required"`
+	ConnectionType string `json:"connection_type" validate:"required"`
+	Config map[string]interface{} `json:"config" validate:"required"`
+	Credentials map[string]interface{} `json:"credentials" validate:"required"`
+}

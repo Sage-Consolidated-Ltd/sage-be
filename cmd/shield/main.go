@@ -19,14 +19,31 @@ import (
 	"strings"
 	"syscall"
 
+	_ "sage-backend/docs/shield"
 	"sage-backend/pkg/crypto"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
+// @title           Sage API (Shield)
+// @version         1.0
+// @description     Documentation for the Sage API (Shield).
+// @termsOfService  http://swagger.io/terms/
+
+// @contact.name   API Support
+// @contact.url    http://www.swagger.io/support
+// @contact.email  support@swagger.io
+
+// @securityDefinitions.apikey SessionAuth
+// @in cookie
+// @name session_id
+
+// @host      localhost:3335
+// @BasePath  /api/v1
 func main() {
 	cfg := config.SetupShield()
 	db, err := db.ConnectDB(&cfg.BaseConfig)
@@ -36,6 +53,8 @@ func main() {
 	defer db.Close()
 
 	config.InitSessionStore(&cfg.BaseConfig)
+
+	restyClient := resty.New()
 
 	logger.Init(&cfg.BaseConfig)
 
@@ -65,7 +84,7 @@ func main() {
 
 	swaggerConfig := swagger.Config{
 		BasePath: "/api/v1",
-		FilePath: "./docs/swagger.json",
+		FilePath: "./docs/shield/swagger.json",
 		Path:     "docs/shield-docs",
 		Title:    "Sage API Documentation",
 	}
@@ -84,12 +103,25 @@ func main() {
 	authMiddleware := &middlewares.AuthMiddleware{}
 
 	integrationRepo := repositories.NewIntegrationRepository(db)
+	dataQualtyRepo := repositories.NewDataQualityRepository(db)
+	dataSourceRepo := repositories.NewDataSourceRepository(db)
+	eventRepo := repositories.NewSecurityEventRepository(db)
+	ingestionRepo := repositories.NewIngestionJobRepository(db)
+	parserRepo := repositories.NewParserRepository(db)
 
-	integrationServ := services.NewIntegrationService(integrationRepo, encryptor)
+	dataQualityServ := services.NewDataQualityService(dataQualtyRepo, parserRepo, dataSourceRepo, ingestionRepo)
+	logsDataServ := services.NewLogsDataService(dataSourceRepo, eventRepo, ingestionRepo)
+	logsServ := services.NewLogsService(eventRepo, dataSourceRepo, ingestionRepo)
+	parserServ := services.NewParserService(parserRepo, eventRepo, dataSourceRepo, ingestionRepo)
+	integrationServ := services.NewDataSourceService(dataSourceRepo, integrationRepo, encryptor, restyClient)
 
 	integrationHandler := handlers.NewIntegrationHandler(integrationServ)
+	eventHandler := handlers.NewEventHandler(logsServ)
+	logsDataHandler := handlers.NewLogsDataHandlerWithService(logsDataServ)
+	parserHandler := handlers.NewParserHandler(parserServ)
+	qualityHandler := handlers.NewQualityHandler(dataQualityServ)
 
-	routes.Setup(app, integrationHandler, authMiddleware)
+	routes.Setup(app, integrationHandler, qualityHandler, logsDataHandler, parserHandler, eventHandler, authMiddleware)
 
 	port := strings.TrimSpace(cfg.PORT)
 

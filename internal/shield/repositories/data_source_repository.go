@@ -3,13 +3,14 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
+	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shield/models"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 type DataSourceRepositoryInt interface {
@@ -27,10 +28,10 @@ type DataSourceRepositoryInt interface {
 }
 
 type DataSourceRepository struct {
-	db *sqlx.DB
+	db *db.DB
 }
 
-func NewDataSourceRepository(db *sqlx.DB) DataSourceRepositoryInt {
+func NewDataSourceRepository(db *db.DB) DataSourceRepositoryInt {
 	return &DataSourceRepository{db: db}
 }
 
@@ -92,12 +93,16 @@ func (r *DataSourceRepository) CreateDataSource(ctx context.Context, ds *models.
 	var createdAt, updatedAt time.Time
 	metaJSON := ds.Metadata
 	if metaJSON == nil {
-		metaJSON = make(map[string]interface{})
+		metaJSON = json.RawMessage{}
 	}
-	err := r.db.QueryRowContext(
+	metaJSONMarshalled, err := json.Marshal(ds.Metadata)
+	if err != nil {
+		return err
+	}
+	err = r.db.QueryRowContext(
 		ctx, CREATE_DATA_SOURCE,
 		ds.OrganizationID, ds.Name, ds.Description, ds.Type, ds.Provider,
-		ds.Status, ds.LastEventAt, ds.LastSyncAt, metaJSON,
+		ds.Status, ds.LastEventAt, ds.LastSyncAt, metaJSONMarshalled,
 	).Scan(&id, &createdAt, &updatedAt)
 	if err != nil {
 		return err
@@ -112,7 +117,7 @@ func (r *DataSourceRepository) CreateDataSource(ctx context.Context, ds *models.
 func (r *DataSourceRepository) UpdateDataSource(ctx context.Context, ds *models.DataSource) error {
 	metaJSON := ds.Metadata
 	if metaJSON == nil {
-		metaJSON = make(map[string]interface{})
+		metaJSON = json.RawMessage{}
 	}
 	result, err := r.db.ExecContext(
 		ctx, UPDATE_DATA_SOURCE,
@@ -154,17 +159,17 @@ func (r *DataSourceRepository) ListDataSources(ctx context.Context, orgID uuid.U
 	}
 	offset := (page - 1) * pageSize
 
-	status := ""
-	if s, ok := filters["status"].(string); ok {
-		status = s
+	var status *string
+	if s, ok := filters["status"].(string); ok && s != "" {
+		status = &s
 	}
-	typ := ""
-	if t, ok := filters["type"].(string); ok {
-		typ = t
+	var typ *string
+	if t, ok := filters["type"].(string); ok && t != "" {
+		typ = &t
 	}
-	search := ""
-	if s, ok := filters["search"].(string); ok {
-		search = s
+	var search *string
+	if s, ok := filters["search"].(string); ok && s != "" {
+		search = &s
 	}
 
 	var total int

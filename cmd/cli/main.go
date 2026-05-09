@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/urfave/cli/v2"
 )
@@ -32,8 +33,16 @@ func main() {
 					fmt.Printf("Redis: %s\n", c.String("redis-addr"))
 					fmt.Printf("Concurrency: %d\n", c.Int("concurrency"))
 					// In production, this would execute: go run cmd/worker/main.go
-					fmt.Println("Run: go run cmd/worker/main.go")
-					return nil
+					fmt.Println("Running: go run cmd/worker/main.go")
+					cmd := exec.Command(
+						"go",
+						"run", 
+						"./cmd/worker",
+					)
+					cmd.Stdout = os.Stdout
+					cmd.Stderr = os.Stderr
+
+					return cmd.Start()
 				},
 			},
 			{

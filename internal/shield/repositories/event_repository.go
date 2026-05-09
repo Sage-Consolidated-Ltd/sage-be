@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/models"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 type SecurityEventRepositoryInt interface {
@@ -27,10 +27,10 @@ type SecurityEventRepositoryInt interface {
 }
 
 type SecurityEventRepository struct {
-	db *sqlx.DB
+	db *db.DB
 }
 
-func NewSecurityEventRepository(db *sqlx.DB) SecurityEventRepositoryInt {
+func NewSecurityEventRepository(db *db.DB) SecurityEventRepositoryInt {
 	return &SecurityEventRepository{db: db}
 }
 

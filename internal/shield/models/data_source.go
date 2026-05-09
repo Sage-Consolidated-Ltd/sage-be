@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,7 +41,7 @@ type DataSource struct {
 	LastSyncAt       *time.Time             `db:"last_sync_at,omitempty" json:"last_sync_at,omitempty"`
 	ErrorCount       int64                  `db:"error_count" json:"error_count"`
 	DelayedByMinutes int                    `db:"delayed_by_minutes" json:"delayed_by_minutes"`
-	Metadata         map[string]interface{} `db:"metadata" json:"metadata"`
+	Metadata         json.RawMessage `db:"metadata" json:"metadata"`
 	CreatedAt        time.Time              `db:"created_at" json:"created_at"`
 	UpdatedAt        time.Time              `db:"updated_at" json:"updated_at"`
 	DeletedAt        *time.Time             `db:"deleted_at,omitempty" json:"deleted_at,omitempty"`
@@ -59,7 +60,7 @@ type DataSourceResponse struct {
 	LastSyncAt       *time.Time             `json:"last_sync_at,omitempty"`
 	ErrorCount       int64                  `json:"error_count"`
 	DelayedByMinutes int                    `json:"delayed_by_minutes"`
-	Metadata         map[string]interface{} `json:"metadata,omitempty"`
+	Metadata         json.RawMessage        `json:"metadata,omitempty"`
 	CreatedAt        time.Time              `json:"created_at"`
 	UpdatedAt        time.Time              `json:"updated_at"`
 }
@@ -67,7 +68,7 @@ type DataSourceResponse struct {
 func (d *DataSource) ToResponse() *DataSourceResponse {
 	meta := d.Metadata
 	if meta == nil {
-		meta = make(map[string]interface{})
+		meta = json.RawMessage{}
 	}
 	return &DataSourceResponse{
 		ID:               d.ID.String(),

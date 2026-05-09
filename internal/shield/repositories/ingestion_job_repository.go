@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"time"
 
+	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shield/models"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 type IngestionJobRepositoryInt interface {
@@ -20,10 +20,10 @@ type IngestionJobRepositoryInt interface {
 }
 
 type IngestionJobRepository struct {
-	db *sqlx.DB
+	db *db.DB
 }
 
-func NewIngestionJobRepository(db *sqlx.DB) IngestionJobRepositoryInt {
+func NewIngestionJobRepository(db *db.DB) IngestionJobRepositoryInt {
 	return &IngestionJobRepository{db: db}
 }
 

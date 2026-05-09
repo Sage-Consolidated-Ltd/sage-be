@@ -5,11 +5,11 @@ import (
 	"database/sql"
 	"time"
 
+	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shield/models"
 
 	"github.com/google/uuid"
-	"github.com/jmoiron/sqlx"
 )
 
 type DataQualityRepositoryInt interface {
@@ -25,10 +25,10 @@ type DataQualityRepositoryInt interface {
 }
 
 type DataQualityRepository struct {
-	db *sqlx.DB
+	db *db.DB
 }
 
-func NewDataQualityRepository(db *sqlx.DB) DataQualityRepositoryInt {
+func NewDataQualityRepository(db *db.DB) DataQualityRepositoryInt {
 	return &DataQualityRepository{db: db}
 }
 

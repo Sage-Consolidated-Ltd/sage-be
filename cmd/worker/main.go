@@ -7,11 +7,11 @@ import (
 	"syscall"
 
 	"sage-backend/internal/shared/config"
+	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shield/repositories"
 	"sage-backend/internal/shield/tasks"
 
 	"github.com/hibiken/asynq"
-	"github.com/jmoiron/sqlx"
 )
 
 func main() {
@@ -19,7 +19,7 @@ func main() {
 	cfg := config.SetupShield()
 
 	// Initialize database
-	db, err := sqlx.Connect("postgres", cfg.DatabaseUrl)
+	db, err := db.ConnectDB(&cfg.BaseConfig)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
