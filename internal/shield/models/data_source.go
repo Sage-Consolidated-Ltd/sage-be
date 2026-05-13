@@ -88,3 +88,14 @@ func (d *DataSource) ToResponse() *DataSourceResponse {
 		UpdatedAt:        d.UpdatedAt,
 	}
 }
+
+type NormalizedEvent struct {
+	ID          string                 `json:"id"`
+	Provider    string                 `json:"provider"`
+	EventType   string                 `json:"event_type"`
+	UserID      string                 `json:"user_id"`
+	UserName    string                 `json:"user_name"`
+	IPAddress   string                 `json:"ip_address"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Raw         map[string]interface{} `json:"raw"`
+}

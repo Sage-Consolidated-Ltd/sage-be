@@ -62,8 +62,8 @@ func (m *mockUserRepo) UpdateUserPassword(ctx context.Context, email string, has
 	return nil
 }
 
-func (m *mockUserRepo) OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) error {
-	return nil
+func (m *mockUserRepo) OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) (*models.User, error) {
+	return nil, nil
 }
 
 func (m *mockUserRepo) UpdateUser(ctx context.Context, id string, req *requests.UpdateProfileRequest) error {

@@ -176,6 +176,8 @@ func (h *TaskHandler) HandleValidationJob(ctx context.Context, t *asynq.Task) er
 	return nil
 }
 
+
+
 func intPtr(i int) *int {
 	return &i
 }

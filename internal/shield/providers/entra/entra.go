@@ -3,47 +3,43 @@ package entra
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/redis/go-redis/v9"
 )
 
-type EntraProvider struct {
-	client *resty.Client
-	TenantID     string
-	ClientID     string
-	ClientSecret string
-}
+func NewEntraProvider(tenantID, clientID, clientSecret string, client *resty.Client, redisURL string,
+	pollIntervalSec int) (*EntraProvider, error) {
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		return nil, fmt.Errorf("invalid redis URL: %w", err)
+	}
+	
+	redisClient := redis.NewClient(opts)
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+		return nil, fmt.Errorf("redis connection failed: %w", err)
+	}
 
-func NewEntraProvider(tenantID, clientID, clientSecret string) *EntraProvider {
-	client := resty.New()
+	client.SetTimeout(30 *time.Second)
+
 	return &EntraProvider{
-		client: client,
+		RestyClient: client,
 		TenantID: tenantID,
 		ClientID: clientID,
 		ClientSecret: clientSecret,
-	}
+		RedisClient:     redisClient,
+		PollIntervalSec: pollIntervalSec,
+		BackoffSec:    30,
+		MaxBackoffSec: 600,
+		QueueKey:      "azure_ad:events",
+		CheckpointKey: "azure_ad:checkpoint",
+		DlqKey:        "azure_ad:dlq",
+		BaseUrl: "https://graph.microsoft.com/v1.0",
+	}, nil
 }
 
 func (e *EntraProvider) Verify(ctx context.Context) error {
-	url := fmt.Sprintf("https://login.microsoftonline.com/%s/oauth2/v2.0/token", e.TenantID)
-
-	resp, err := e.client.R().
-		SetContext(ctx).
-		SetFormData(map[string]string{
-			"client_id":     e.ClientID,
-			"client_secret": e.ClientSecret,
-			"grant_type":    "client_credentials",
-			"scope":         "https://graph.microsoft.com/.default",
-		}).
-		Post(url)
-
-	if err != nil {
-		return err
-	}
-
-	if resp.IsSuccess() {
-		return nil
-	}
-
-	return fmt.Errorf("failed to authenticate with entra: %s", resp.Status())
+	_, err := e.getToken(ctx)
+	return err
 }

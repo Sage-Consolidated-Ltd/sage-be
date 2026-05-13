@@ -3,15 +3,18 @@ package providers
 import (
 	"context"
 	"fmt"
+	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/providers/entra"
-	"sage-backend/internal/shield/providers/okta"
-	"strings"
+
+	// "sage-backend/internal/shield/providers/okta"
+	// "strings"
 
 	"github.com/go-resty/resty/v2"
 )
 
 type Provider interface {
 	Verify(ctx context.Context) error
+	Collect(ctx context.Context) ([]models.NormalizedEvent, error)
 }
 
 type OktaCredentials struct {
@@ -33,23 +36,23 @@ func NewProvider(
 
 	switch provider {
 
-	case "okta":
-		creds, ok := providerCreds.(OktaCredentials) 
-		if !ok {
-			return nil, fmt.Errorf("invalid okta config")
-		}
+	// case "okta":
+	// 	creds, ok := providerCreds.(OktaCredentials) 
+	// 	if !ok {
+	// 		return nil, fmt.Errorf("invalid okta config")
+	// 	}
 
-		if creds.Domain == "" || creds.Token == "" {
-			return nil, fmt.Errorf("missing okta config")
-		}
+	// 	if creds.Domain == "" || creds.Token == "" {
+	// 		return nil, fmt.Errorf("missing okta config")
+	// 	}
 
-		// normalize domain
-		if !strings.HasPrefix(creds.Domain, "http") {
-			creds.Domain = "https://" + creds.Domain
-		}
-		creds.Domain = strings.TrimRight(creds.Domain, "/")
+	// 	// normalize domain
+	// 	if !strings.HasPrefix(creds.Domain, "http") {
+	// 		creds.Domain = "https://" + creds.Domain
+	// 	}
+	// 	creds.Domain = strings.TrimRight(creds.Domain, "/")
 
-		return okta.NewOktaProvider(creds.Domain, creds.Token), nil
+	// 	return okta.NewOktaProvider(creds.Domain, creds.Token, client), nil
 
 	case "entra":
 		creds, ok := providerCreds.(EntraCredentials)
@@ -61,13 +64,54 @@ func NewProvider(
 			return nil, fmt.Errorf("missing entra config")
 		}
 
-		return entra.NewEntraProvider(
+		entraProvider, err := entra.NewEntraProvider(
 			creds.TenantID,
 			creds.ClientID,
 			creds.ClientSecret,
-		), nil
+			client,
+			"redis://localhost:6379/0",
+			300,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create entra provider: %w", err)
+		}
+
+		return entraProvider, nil
 
 	default:
 		return nil, fmt.Errorf("unsupported provider")
+	}
+}
+
+func LaunchProviderSync(provider string, credentials map[string]string, client *resty.Client) (Provider, error) {
+	switch provider {
+
+	case "entra":
+		tenantID := credentials["tenant_id"]
+		clientID := credentials["client_id"]
+		clientSecret := credentials["client_secret"]
+
+		if tenantID == "" ||
+			clientID == "" ||
+			clientSecret == "" {
+			return nil, fmt.Errorf(
+				"missing entra config",
+			)
+		}
+
+		return NewProvider(
+			provider,
+			EntraCredentials{
+				TenantID: credentials["tenant_id"],
+				ClientID: credentials["client_id"],
+				ClientSecret: credentials["client_secret"],
+			},
+			client,
+		)
+
+	default:
+		return nil, fmt.Errorf(
+			"unsupported provider",
+		)
 	}
 }

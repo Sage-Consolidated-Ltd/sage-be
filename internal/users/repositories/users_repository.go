@@ -20,7 +20,7 @@ type UsersRepositoryInt interface {
 	Enable2FA(ctx context.Context, secret string, userID string) error
 	GetTOTPSecret(ctx context.Context, userID string) (string, error)
 	UpdateUserPassword(ctx context.Context, email string, hash string) error
-	OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) error
+	OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) (*models.User, error)
 	UpdateUser(ctx context.Context, id string, req *requests.UpdateProfileRequest) error
 }
 
@@ -33,7 +33,7 @@ var (
 	time_zone,
 	password_hash
 	) VALUES ($1, $2, $3, $4, $5)
-	RETURNING id;
+	RETURNING *;
 	`
 	GET_USER_BY_EMAIL = `
 	SELECT * FROM users WHERE email = $1
@@ -259,38 +259,38 @@ func (r *UsersRepository) UpdateUserPassword(ctx context.Context, email string, 
 	}
 	return nil
 }
-func (r *UsersRepository) OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) error {
-	tx, err := r.db.BeginTx(ctx, nil)
+func (r *UsersRepository) OnboardUserWithTransaction(ctx context.Context, req *requests.OnboardingRequest, hash string) (*models.User, error) {
+	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer tx.Rollback()
 
-	var userId string
-	err = tx.QueryRowContext(ctx, CREATE_USER, req.FirstName, req.LastName, req.Email, req.TimeZone, hash).Scan(&userId)
+	var user models.User
+	err = tx.QueryRowxContext(ctx, CREATE_USER, req.FirstName, req.LastName, req.Email, req.TimeZone, hash).StructScan(&user)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var orgId string
-	err = tx.QueryRowContext(ctx, CREATE_ORGANIZATION, req.CompanyName, userId, req.IndustryId).Scan(&orgId)
+	err = tx.QueryRowContext(ctx, CREATE_ORGANIZATION, req.CompanyName, user.ID, req.IndustryId).Scan(&orgId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var roleId string
 	if err = tx.QueryRowContext(ctx, GET_ORGANIZATION_ROLE_ID, "owner").Scan(&roleId); err != nil {
-		return err
+		return nil, err
 	}
 
-	_, err = tx.ExecContext(ctx, ADD_USER_TO_ORGANIZATION, orgId, userId, roleId, "active")
+	_, err = tx.ExecContext(ctx, ADD_USER_TO_ORGANIZATION, orgId, user.ID, roleId, "active")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = tx.Commit(); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &user, nil
 }

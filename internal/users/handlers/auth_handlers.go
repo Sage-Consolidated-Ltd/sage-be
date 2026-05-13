@@ -38,13 +38,42 @@ func (a *AuthHandler) CreateUser(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
 
-	err := a.authServ.CreateUserWithOrganization(c.Context(), &req)
+	sess, _ := config.Store.Get(c)
+
+	resp, err := a.authServ.CreateUserWithOrganization(c.Context(), &req)
 	if err != nil {
 		logger.Error("Error with AuthHandler.CreateUser: ", zap.Error(err))
 		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
 		}
 		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	if !resp.IsVerified {
+		sess.Set("userID", resp.ID)
+		sess.Set("pending_email_verification", true)
+		if err := sess.Save(); err != nil {
+			return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
+		}
+	}
+
+	var orgID string
+	if len(resp.Organization) > 0 {
+		for _, org := range resp.Organization {
+			if org.OwnerID == resp.ID {
+				orgID = org.ID
+			}
+		}
+	}
+
+	if _, err := config.SetSession(c, config.SessionParam{
+		ID:             resp.ID,
+		Role:           string(resp.Role),
+		Email:          resp.Email,
+		OrganizationId: orgID,
+	}); err != nil {
+		logger.Error("Error with AuthHandler.CreateUser: ", zap.Error(err))
+		return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
 	}
 
 	return response.JSON(c, fiber.StatusOK, "User and organization created successfully.", nil)
@@ -415,6 +444,7 @@ func (a *AuthHandler) VerifyEmail(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
 
+	sess, _ := config.Store.Get(c)
 	err := a.authServ.VerifyEmail(c.Context(), req.Token)
 	if err != nil {
 		logger.Error("Error with AuthHandler.VerifyEmail: ", zap.Error(err))
@@ -423,6 +453,9 @@ func (a *AuthHandler) VerifyEmail(c *fiber.Ctx) error {
 		}
 		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
+
+	sess.Delete("pending_email_verification")
+	sess.Save()
 
 	return response.JSON(c, fiber.StatusOK, "Email verified successfully", nil)
 }

@@ -35,7 +35,7 @@ type AuthServiceInt interface {
 	ForgotPassword(ctx context.Context, email string) error
 	VerifyResetToken(ctx context.Context, token string) error
 	ResetPassword(ctx context.Context, req *requests.ResetPasswordRequest, token string) error
-	CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) error
+	CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) (*models.GetUserResponse, error)
 	SendEmailVerification(ctx context.Context, email string) error
 	VerifyEmail(ctx context.Context, token string) error
 }
@@ -95,38 +95,45 @@ func (s *AuthService) CreateUser(ctx context.Context, req *requests.CreateUserRe
 	// NOTE - should send mail to user for verification of email
 	return nil
 }
-func (s *AuthService) CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) error {
+func (s *AuthService) CreateUserWithOrganization(ctx context.Context, req *requests.OnboardingRequest) (*models.GetUserResponse, error) {
 	// check if email already exists
 	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
 	if user != nil {
-		return apperrors.ConflictError("EMAIL ALREADY EXISTS")
+		return nil, apperrors.ConflictError("EMAIL ALREADY EXISTS")
 	}
 	if err != nil {
 		var appErr *apperrors.ErrorResponse
 		if !errors.As(err, &appErr) {
-			return err
+			return nil, err
 		}
 	}
 
 	// check if industry is valid
 	_, err = s.companyRepo.GetIndustryByID(ctx, req.IndustryId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// hash password
 	hash, err := utils.HashPassword(req.Password)
 	if err != nil {
-		return fmt.Errorf("Error hashing password: %s", err)
+		return nil, fmt.Errorf("Error hashing password: %s", err)
 	}
 
 	// create user and organization
-	err = s.userRepo.OnboardUserWithTransaction(ctx, req, hash)
+	user, err = s.userRepo.OnboardUserWithTransaction(ctx, req, hash)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	orgs, err := s.userRepo.GetUserOrganizations(ctx, user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := user.ToResponse(orgs)
+
+	return resp, nil
 }
 func (s *AuthService) OAuthLogin(ctx context.Context, payload *requests.CreateUserRequest) (*models.GetUserResponse, error) {
 	user, err := s.userRepo.GetUserByEmail(ctx, payload.Email)

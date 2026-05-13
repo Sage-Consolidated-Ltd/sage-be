@@ -23,6 +23,10 @@ func (am *AuthMiddleware) RequireAuth(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "2FA verification required"})
 	}
 
+	if sess.Get("pending_email_verification") != nil {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Email verification required"})
+	}
+
 	c.Locals("session", sess)
 	return c.Next()
 }

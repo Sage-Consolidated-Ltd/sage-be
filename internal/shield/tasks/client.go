@@ -12,10 +12,37 @@ type TaskClient struct {
 	client *asynq.Client
 }
 
+const TypeProviderSync = "provider:sync"
+
 func NewTaskClient(redisAddr string) *TaskClient {
 	return &TaskClient{
 		client: asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr}),
 	}
+}
+
+func (c *TaskClient) EnqueueProviderSync(ctx context.Context, orgID uuid.UUID, sourceID uuid.UUID) error {
+	payload, err := json.Marshal(
+		map[string]interface{}{
+			"organization_id": orgID,
+			"source_id":       sourceID,
+		},
+	)
+
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(
+		TypeProviderSync,
+		payload,
+	)
+
+	_, err = c.client.Enqueue(
+		task,
+		asynq.MaxRetry(5),
+	)
+
+	return err
 }
 
 // EnqueueIngestJob enqueues an ingestion job
