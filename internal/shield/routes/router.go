@@ -34,13 +34,13 @@ func Setup(
 	})
 }
 func RegisterLogsDataRoutes(
-	router fiber.Router, 
-	ldh *handlers.LogsDataHandler, 
-	ph *handlers.ParserHandler, 
-	qh *handlers.QualityHandler, 
-	ih *handlers.IntegrationHandler, 
+	router fiber.Router,
+	ldh *handlers.LogsDataHandler,
+	ph *handlers.ParserHandler,
+	qh *handlers.QualityHandler,
+	ih *handlers.IntegrationHandler,
 	m *middlewares.AuthMiddleware,
-	) {
+) {
 	integrations := router.Group("/integrations")
 	integrations.Post("/", m.RequireAuth, ih.IntegrateDataSource)
 

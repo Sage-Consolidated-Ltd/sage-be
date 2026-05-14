@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/repositories"
 
@@ -14,12 +15,15 @@ import (
 	"github.com/hibiken/asynq"
 )
 
-const (
-	TypeIngestJob      = "ingest:job"
-	TypeSyncJob        = "sync:job"
-	TypeQualityScanJob = "quality:scan:job"
-	TypeValidationJob  = "validation:job"
-)
+// Task type constants are now defined in client.go
+// const (
+// 	TypeIngestJob          = "ingest:job"
+// 	TypeSyncJob            = "sync:job"
+// 	TypeQualityScanJob     = "quality:scan:job"
+// 	TypeValidationJob      = "validation:job"
+// 	TypeProviderEventBatch = "provider:event-batch"
+// 	TypeProviderSync       = "provider:sync"
+// )
 
 type TaskHandler struct {
 	jobRepo        repositories.IngestionJobRepositoryInt
@@ -176,7 +180,58 @@ func (h *TaskHandler) HandleValidationJob(ctx context.Context, t *asynq.Task) er
 	return nil
 }
 
+func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Task) error {
+	var payload struct {
+		OrganizationID uuid.UUID                `json:"organization_id"`
+		SourceID       uuid.UUID                `json:"source_id"`
+		Provider       string                   `json:"provider"`
+		Events         []models.NormalizedEvent `json:"events"`
+	}
 
+	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal provider event batch: %w", err)
+	}
+
+	if len(payload.Events) == 0 {
+		return nil
+	}
+
+	var events []*models.SecurityEvent
+	var latest time.Time
+	for _, ev := range payload.Events {
+		if ev.Timestamp.After(latest) {
+			latest = ev.Timestamp
+		}
+		idCopy := ev.ID
+		ipCopy := ev.IPAddress
+		userCopy := ev.UserName
+		events = append(events, &models.SecurityEvent{
+			OrganizationID:    payload.OrganizationID,
+			SourceID:          payload.SourceID,
+			SourceEventID:     &idCopy,
+			Source:            payload.Provider,
+			EventType:         ev.EventType,
+			IPAddress:         &ipCopy,
+			ActorUsername:     &userCopy,
+			RawPayload:        ev.Raw,
+			NormalizedPayload: map[string]interface{}{"user_id": ev.UserID},
+			ParseStatus:       types.ParseStatusPending,
+			OccurredAt:        ev.Timestamp,
+		})
+	}
+
+	if err := h.eventRepo.BulkCreateEvents(ctx, events); err != nil {
+		return err
+	}
+
+	now := time.Now()
+	if err := h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, int64(len(events)), int64(len(events)), 0, &latest, &now); err != nil {
+		log.Printf("Failed to update data source metrics: %v", err)
+	}
+
+	log.Printf("Persisted %d events for source %s", len(events), payload.SourceID)
+	return nil
+}
 
 func intPtr(i int) *int {
 	return &i

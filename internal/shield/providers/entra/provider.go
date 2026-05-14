@@ -9,23 +9,23 @@ import (
 )
 
 type EntraProvider struct {
-	RestyClient       *resty.Client
-	TenantID     string
-	ClientID     string
-	ClientSecret string
+	RestyClient     *resty.Client
+	TenantID        string
+	ClientID        string
+	ClientSecret    string
 	RedisClient     *redis.Client
 	PollIntervalSec int
- 
+
 	// Rate limiting
 	BackoffSec     int
 	MaxBackoffSec  int
 	ConsecutiveErr int
- 
+
 	// Token management
-	AccessToken   string
+	AccessToken    string
 	TokenExpiresAt time.Time
-	TokenMutex    sync.RWMutex
- 
+	TokenMutex     sync.RWMutex
+
 	QueueKey      string
 	CheckpointKey string
 	DlqKey        string

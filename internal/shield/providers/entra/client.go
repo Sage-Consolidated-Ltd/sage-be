@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -64,7 +65,7 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 		if err := json.Unmarshal([]byte(checkpointJSON), &checkpoint); err != nil {
 			log.Printf("Failed to parse checkpoint: %v", err)
 			lastCreatedTime = time.Now().Add(-24 * time.Hour).Format(time.RFC3339)
-		}else {
+		} else {
 			lastCreatedTime = checkpoint.LastCreatedTime
 		}
 	} else {
@@ -73,10 +74,19 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 
 	log.Printf("Polling from checkpoint: %s", lastCreatedTime)
 
-	filter := fmt.Sprintf("createdDateTime gt %s", lastCreatedTime)
+	filter := fmt.Sprintf(
+		"createdDateTime gt %s",
+		lastCreatedTime,
+	)
+
+	params := url.Values{}
+	params.Add("$filter", filter)
+	params.Add("$top", "999")
+	params.Add("$orderby", "createdDateTime desc")
+
 	url := fmt.Sprintf(
-		"https://graph.microsoft.com/v1.0/auditLogs/signIns?$filter=%s&$top=999&$orderby=createdDateTime desc",
-		filter,
+		"https://graph.microsoft.com/v1.0/auditLogs/signIns?%s",
+		params.Encode(),
 	)
 
 	var graphResp GraphResponse
@@ -86,8 +96,11 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 		SetResult(&graphResp).
 		Get(url)
 	if err != nil {
+		log.Printf("Error fetching sign in logs: %s", err.Error())
 		return nil, fmt.Errorf("failed to fetch sign-in logs: %w", err)
 	}
+
+	log.Printf("Received Response: %v", graphResp.Value)
 
 	if resp.StatusCode() == http.StatusTooManyRequests {
 		retryAfter := resp.Header().Get("Retry-After")

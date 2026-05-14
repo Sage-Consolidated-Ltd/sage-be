@@ -145,6 +145,9 @@ func (m *mockDataSourceRepo) GetSourcesWithIssues(ctx context.Context, orgID uui
 	}
 	return args.Get(0).([]*models.DataSource), args.Error(1)
 }
+func (m *mockDataSourceRepo) ListAllActiveDataSources(ctx context.Context) ([]*models.DataSource, error) {
+	return nil, nil
+}
 
 type mockJobRepo struct {
 	mock.Mock

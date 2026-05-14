@@ -1,8 +1,7 @@
 package handlers
 
 import (
-	_"sage-backend/internal/shared/response"
-	
+	_ "sage-backend/internal/shared/response"
 )
 
 // @Summary Get Ingestion Health Summary
@@ -13,7 +12,7 @@ import (
 // @Security SessionAuth
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/ingestion-health [get]
-func _GetIngestionHealth(){}
+func _GetIngestionHealth() {}
 
 // @Summary Refresh Ingestion Health
 // @Description Queues a background job to refresh ingestion health metrics.
@@ -23,7 +22,7 @@ func _GetIngestionHealth(){}
 // @Security SessionAuth
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/ingestion-health/refresh [post]
-func _RefreshIngestionHealth(){}
+func _RefreshIngestionHealth() {}
 
 // @Summary List Data Sources
 // @Description Returns connected data sources with ingestion status, events today, last event time, and health status.
@@ -38,7 +37,7 @@ func _RefreshIngestionHealth(){}
 // @Param status query string false "Source status"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/sources [get]
-func _ListSources(){}
+func _ListSources() {}
 
 // @Summary Get Data Source Detail
 // @Description Returns detailed health and metadata for a single data source.
@@ -49,7 +48,7 @@ func _ListSources(){}
 // @Param id path string true "Data Source ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/sources/{id} [get]
-func _GetSource(){}
+func _GetSource() {}
 
 // @Summary Sync Data Source
 // @Description Manually queues a sync job for a data source.
@@ -60,7 +59,7 @@ func _GetSource(){}
 // @Param id path string true "Data Source ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/sources/{id}/sync [post]
-func _SyncSource(){}
+func _SyncSource() {}
 
 // @Summary Disconnect Data Source
 // @Description Disconnects a data source and stops future ingestion while preserving historical logs.
@@ -71,7 +70,7 @@ func _SyncSource(){}
 // @Param id path string true "Data Source ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/sources/{id}/disconnect [post]
-func _DisconnectSource(){}
+func _DisconnectSource() {}
 
 // @Summary View Source Logs
 // @Description Returns logs ingested from a specific data source.
@@ -88,7 +87,7 @@ func _DisconnectSource(){}
 // @Param end_time query string false "End time"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/sources/{id}/logs [get]
-func _GetSourceLogs(){}
+func _GetSourceLogs() {}
 
 // @Summary Get Ingestion Volume Over Time
 // @Description Returns time-series ingestion volume for charts, optionally filtered by source.
@@ -102,7 +101,7 @@ func _GetSourceLogs(){}
 // @Param source_id query string false "Data source ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/ingestion-health/volume [get]
-func _GetIngestionVolume(){}
+func _GetIngestionVolume() {}
 
 // @Summary Get Ingestion Notifications
 // @Description Returns ingestion warnings and AI insights related to source delays, drops, parsing errors, and schema changes.
@@ -112,7 +111,7 @@ func _GetIngestionVolume(){}
 // @Security SessionAuth
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/ingestion-health/notifications [get]
-func _GetIngestionNotifications(){}
+func _GetIngestionNotifications() {}
 
 // @Summary Download Ingestion Health Report
 // @Description Downloads ingestion health report in csv, pdf, or json format.
@@ -125,4 +124,4 @@ func _GetIngestionNotifications(){}
 // @Param end_time query string false "End time"
 // @Success 200 {file} file
 // @Router /integrations/logs-data/ingestion-health/report [get]
-func _DownloadIngestionHealthReport(){}
+func _DownloadIngestionHealthReport() {}

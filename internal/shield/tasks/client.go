@@ -4,15 +4,24 @@ import (
 	"context"
 	"encoding/json"
 
+	"sage-backend/internal/shield/models"
+
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+)
+
+const (
+	TypeProviderSync       = "provider:sync"
+	TypeProviderEventBatch = "provider:event-batch"
+	TypeIngestJob          = "ingest:job"
+	TypeSyncJob            = "sync:job"
+	TypeQualityScanJob     = "quality:scan:job"
+	TypeValidationJob      = "validation:job"
 )
 
 type TaskClient struct {
 	client *asynq.Client
 }
-
-const TypeProviderSync = "provider:sync"
 
 func NewTaskClient(redisAddr string) *TaskClient {
 	return &TaskClient{
@@ -42,6 +51,22 @@ func (c *TaskClient) EnqueueProviderSync(ctx context.Context, orgID uuid.UUID, s
 		asynq.MaxRetry(5),
 	)
 
+	return err
+}
+
+func (c *TaskClient) EnqueueProviderEventBatch(ctx context.Context, orgID uuid.UUID, sourceID uuid.UUID, provider string, events []models.NormalizedEvent) error {
+	payload, err := json.Marshal(map[string]interface{}{
+		"organization_id": orgID,
+		"source_id":       sourceID,
+		"provider":        provider,
+		"events":          events,
+	})
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(TypeProviderEventBatch, payload)
+	_, err = c.client.Enqueue(task)
 	return err
 }
 

@@ -41,7 +41,7 @@ type GetUserResponse struct {
 	CreatedAt        time.Time                 `json:"created_at"`
 	Organization     []GetOrganizationResponse `json:"organization,omitempty"`
 	TimeZone         *string                   `json:"time_zone,omitempty"`
-	IsVerified       bool           `json:"is_verified" db:"is_verified"`
+	IsVerified       bool                      `json:"is_verified" db:"is_verified"`
 }
 
 func (u *User) ToResponse(orgs *[]Organization) *GetUserResponse {
@@ -60,7 +60,7 @@ func (u *User) ToResponse(orgs *[]Organization) *GetUserResponse {
 		TwoFactorEnabled: u.TwoFactorEnabled,
 		TimeZone:         &u.TimeZone.String,
 		CreatedAt:        u.CreatedAt,
-		IsVerified: u.IsVerified,
+		IsVerified:       u.IsVerified,
 		Organization:     organizationsResp,
 	}
 }

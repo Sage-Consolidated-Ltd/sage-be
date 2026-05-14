@@ -62,6 +62,6 @@ func (p *EntraProvider) IsExpiringSoon() bool {
 	if p.AccessToken == "" {
 		return true
 	}
- 
-	return time.Now().After(p.TokenExpiresAt.Add(-5*time.Minute))
+
+	return time.Now().After(p.TokenExpiresAt.Add(-5 * time.Minute))
 }

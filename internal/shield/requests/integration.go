@@ -5,7 +5,7 @@ type CreateIntegrationRequest struct {
 	Provider       string `json:"provider" validate:"required"`
 	ConnectionType string `json:"connection_type" validate:"required"`
 
-	Okta *OktaParams `json:"okta,omitempty"`
+	Okta  *OktaParams  `json:"okta,omitempty"`
 	Entra *EntraParams `json:"entra,omitempty"`
 }
 

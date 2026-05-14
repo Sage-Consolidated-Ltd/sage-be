@@ -20,18 +20,18 @@ type DataSourceServiceInt interface {
 }
 
 type DataSourceService struct {
-	dataSourceRepo repositories.DataSourceRepositoryInt
+	dataSourceRepo  repositories.DataSourceRepositoryInt
 	integrationRepo repositories.IntegrationRepositoryInt
 	encryptor       crypto.Encryptor
-	client *resty.Client
+	client          *resty.Client
 }
 
 func NewDataSourceService(dataSourceRepo repositories.DataSourceRepositoryInt, integrationRepo repositories.IntegrationRepositoryInt, encryptor crypto.Encryptor, client *resty.Client) DataSourceServiceInt {
 	return &DataSourceService{
-		dataSourceRepo: dataSourceRepo,
+		dataSourceRepo:  dataSourceRepo,
 		integrationRepo: integrationRepo,
-		encryptor:        encryptor,
-		client:             client,
+		encryptor:       encryptor,
+		client:          client,
 	}
 }
 
@@ -41,10 +41,10 @@ func (s *DataSourceService) CreateDataSource(ctx context.Context, orgID uuid.UUI
 
 	var (
 		provider providers.Provider
-		err error
+		err      error
 
 		credentialMap map[string]string
-		metadata map[string]interface{}
+		metadata      map[string]interface{}
 	)
 
 	switch req.Provider {
@@ -95,8 +95,8 @@ func (s *DataSourceService) CreateDataSource(ctx context.Context, orgID uuid.UUI
 		}
 
 		credentialMap = map[string]string{
-			"tenant_id": req.Entra.TenantID,
-			"client_id": req.Entra.ClientID,
+			"tenant_id":     req.Entra.TenantID,
+			"client_id":     req.Entra.ClientID,
 			"client_secret": req.Entra.ClientSecret,
 		}
 
@@ -152,8 +152,6 @@ func (s *DataSourceService) CreateDataSource(ctx context.Context, orgID uuid.UUI
 
 	return s.integrationRepo.CreateDataSourceWithCredentialsBulk(ctx, &creds, ds)
 }
-
-
 
 // import (
 // 	"context"

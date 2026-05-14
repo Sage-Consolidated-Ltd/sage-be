@@ -20,6 +20,15 @@ func (p *EntraProvider) Collect(
 	var events []models.NormalizedEvent
 
 	for _, e := range signIns {
+		raw := map[string]interface{}{
+			"id":              e.ID,
+			"userDisplayName": e.UserDisplayName,
+			"userId":          e.UserID,
+			"appDisplayName":  e.AppDisplayName,
+			"ipAddress":       e.IPAddress,
+			"createdDateTime": e.CreatedDateTime,
+			"status":          e.Status,
+		}
 
 		timestamp, _ := time.Parse(
 			time.RFC3339,
@@ -36,6 +45,7 @@ func (p *EntraProvider) Collect(
 				UserName:  e.UserDisplayName,
 				IPAddress: e.IPAddress,
 				Timestamp: timestamp,
+				Raw:       raw,
 			},
 		)
 	}

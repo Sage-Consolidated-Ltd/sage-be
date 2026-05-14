@@ -19,7 +19,6 @@ func NewQualityHandler(service services.DataQualityServiceInt) *QualityHandler {
 	return &QualityHandler{service: service}
 }
 
-
 func (h *QualityHandler) GetDataQualitySummary(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {

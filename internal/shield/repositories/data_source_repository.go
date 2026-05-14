@@ -25,6 +25,7 @@ type DataSourceRepositoryInt interface {
 	DeleteDataSource(ctx context.Context, id uuid.UUID, orgID uuid.UUID) error
 	GetAggregatedHealth(ctx context.Context, orgID uuid.UUID) (totalEvents, activeSources, delayedSources, errorSources int64, err error)
 	GetSourcesWithIssues(ctx context.Context, orgID uuid.UUID) ([]*models.DataSource, error)
+	ListAllActiveDataSources(ctx context.Context) ([]*models.DataSource, error)
 }
 
 type DataSourceRepository struct {
@@ -64,6 +65,11 @@ const (
 			AND ($4::varchar IS NULL OR name ILIKE '%' || $4 || '%' OR description ILIKE '%' || $4 || '%')
 		ORDER BY created_at DESC
 		LIMIT $5 OFFSET $6
+	`
+	LIST_ALL_ACTIVE_DATA_SOURCES = `
+		SELECT * FROM data_sources
+		WHERE deleted_at IS NULL AND status='active'
+		ORDER BY created_at DESC
 	`
 	COUNT_DATA_SOURCES = `
 		SELECT COUNT(*) FROM data_sources
@@ -274,6 +280,15 @@ func (r *DataSourceRepository) GetSourcesWithIssues(ctx context.Context, orgID u
 			AND (delayed_by_minutes > 15 OR status = $2)
 		ORDER BY delayed_by_minutes DESC, error_count DESC
 	`, orgID, models.DataSourceStatusError)
+	if err != nil {
+		return nil, err
+	}
+	return sources, nil
+}
+
+func (r *DataSourceRepository) ListAllActiveDataSources(ctx context.Context) ([]*models.DataSource, error) {
+	var sources []*models.DataSource
+	err := r.db.SelectContext(ctx, &sources, LIST_ALL_ACTIVE_DATA_SOURCES)
 	if err != nil {
 		return nil, err
 	}

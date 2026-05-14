@@ -1,27 +1,27 @@
 package handlers
 
 import (
-	_"sage-backend/internal/shared/response"
-	_"sage-backend/internal/users/requests"
+	_ "sage-backend/internal/shared/response"
 	"sage-backend/internal/users/models"
+	_ "sage-backend/internal/users/requests"
 )
 
 type UpdateProfileResponse struct {
-	Success bool `json:"success"`
+	Success bool   `json:"success"`
 	Message string `json:"message"`
 }
 
 type GetActivityResponseData struct {
-	Data []models.UserActivityResponse `json:"data"`
-	Total int `json:"total"`
-	Page int `json:"page"`
-	PageSize int `json:"page_size"`
+	Data     []models.UserActivityResponse `json:"data"`
+	Total    int                           `json:"total"`
+	Page     int                           `json:"page"`
+	PageSize int                           `json:"page_size"`
 }
 
 type GetActivityResponse struct {
-	Success bool `json:"success"`
-	Message string `json:"message"`
-	Data GetActivityResponseData `json:"data"`
+	Success bool                    `json:"success"`
+	Message string                  `json:"message"`
+	Data    GetActivityResponseData `json:"data"`
 }
 
 // @Summary Get User Profile
@@ -74,7 +74,7 @@ func _UpdatePreferences() {}
 // @Security ApiKeyAuth
 // @Success 200 {object} models.UserNotificationsResponse
 // @Router /profile/notifications [get]
-func _GetNotifications(){}
+func _GetNotifications() {}
 
 // @Summary Update User Notifications
 // @Description Updates the user's notification settings.
@@ -85,7 +85,7 @@ func _GetNotifications(){}
 // @Param request body requests.UpdateNotificationsRequest true "Update Notifications Request"
 // @Success 200 {object} response.Response
 // @Router /profile/notifications [patch]
-func _UpdateNotifications(){}
+func _UpdateNotifications() {}
 
 // @Summary Get User Session
 // @Description Retrieves details about the user's current session, including login time, IP address, and device information.
@@ -95,7 +95,7 @@ func _UpdateNotifications(){}
 // @Security ApiKeyAuth
 // @Success 200 {array} models.UserSessionResponse
 // @Router /profile/session [get]
-func _GetSession(){}
+func _GetSession() {}
 
 // @Summary Revoke User Session
 // @Description Revokes the user's current session, effectively logging them out from the current device.
@@ -105,7 +105,7 @@ func _GetSession(){}
 // @Security ApiKeyAuth
 // @Success 200 {object} response.Response
 // @Router /profile/session/revoke [post]
-func _RevokeSession(){}
+func _RevokeSession() {}
 
 // @Summary Get User Activity
 // @Description Retrieves a log of the user's recent activities within the application, such as logins, profile updates, and other significant actions.
@@ -115,4 +115,4 @@ func _RevokeSession(){}
 // @Security ApiKeyAuth
 // @Success 200 {object} GetActivityResponse
 // @Router /profile/activity [get]
-func _GetActivity(){}
+func _GetActivity() {}

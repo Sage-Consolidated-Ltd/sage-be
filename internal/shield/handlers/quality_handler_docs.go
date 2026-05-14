@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	_"sage-backend/internal/shared/response"
-	_"sage-backend/internal/shield/requests"
+	_ "sage-backend/internal/shared/response"
+	_ "sage-backend/internal/shield/requests"
 )
 
 // @Summary Get Data Quality Summary
@@ -13,7 +13,7 @@ import (
 // @Security SessionAuth
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/data-quality [get]
-func _GetDataQualitySummary(){}
+func _GetDataQualitySummary() {}
 
 // @Summary Run Data Quality Scan
 // @Description Queues a data quality scan to detect parsing errors, missing fields, duplicates, and unmapped logs.
@@ -23,7 +23,7 @@ func _GetDataQualitySummary(){}
 // @Security SessionAuth
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/data-quality/scan [post]
-func _RunDataQualityScan(){}
+func _RunDataQualityScan() {}
 
 // @Summary Get Data Quality Breakdown
 // @Description Returns data quality metrics per data source.
@@ -37,7 +37,7 @@ func _RunDataQualityScan(){}
 // @Param source_id query string false "Data source ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/data-quality/breakdown [get]
-func _GetDataQualityBreakdown(){}
+func _GetDataQualityBreakdown() {}
 
 // @Summary Get Data Quality AI Analysis
 // @Description Returns AI-generated analysis and suggested fixes for data quality issues.
@@ -47,7 +47,7 @@ func _GetDataQualityBreakdown(){}
 // @Security SessionAuth
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/data-quality/ai-analysis [get]
-func _GetAIAnalysis(){}
+func _GetAIAnalysis() {}
 
 // @Summary Apply Suggested Data Quality Fix
 // @Description Applies an AI-suggested parser or field mapping fix to improve data quality.
@@ -58,7 +58,7 @@ func _GetAIAnalysis(){}
 // @Param request body requests.ApplySuggestedFixRequest true "Apply Suggested Fix Request"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/data-quality/apply-suggested-fix [post]
-func _ApplySuggestedFix(){}
+func _ApplySuggestedFix() {}
 
 // @Summary Preview Suggested Fix Diff
 // @Description Returns before and after diff for an AI-suggested parser or mapping fix.
@@ -70,7 +70,7 @@ func _ApplySuggestedFix(){}
 // @Param parser_id query string true "Parser ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/data-quality/diff [get]
-func _GetSuggestedFixDiff(){}
+func _GetSuggestedFixDiff() {}
 
 // @Summary Download Data Quality Report
 // @Description Downloads data quality report in csv, pdf, or json format.
@@ -83,4 +83,4 @@ func _GetSuggestedFixDiff(){}
 // @Param end_time query string false "End time"
 // @Success 200 {file} file
 // @Router /integrations/logs-data/data-quality/report [get]
-func _DownloadDataQualityReport(){}
+func _DownloadDataQualityReport() {}

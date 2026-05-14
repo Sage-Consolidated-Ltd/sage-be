@@ -29,15 +29,15 @@ type EntraCredentials struct {
 }
 
 func NewProvider(
-	provider string, 
-	providerCreds any, 
+	provider string,
+	providerCreds any,
 	client *resty.Client,
 ) (Provider, error) {
 
 	switch provider {
 
 	// case "okta":
-	// 	creds, ok := providerCreds.(OktaCredentials) 
+	// 	creds, ok := providerCreds.(OktaCredentials)
 	// 	if !ok {
 	// 		return nil, fmt.Errorf("invalid okta config")
 	// 	}
@@ -102,8 +102,8 @@ func LaunchProviderSync(provider string, credentials map[string]string, client *
 		return NewProvider(
 			provider,
 			EntraCredentials{
-				TenantID: credentials["tenant_id"],
-				ClientID: credentials["client_id"],
+				TenantID:     credentials["tenant_id"],
+				ClientID:     credentials["client_id"],
 				ClientSecret: credentials["client_secret"],
 			},
 			client,

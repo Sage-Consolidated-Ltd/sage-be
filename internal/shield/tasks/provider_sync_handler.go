@@ -4,10 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"time"
 
-	"sage-backend/internal/shared/types"
-	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/providers"
 	"sage-backend/internal/shield/repositories"
 	"sage-backend/pkg/crypto"
@@ -20,7 +17,7 @@ import (
 type ProviderSyncHandler struct {
 	dataSourceRepo  repositories.DataSourceRepositoryInt
 	integrationRepo repositories.IntegrationRepositoryInt
-	eventRepo       repositories.SecurityEventRepositoryInt
+	taskClient      *TaskClient
 	client          *resty.Client
 	encryptor       crypto.Encryptor
 }
@@ -28,14 +25,14 @@ type ProviderSyncHandler struct {
 func NewProviderSyncHandler(
 	dataSourceRepo repositories.DataSourceRepositoryInt,
 	integrationRepo repositories.IntegrationRepositoryInt,
-	eventRepo repositories.SecurityEventRepositoryInt,
+	taskClient *TaskClient,
 	client *resty.Client,
 	encryptor crypto.Encryptor,
 ) *ProviderSyncHandler {
 	return &ProviderSyncHandler{
 		dataSourceRepo:  dataSourceRepo,
 		integrationRepo: integrationRepo,
-		eventRepo:       eventRepo,
+		taskClient:      taskClient,
 		client:          client,
 		encryptor:       encryptor,
 	}
@@ -50,16 +47,16 @@ func (h *ProviderSyncHandler) ProcessTask(
 		SourceID       uuid.UUID `json:"source_id"`
 	}
 
-	if err := json.Unmarshal(task.Payload(),&payload); err != nil {
+	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return err
 	}
 
 	// get datasource
 	source, err := h.dataSourceRepo.GetDataSourceByID(
-			ctx,
-			payload.SourceID,
-			payload.OrganizationID,
-		)
+		ctx,
+		payload.SourceID,
+		payload.OrganizationID,
+	)
 
 	if err != nil {
 		return err
@@ -67,9 +64,9 @@ func (h *ProviderSyncHandler) ProcessTask(
 
 	// get encrypted credentials
 	creds, err := h.integrationRepo.GetCredentialsByIntegration(
-			ctx,
-			source.ID.String(),
-		)
+		ctx,
+		source.ID.String(),
+	)
 
 	if err != nil {
 		return err
@@ -106,6 +103,7 @@ func (h *ProviderSyncHandler) ProcessTask(
 	// collect events
 	events, err := provider.Collect(ctx)
 	if err != nil {
+		log.Printf("Error collecting logs: %v", err)
 		return err
 	}
 
@@ -115,43 +113,11 @@ func (h *ProviderSyncHandler) ProcessTask(
 		return nil
 	}
 
-	// Convert to SecurityEvent models and bulk insert
-	var toInsert []*models.SecurityEvent
-	var latest time.Time
-	for _, ev := range events {
-		if ev.Timestamp.After(latest) {
-			latest = ev.Timestamp
-		}
-		idCopy := ev.ID
-		ipCopy := ev.IPAddress
-		userCopy := ev.UserName
-		se := &models.SecurityEvent{
-			OrganizationID:    payload.OrganizationID,
-			SourceID:          source.ID,
-			SourceEventID:     &idCopy,
-			Source:            ptrStringValue(source.Provider),
-			EventType:         ev.EventType,
-			IPAddress:         &ipCopy,
-			ActorUsername:     &userCopy,
-			OccurredAt:        ev.Timestamp,
-			RawPayload:        ev.Raw,
-			NormalizedPayload: map[string]interface{}{"user_id": ev.UserID},
-			ParseStatus:       types.ParseStatusPending,
-		}
-		toInsert = append(toInsert, se)
-	}
-
-	if err := h.eventRepo.BulkCreateEvents(ctx, toInsert); err != nil {
+	if err := h.taskClient.EnqueueProviderEventBatch(ctx, payload.OrganizationID, source.ID, ptrStringValue(source.Provider), events); err != nil {
 		return err
 	}
 
-	// Update data source health metrics
-	now := time.Now()
-	if err := h.dataSourceRepo.UpdateHealthMetrics(ctx, source.ID, int64(len(toInsert)), int64(len(toInsert)), 0, &latest, &now); err != nil {
-		log.Printf("Failed to update data source metrics: %v", err)
-	}
-
-	log.Printf("Persisted %d events for source %s", len(toInsert), source.ID)
+	log.Printf("Queued %d normalized events for source %s", len(events), source.ID)
 
 	return nil
 }

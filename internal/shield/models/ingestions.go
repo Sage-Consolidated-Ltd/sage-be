@@ -8,8 +8,8 @@ import (
 )
 
 type IntegrationCredentials struct {
-	ID             uuid.UUID       `json:"id" db:"id"`
-	IntegrationId  uuid.UUID       `json:"integration_id" db:"integration_id"`
+	ID             uuid.UUID    `json:"id" db:"id"`
+	IntegrationId  uuid.UUID    `json:"integration_id" db:"integration_id"`
 	Key            string       `json:"key" db:"key"`
 	EncryptedValue string       `json:"encrypted_value" db:"encrypted_value"`
 	ExpiresAt      sql.NullTime `json:"expires_at" db:"expires_at"`
@@ -18,8 +18,8 @@ type IntegrationCredentials struct {
 }
 
 type IntegrationStream struct {
-	ID            uuid.UUID       `json:"id" db:"id"`
-	IntegrationId uuid.UUID       `json:"integration_id" db:"integration_id"`
+	ID            uuid.UUID    `json:"id" db:"id"`
+	IntegrationId uuid.UUID    `json:"integration_id" db:"integration_id"`
 	StreamName    string       `json:"stream_name" db:"stream_name"`
 	LastOffset    *string      `json:"last_offset" db:"last_offset"`
 	LastEventAt   sql.NullTime `json:"last_event_at" db:"last_event_at"`

@@ -15,27 +15,27 @@ func NewEntraProvider(tenantID, clientID, clientSecret string, client *resty.Cli
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
 	}
-	
+
 	redisClient := redis.NewClient(opts)
 	if err := redisClient.Ping(context.Background()).Err(); err != nil {
 		return nil, fmt.Errorf("redis connection failed: %w", err)
 	}
 
-	client.SetTimeout(30 *time.Second)
+	client.SetTimeout(30 * time.Second)
 
 	return &EntraProvider{
-		RestyClient: client,
-		TenantID: tenantID,
-		ClientID: clientID,
-		ClientSecret: clientSecret,
+		RestyClient:     client,
+		TenantID:        tenantID,
+		ClientID:        clientID,
+		ClientSecret:    clientSecret,
 		RedisClient:     redisClient,
 		PollIntervalSec: pollIntervalSec,
-		BackoffSec:    30,
-		MaxBackoffSec: 600,
-		QueueKey:      "azure_ad:events",
-		CheckpointKey: "azure_ad:checkpoint",
-		DlqKey:        "azure_ad:dlq",
-		BaseUrl: "https://graph.microsoft.com/v1.0",
+		BackoffSec:      30,
+		MaxBackoffSec:   600,
+		QueueKey:        "azure_ad:events",
+		CheckpointKey:   "azure_ad:checkpoint",
+		DlqKey:          "azure_ad:dlq",
+		BaseUrl:         "https://graph.microsoft.com/v1.0",
 	}, nil
 }
 

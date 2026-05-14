@@ -14,13 +14,13 @@ type OktaProvider struct {
 }
 
 func NewOktaProvider(domain, token string) *OktaProvider {
-    client := resty.New().
-        SetBaseURL(domain).
-        SetAuthScheme("SSWS").
-        SetAuthToken(token).
-        SetHeader("Accept", "application/json")
+	client := resty.New().
+		SetBaseURL(domain).
+		SetAuthScheme("SSWS").
+		SetAuthToken(token).
+		SetHeader("Accept", "application/json")
 
-    return &OktaProvider{
+	return &OktaProvider{
 		client: client,
 		Domain: domain,
 		Token:  token,

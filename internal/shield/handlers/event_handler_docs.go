@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	_"sage-backend/internal/shared/response"
+	_ "sage-backend/internal/shared/response"
 )
 
 // @Summary Search Logs
@@ -22,7 +22,7 @@ import (
 // @Param search query string false "Search text"
 // @Success 200 {object} response.Response
 // @Router /events/logs [get]
-func _SearchLogs(){}
+func _SearchLogs() {}
 
 // @Summary Get Log Detail
 // @Description Returns full raw and normalized payload for one security event.
@@ -33,7 +33,7 @@ func _SearchLogs(){}
 // @Param id path string true "Log Event ID"
 // @Success 200 {object} response.Response
 // @Router /events/logs/{id} [get]
-func _GetLogDetail(){}
+func _GetLogDetail() {}
 
 // @Summary Ingest Log Event
 // @Description Ingests one raw security event, normalizes it, and stores it for investigation and detection.
@@ -44,7 +44,7 @@ func _GetLogDetail(){}
 // @Param request body requests.IngestLogRequest true "Ingest Log Request"
 // @Success 200 {object} response.Response
 // @Router /logs/ingest [post]
-func _IngestLog(){}
+func _IngestLog() {}
 
 // @Summary Bulk Ingest Logs
 // @Description Bulk ingests raw security events for a data source.
@@ -55,4 +55,4 @@ func _IngestLog(){}
 // @Param request body requests.BulkIngestLogsRequest true "Bulk Ingest Logs Request"
 // @Success 200 {object} response.Response
 // @Router /logs/bulk-ingest [post]
-func _BulkIngestLogs(){}
+func _BulkIngestLogs() {}

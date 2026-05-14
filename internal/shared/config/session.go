@@ -28,7 +28,7 @@ func InitSessionStore(cfg *BaseConfig) {
 	var sameSite string
 	if cfg.APP_ENV == "production" {
 		sameSite = "Lax"
-	}else {
+	} else {
 		sameSite = "None"
 	}
 	Store = session.New(session.Config{

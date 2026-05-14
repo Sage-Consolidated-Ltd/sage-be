@@ -36,7 +36,7 @@ func main() {
 					fmt.Println("Running: go run cmd/worker/main.go")
 					cmd := exec.Command(
 						"go",
-						"run", 
+						"run",
 						"./cmd/worker",
 					)
 					cmd.Stdout = os.Stdout

@@ -20,7 +20,6 @@ func NewParserHandler(service services.ParserServiceInt) *ParserHandler {
 	return &ParserHandler{service: service}
 }
 
-
 func (h *ParserHandler) GetParserSummary(c *fiber.Ctx) error {
 	orgID := middlewares.GetOrgID(c)
 	if orgID == uuid.Nil {

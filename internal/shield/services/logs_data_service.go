@@ -9,6 +9,7 @@ import (
 
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/repositories"
+	"sage-backend/internal/shield/tasks"
 
 	"github.com/google/uuid"
 )
@@ -30,17 +31,20 @@ type LogsDataService struct {
 	dataSourceRepo repositories.DataSourceRepositoryInt
 	eventRepo      repositories.SecurityEventRepositoryInt
 	jobRepo        repositories.IngestionJobRepositoryInt
+	taskClient     *tasks.TaskClient
 }
 
 func NewLogsDataService(
 	dsRepo repositories.DataSourceRepositoryInt,
 	eventRepo repositories.SecurityEventRepositoryInt,
 	jobRepo repositories.IngestionJobRepositoryInt,
+	taskClient *tasks.TaskClient,
 ) LogsDataServiceInt {
 	return &LogsDataService{
 		dataSourceRepo: dsRepo,
 		eventRepo:      eventRepo,
 		jobRepo:        jobRepo,
+		taskClient:     taskClient,
 	}
 }
 
@@ -104,21 +108,12 @@ func (s *LogsDataService) SyncSource(ctx context.Context, id uuid.UUID, orgID uu
 	if err != nil {
 		return nil, err
 	}
-	job := &models.IngestionJob{
-		OrganizationID: orgID,
-		SourceID:       &id,
-		Status:         models.JobStatusQueued,
-		JobType:        models.JobTypeSync,
-		Metadata:       map[string]interface{}{"action": "sync_source"},
-	}
-	if err := s.jobRepo.CreateJob(ctx, job); err != nil {
+	if err := s.taskClient.EnqueueProviderSync(ctx, orgID, id); err != nil {
 		return nil, err
 	}
 	return map[string]interface{}{
-		"job_id":    job.ID.String(),
 		"source_id": id.String(),
 		"status":    "queued",
-		"queued_at": job.CreatedAt,
 	}, nil
 }
 

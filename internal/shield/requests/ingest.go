@@ -29,8 +29,8 @@ type BulkIngestLogsRequest struct {
 }
 
 type IntegrateDataSource struct {
-	Provider string `json:"provider" validate:"required"`
-	ConnectionType string `json:"connection_type" validate:"required"`
-	Config map[string]interface{} `json:"config" validate:"required"`
-	Credentials map[string]interface{} `json:"credentials" validate:"required"`
+	Provider       string                 `json:"provider" validate:"required"`
+	ConnectionType string                 `json:"connection_type" validate:"required"`
+	Config         map[string]interface{} `json:"config" validate:"required"`
+	Credentials    map[string]interface{} `json:"credentials" validate:"required"`
 }

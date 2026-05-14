@@ -10,7 +10,9 @@ import (
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shield/repositories"
 	"sage-backend/internal/shield/tasks"
+	"sage-backend/pkg/crypto"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/hibiken/asynq"
 )
 
@@ -25,19 +27,28 @@ func main() {
 	}
 	defer db.Close()
 
+	restyClient := resty.New()
+
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	taskClient := tasks.NewTaskClient(redisAddr)
+	defer taskClient.Close()
+
+	encryptor, err := crypto.NewAESEncryptor(cfg.AppEncryptionKey)
+	if err != nil {
+		log.Fatalf("Failed to initialize encryptor: %v", err)
+	}
 	// Initialize repositories
 	jobRepo := repositories.NewIngestionJobRepository(db)
+	integrationRepo := repositories.NewIntegrationRepository(db)
 	dataSourceRepo := repositories.NewDataSourceRepository(db)
 	eventRepo := repositories.NewSecurityEventRepository(db)
 
 	// Initialize task handler
 	taskHandler := tasks.NewTaskHandler(jobRepo, dataSourceRepo, eventRepo)
-
-	// Initialize asynq server
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
-	}
+	providerSyncHandler := tasks.NewProviderSyncHandler(dataSourceRepo, integrationRepo, taskClient, restyClient, encryptor)
 
 	srv := asynq.NewServer(
 		asynq.RedisClientOpt{Addr: redisAddr},
@@ -57,6 +68,8 @@ func main() {
 	mux.HandleFunc(tasks.TypeSyncJob, taskHandler.HandleSyncJob)
 	mux.HandleFunc(tasks.TypeQualityScanJob, taskHandler.HandleQualityScanJob)
 	mux.HandleFunc(tasks.TypeValidationJob, taskHandler.HandleValidationJob)
+	mux.HandleFunc(tasks.TypeProviderEventBatch, taskHandler.HandleProviderEventBatch)
+	mux.HandleFunc(tasks.TypeProviderSync, providerSyncHandler.ProcessTask)
 
 	// Handle graceful shutdown
 	go func() {

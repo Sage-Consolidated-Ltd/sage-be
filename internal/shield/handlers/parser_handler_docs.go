@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	_"sage-backend/internal/shield/requests"
-	_"sage-backend/internal/shared/response"
+	_ "sage-backend/internal/shared/response"
+	_ "sage-backend/internal/shield/requests"
 )
+
 // @Summary Get Parser Summary
 // @Description Returns parser library summary metrics including total parsers, active parsers, error rate, and last updated timestamp.
 // @Tags Logs & Data
@@ -12,7 +13,7 @@ import (
 // @Security SessionAuth
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/summary [get]
-func _GetParserSummary(){}
+func _GetParserSummary() {}
 
 // @Summary List Custom Parsers
 // @Description Returns custom parsers with status, parsed event count, error rate, owner, and last updated time.
@@ -28,7 +29,7 @@ func _GetParserSummary(){}
 // @Param parser_type query string false "Parser type"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers [get]
-func _ListParsers(){}
+func _ListParsers() {}
 
 // @Summary Get Parser Detail
 // @Description Returns full parser details including parser logic, tags, field mappings, status, and metrics.
@@ -39,7 +40,7 @@ func _ListParsers(){}
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
 // @Routermiddl/wares.Gelogs-data/parsers/{id} [get]
-func _GetParser(){}
+func _GetParser() {}
 
 // @Summary Create Custom Parser
 // @Description Creates a custom parser for extracting, structuring, and normalizing raw logs.
@@ -50,7 +51,7 @@ func _GetParser(){}
 // @Param request body requests.CreateParserRequest true "Create Parser Request"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers [post]
-func _CreateParser(){}
+func _CreateParser() {}
 
 // @Summary Update Custom Parser
 // @Description Updates parser configuration, logic, mappings, tags, or status. Creates a parser version before saving changes.
@@ -62,7 +63,7 @@ func _CreateParser(){}
 // @Param request body requests.UpdateParserRequest true "Update Parser Request"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/{id} [patch]
-func _UpdateParser(){}
+func _UpdateParser() {}
 
 // @Summary Test Parser
 // @Description Tests a parser against a sample log and returns parsed output, normalized output, errors, and field mappings.
@@ -74,7 +75,7 @@ func _UpdateParser(){}
 // @Param request body requests.TestParserRequest true "Test Parser Request"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/{id}/test [post]
-func _TestParser(){}
+func _TestParser() {}
 
 // @Summary Preview Parser
 // @Description Previews parser output before saving a new parser.
@@ -85,7 +86,7 @@ func _TestParser(){}
 // @Param request body requests.PreviewParserRequest true "Preview Parser Request"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/preview [post]
-func _PreviewParser(){}
+func _PreviewParser() {}
 
 // @Summary Enable Parser
 // @Description Enables a custom parser for future log ingestion.
@@ -96,7 +97,7 @@ func _PreviewParser(){}
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/{id}/enable [post]
-func _EnableParser(){}
+func _EnableParser() {}
 
 // @Summary Disable Parser
 // @Description Disables a custom parser without deleting it.
@@ -107,7 +108,7 @@ func _EnableParser(){}
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/{id}/disable [post]
-func _DisableParser(){}
+func _DisableParser() {}
 
 // @Summary Validate Parser
 // @Description Queues validation for a parser against recent logs.
@@ -118,7 +119,7 @@ func _DisableParser(){}
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/{id}/validate [post]
-func _ValidateParser(){}
+func _ValidateParser() {}
 
 // @Summary Validate All Parsers
 // @Descrimiddlewares.Gtion Queues validation for all custom parsers.
@@ -128,7 +129,7 @@ func _ValidateParser(){}
 // @Security SessionAuth
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/validate [post]
-func _ValidateAllParsers(){}
+func _ValidateAllParsers() {}
 
 // @Summary Import Parser
 // @Description Imports a custom parser definition from JSON payload or uploaded parser configuration.
@@ -139,7 +140,7 @@ func _ValidateAllParsers(){}
 // @Param middlewares.Gequest body requests.ImportParserRequest true "Import Parser Request"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/import [post]
-func _ImportParser(){}
+func _ImportParser() {}
 
 // @Summary Export Parser
 // @Description Exports a parser definition as JSON.
@@ -150,7 +151,7 @@ func _ImportParser(){}
 // @Param id path string true "Parser ID"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/{id}/export [get]
-func _ExportParser(){}
+func _ExportParser() {}
 
 // @Summary List Sample Logs
 // @Description Returns sample raw logs for parser testing and preview.
@@ -164,5 +165,4 @@ func _ExportParser(){}
 // @Param page_size query int false "Page size"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/sample-logs [get]
-func _ListSampleLogs(){}
-
+func _ListSampleLogs() {}

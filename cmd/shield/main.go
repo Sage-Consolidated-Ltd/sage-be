@@ -15,13 +15,16 @@ import (
 	"sage-backend/internal/shield/handlers"
 	"sage-backend/internal/shield/repositories"
 	"sage-backend/internal/shield/routes"
+	"sage-backend/internal/shield/scheduler"
 	"sage-backend/internal/shield/services"
+	"sage-backend/internal/shield/tasks"
 	"strings"
 	"syscall"
 
 	_ "sage-backend/docs/shield"
 	"sage-backend/pkg/crypto"
 
+	"context"
 	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
@@ -55,6 +58,13 @@ func main() {
 	config.InitSessionStore(&cfg.BaseConfig)
 
 	restyClient := resty.New()
+
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	taskClient := tasks.NewTaskClient(redisAddr)
+	defer taskClient.Close()
 
 	logger.Init(&cfg.BaseConfig)
 
@@ -110,7 +120,7 @@ func main() {
 	parserRepo := repositories.NewParserRepository(db)
 
 	dataQualityServ := services.NewDataQualityService(dataQualtyRepo, parserRepo, dataSourceRepo, ingestionRepo)
-	logsDataServ := services.NewLogsDataService(dataSourceRepo, eventRepo, ingestionRepo)
+	logsDataServ := services.NewLogsDataService(dataSourceRepo, eventRepo, ingestionRepo, taskClient)
 	logsServ := services.NewLogsService(eventRepo, dataSourceRepo, ingestionRepo)
 	parserServ := services.NewParserService(parserRepo, eventRepo, dataSourceRepo, ingestionRepo)
 	integrationServ := services.NewDataSourceService(dataSourceRepo, integrationRepo, encryptor, restyClient)
@@ -121,9 +131,15 @@ func main() {
 	parserHandler := handlers.NewParserHandler(parserServ)
 	qualityHandler := handlers.NewQualityHandler(dataQualityServ)
 
+	// Initialize provider scheduler for periodic syncs (300 seconds = 5 minutes)
+	providerScheduler := scheduler.NewProviderScheduler(taskClient, dataSourceRepo, 300)
+
 	routes.Setup(app, integrationHandler, qualityHandler, logsDataHandler, parserHandler, eventHandler, authMiddleware)
 
 	port := strings.TrimSpace(cfg.PORT)
+
+	// Start provider scheduler in background
+	providerScheduler.Start(context.Background())
 
 	go func() {
 		if err := app.Listen(":" + port); err != nil {
@@ -136,5 +152,6 @@ func main() {
 
 	_ = <-c
 	fmt.Println("Gracefully shutting down...")
+	providerScheduler.Stop()
 	_ = app.Shutdown()
 }

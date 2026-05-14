@@ -48,4 +48,3 @@ type ListActivityRequest struct {
 	EndTime    string `json:"end_time" query:"end_time"`
 	ActionType string `json:"action_type" query:"action_type"`
 }
-
