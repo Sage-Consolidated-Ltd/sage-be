@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/providers/entra"
+	"strings"
 
-	// "sage-backend/internal/shield/providers/okta"
-	// "strings"
+	"sage-backend/internal/shield/providers/okta"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -18,14 +18,16 @@ type Provider interface {
 }
 
 type OktaCredentials struct {
-	Domain string `json:"domain"`
-	Token  string `json:"token"`
+	Domain     string             `json:"domain"`
+	Token      string             `json:"token"`
+	Checkpoint *models.Checkpoint `json:"checkpoint,omitempty"`
 }
 
 type EntraCredentials struct {
-	TenantID     string `json:"tenant_id"`
-	ClientID     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
+	TenantID     string             `json:"tenant_id"`
+	ClientID     string             `json:"client_id"`
+	ClientSecret string             `json:"client_secret"`
+	Checkpoint   *models.Checkpoint `json:"checkpoint,omitempty"`
 }
 
 func NewProvider(
@@ -36,23 +38,23 @@ func NewProvider(
 
 	switch provider {
 
-	// case "okta":
-	// 	creds, ok := providerCreds.(OktaCredentials)
-	// 	if !ok {
-	// 		return nil, fmt.Errorf("invalid okta config")
-	// 	}
+	case "okta":
+		creds, ok := providerCreds.(OktaCredentials)
+		if !ok {
+			return nil, fmt.Errorf("invalid okta config")
+		}
 
-	// 	if creds.Domain == "" || creds.Token == "" {
-	// 		return nil, fmt.Errorf("missing okta config")
-	// 	}
+		if creds.Domain == "" || creds.Token == "" {
+			return nil, fmt.Errorf("missing okta config")
+		}
 
-	// 	// normalize domain
-	// 	if !strings.HasPrefix(creds.Domain, "http") {
-	// 		creds.Domain = "https://" + creds.Domain
-	// 	}
-	// 	creds.Domain = strings.TrimRight(creds.Domain, "/")
+		// normalize domain
+		if !strings.HasPrefix(creds.Domain, "http") {
+			creds.Domain = "https://" + creds.Domain
+		}
+		creds.Domain = strings.TrimRight(creds.Domain, "/")
 
-	// 	return okta.NewOktaProvider(creds.Domain, creds.Token, client), nil
+		return okta.NewOktaProvider(creds.Domain, creds.Token, creds.Checkpoint), nil
 
 	case "entra":
 		creds, ok := providerCreds.(EntraCredentials)
@@ -71,6 +73,7 @@ func NewProvider(
 			client,
 			"redis://localhost:6379/0",
 			300,
+			creds.Checkpoint,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create entra provider: %w", err)
@@ -83,8 +86,27 @@ func NewProvider(
 	}
 }
 
-func LaunchProviderSync(provider string, credentials map[string]string, client *resty.Client) (Provider, error) {
+func LaunchProviderSync(provider string, credentials map[string]string, checkpoint *models.Checkpoint, client *resty.Client) (Provider, error) {
 	switch provider {
+
+	case "okta":
+		domain := credentials["domain"]
+		token := credentials["token"]
+
+		if domain == "" || token == "" {
+			return nil, fmt.Errorf(
+				"missing okta config",
+			)
+		}
+
+		// normalize domain
+		if !strings.HasPrefix(domain, "http") {
+			domain = "https://" + domain
+		}
+
+		domain = strings.TrimRight(domain, "/")
+
+		return okta.NewOktaProvider(domain, token, checkpoint), nil
 
 	case "entra":
 		tenantID := credentials["tenant_id"]
@@ -105,6 +127,7 @@ func LaunchProviderSync(provider string, credentials map[string]string, client *
 				TenantID:     credentials["tenant_id"],
 				ClientID:     credentials["client_id"],
 				ClientSecret: credentials["client_secret"],
+				Checkpoint:   checkpoint,
 			},
 			client,
 		)

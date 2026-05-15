@@ -149,6 +149,13 @@ func (m *mockDataSourceRepo) ListAllActiveDataSources(ctx context.Context) ([]*m
 	return nil, nil
 }
 
+func (m *mockDataSourceRepo) GetCheckpoint(ctx context.Context, id uuid.UUID) (*string, error) {
+	return nil, nil
+}
+func (m *mockDataSourceRepo) UpdateCheckpoint(ctx context.Context, id uuid.UUID, checkpoint string) error {
+	return nil
+}
+
 type mockJobRepo struct {
 	mock.Mock
 }

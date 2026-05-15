@@ -3,6 +3,7 @@ package entra
 import (
 	"context"
 	"fmt"
+	"sage-backend/internal/shield/models"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -10,7 +11,7 @@ import (
 )
 
 func NewEntraProvider(tenantID, clientID, clientSecret string, client *resty.Client, redisURL string,
-	pollIntervalSec int) (*EntraProvider, error) {
+	pollIntervalSec int, checkpoint *models.Checkpoint) (*EntraProvider, error) {
 	opts, err := redis.ParseURL(redisURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid redis URL: %w", err)
@@ -36,6 +37,7 @@ func NewEntraProvider(tenantID, clientID, clientSecret string, client *resty.Cli
 		CheckpointKey:   "azure_ad:checkpoint",
 		DlqKey:          "azure_ad:dlq",
 		BaseUrl:         "https://graph.microsoft.com/v1.0",
+		Checkpoint:      checkpoint,
 	}, nil
 }
 

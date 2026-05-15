@@ -26,6 +26,8 @@ type DataSourceRepositoryInt interface {
 	GetAggregatedHealth(ctx context.Context, orgID uuid.UUID) (totalEvents, activeSources, delayedSources, errorSources int64, err error)
 	GetSourcesWithIssues(ctx context.Context, orgID uuid.UUID) ([]*models.DataSource, error)
 	ListAllActiveDataSources(ctx context.Context) ([]*models.DataSource, error)
+	GetCheckpoint(ctx context.Context, id uuid.UUID) (*string, error)
+	UpdateCheckpoint(ctx context.Context, id uuid.UUID, checkpoint string) error
 }
 
 type DataSourceRepository struct {
@@ -87,6 +89,19 @@ const (
 			error_count = error_count + $5,
 			updated_at = NOW()
 		WHERE id = $6
+	`
+	GET_CHECKPOINT = `
+	SELECT last_checkpoint
+	FROM data_sources
+	WHERE id = $1
+	`
+	UPDATE_CHECKPOINT = `
+	UPDATE data_sources
+	SET
+		last_checkpoint = $2,
+		last_checkpoint_at = NOW(),
+		updated_at = NOW()
+	WHERE id = $1
 	`
 	INCREMENT_EVENTS_TODAY = `UPDATE data_sources SET events_today = events_today + 1, updated_at = NOW() WHERE id = $1`
 	RESET_DAILY_COUNTS     = `UPDATE data_sources SET events_today = 0, updated_at = NOW()`
@@ -293,4 +308,33 @@ func (r *DataSourceRepository) ListAllActiveDataSources(ctx context.Context) ([]
 		return nil, err
 	}
 	return sources, nil
+}
+
+func (r *DataSourceRepository) GetCheckpoint(ctx context.Context, id uuid.UUID) (*string, error) {
+	var checkpoint *string
+
+	err := r.db.GetContext(
+		ctx,
+		&checkpoint,
+		GET_CHECKPOINT,
+		id,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return checkpoint, nil
+}
+
+func (r *DataSourceRepository) UpdateCheckpoint(ctx context.Context, id uuid.UUID, checkpoint string) error {
+
+	_, err := r.db.ExecContext(
+		ctx,
+		UPDATE_CHECKPOINT,
+		id,
+		checkpoint,
+	)
+
+	return err
 }

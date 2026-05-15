@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 
+	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/providers"
 	"sage-backend/internal/shield/repositories"
 	"sage-backend/pkg/crypto"
@@ -88,11 +89,17 @@ func (h *ProviderSyncHandler) ProcessTask(
 		decryptedCreds[cred.Key] = value
 	}
 
+	checkpoint := &models.Checkpoint{
+		LastCheckpoint:   source.LastCheckpoint,
+		LastCheckpointAt: source.LastCheckpointAt,
+	}
+
 	// build provider
 	provider, err :=
 		providers.LaunchProviderSync(
 			*source.Provider,
 			decryptedCreds,
+			checkpoint,
 			h.client,
 		)
 

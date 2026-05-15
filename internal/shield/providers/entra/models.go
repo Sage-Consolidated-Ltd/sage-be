@@ -18,8 +18,3 @@ type GraphResponse struct {
 	Value    []SignInEvent `json:"value"`
 	NextLink string        `json:"@odata.nextLink"`
 }
-
-type Checkpoint struct {
-	LastCreatedTime string `json:"last_created_time"`
-	UpdatedAt       string `json:"updated_at"`
-}

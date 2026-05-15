@@ -1,0 +1,3 @@
+ALTER TABLE data_sources
+ADD COLUMN IF NOT EXISTS last_checkpoint TEXT,
+ADD COLUMN IF NOT EXISTS last_checkpoint_at TIMESTAMPTZ;

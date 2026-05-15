@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/mailer"
 	"sage-backend/internal/shared/middlewares"
+	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/users/handlers"
 	"sage-backend/internal/users/repositories"
 	"sage-backend/internal/users/routes"
@@ -62,6 +64,10 @@ func main() {
 	logger.Init(&cfg.BaseConfig)
 
 	mailer := mailer.NewEmailClient(&cfg.BaseConfig)
+
+	s3Ctx := context.Background()
+	s3Client, _ := s3.NewClient(s3Ctx, cfg.S3Bucket, cfg.S3Region)
+	_ = s3.NewUploader(s3Client)
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder: func(v interface{}) ([]byte, error) {

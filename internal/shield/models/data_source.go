@@ -42,6 +42,8 @@ type DataSource struct {
 	ErrorCount       int64            `db:"error_count" json:"error_count"`
 	DelayedByMinutes int              `db:"delayed_by_minutes" json:"delayed_by_minutes"`
 	Metadata         json.RawMessage  `db:"metadata" json:"metadata"`
+	LastCheckpoint   *string          `db:"last_checkpoint"`
+	LastCheckpointAt *time.Time       `db:"last_checkpoint_at"`
 	CreatedAt        time.Time        `db:"created_at" json:"created_at"`
 	UpdatedAt        time.Time        `db:"updated_at" json:"updated_at"`
 	DeletedAt        *time.Time       `db:"deleted_at,omitempty" json:"deleted_at,omitempty"`
@@ -61,6 +63,8 @@ type DataSourceResponse struct {
 	ErrorCount       int64           `json:"error_count"`
 	DelayedByMinutes int             `json:"delayed_by_minutes"`
 	Metadata         json.RawMessage `json:"metadata,omitempty"`
+	LastCheckpoint   *string         `db:"last_checkpoint"`
+	LastCheckpointAt *time.Time      `db:"last_checkpoint_at"`
 	CreatedAt        time.Time       `json:"created_at"`
 	UpdatedAt        time.Time       `json:"updated_at"`
 }
@@ -84,18 +88,27 @@ func (d *DataSource) ToResponse() *DataSourceResponse {
 		ErrorCount:       d.ErrorCount,
 		DelayedByMinutes: d.DelayedByMinutes,
 		Metadata:         meta,
+		LastCheckpoint:   d.LastCheckpoint,
+		LastCheckpointAt: d.LastCheckpointAt,
 		CreatedAt:        d.CreatedAt,
 		UpdatedAt:        d.UpdatedAt,
 	}
 }
 
 type NormalizedEvent struct {
-	ID        string                 `json:"id"`
-	Provider  string                 `json:"provider"`
-	EventType string                 `json:"event_type"`
-	UserID    string                 `json:"user_id"`
-	UserName  string                 `json:"user_name"`
-	IPAddress string                 `json:"ip_address"`
-	Timestamp time.Time              `json:"timestamp"`
-	Raw       map[string]interface{} `json:"raw"`
+	ID          string                 `json:"id"`
+	Provider    string                 `json:"provider"`
+	EventType   string                 `json:"event_type"`
+	UserID      string                 `json:"user_id"`
+	UserName    string                 `json:"user_name"`
+	IPAddress   string                 `json:"ip_address"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Raw         map[string]interface{} `json:"raw"`
+	Application string                 `json:"application,omitempty"`
+	Status      string                 `json:"status,omitempty"`
+}
+
+type Checkpoint struct {
+	LastCheckpoint   *string    `db:"last_checkpoint"`
+	LastCheckpointAt *time.Time `db:"last_checkpoint_at"`
 }

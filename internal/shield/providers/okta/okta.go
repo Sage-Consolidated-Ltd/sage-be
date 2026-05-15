@@ -3,32 +3,24 @@ package okta
 import (
 	"context"
 	"fmt"
+	"sage-backend/internal/shield/models"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 )
 
-type OktaProvider struct {
-	client *resty.Client
-	Domain string
-	Token  string
-}
-
-func NewOktaProvider(domain, token string) *OktaProvider {
-	client := resty.New().
-		SetBaseURL(domain).
-		SetAuthScheme("SSWS").
-		SetAuthToken(token).
-		SetHeader("Accept", "application/json")
+func NewOktaProvider(domain, token string, checkpoint *models.Checkpoint) *OktaProvider {
 
 	return &OktaProvider{
-		client: client,
-		Domain: domain,
-		Token:  token,
+		RestyClient: resty.New().SetTimeout(30 * time.Second),
+		Domain:      domain,
+		ApiToken:    token,
+		Checkpoint:  checkpoint,
 	}
 }
 
 func (o *OktaProvider) Verify(ctx context.Context) error {
-	resp, err := o.client.R().
+	resp, err := o.RestyClient.R().
 		SetContext(ctx).
 		SetQueryParam("limit", "1").
 		Get("/api/v1/users")

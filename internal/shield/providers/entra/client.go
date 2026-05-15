@@ -57,19 +57,16 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 		return nil, err
 	}
 
-	checkpointJSON := p.RedisClient.Get(ctx, p.CheckpointKey).Val()
+	// checkpointJSON := p.RedisClient.Get(ctx, p.CheckpointKey).Val()
 	var lastCreatedTime string
 
-	if checkpointJSON != "" {
-		var checkpoint Checkpoint
-		if err := json.Unmarshal([]byte(checkpointJSON), &checkpoint); err != nil {
-			log.Printf("Failed to parse checkpoint: %v", err)
-			lastCreatedTime = time.Now().Add(-24 * time.Hour).Format(time.RFC3339)
-		} else {
-			lastCreatedTime = checkpoint.LastCreatedTime
-		}
+	if p.Checkpoint == nil || p.Checkpoint.LastCheckpoint == nil {
+		lastCreatedTime = time.Now().
+			Add(-24 * time.Hour).
+			Format(time.RFC3339)
+
 	} else {
-		lastCreatedTime = time.Now().Add(-24 * time.Hour).Format(time.RFC3339)
+		lastCreatedTime = *p.Checkpoint.LastCheckpoint
 	}
 
 	log.Printf("Polling from checkpoint: %s", lastCreatedTime)
@@ -104,26 +101,15 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 
 	if resp.StatusCode() == http.StatusTooManyRequests {
 		retryAfter := resp.Header().Get("Retry-After")
-		waitSec := p.BackoffSec
-		if retryAfter != "" {
-			fmt.Sscanf(retryAfter, "%d", &waitSec)
-		}
-		log.Printf("Rate limited. Backing off %d seconds", waitSec)
-		time.Sleep(time.Duration(waitSec) * time.Second)
-		return []SignInEvent{}, nil
+
+		return nil, fmt.Errorf(
+			"entra rate limited (retry-after=%s)",
+			retryAfter,
+		)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-
 		body := resp.String()
-
-		p.ConsecutiveErr++
-
-		if p.ConsecutiveErr > 5 {
-			log.Printf(
-				"CRITICAL: Too many consecutive errors. Circuit breaker triggered.",
-			)
-		}
 
 		return nil, fmt.Errorf(
 			"poll failed with status %d: %s",
@@ -132,7 +118,11 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 		)
 	}
 
-	p.ConsecutiveErr = 0
+	log.Printf(
+		"Fetched %d sign-in events",
+		len(graphResp.Value),
+	)
+
 	return graphResp.Value, nil
 }
 func (p *EntraProvider) HealthCheck(ctx context.Context) error {

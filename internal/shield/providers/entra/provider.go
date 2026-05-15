@@ -1,6 +1,7 @@
 package entra
 
 import (
+	"sage-backend/internal/shield/models"
 	"sync"
 	"time"
 
@@ -30,5 +31,6 @@ type EntraProvider struct {
 	CheckpointKey string
 	DlqKey        string
 
-	BaseUrl string
+	BaseUrl    string
+	Checkpoint *models.Checkpoint
 }
