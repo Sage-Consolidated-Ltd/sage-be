@@ -100,6 +100,16 @@ func RegisterProfileRoutes(router fiber.Router, ph *handlers.ProfileHandler, m *
 	profile.Get("/me", ph.GetProfile)
 	profile.Patch("/me", ph.UpdateProfile)
 
+	profile.Post(
+		"/avatar",
+		middlewares.ValidateFileUpload(
+			"avatar",
+			middlewares.MaxAvatarSize,
+			middlewares.AvatarMimeTypes,
+		),
+		ph.UploadAvatar,
+	)
+
 	// Preferences - /api/v1/profile/preferences
 	profile.Get("/preferences", ph.GetPreferences)
 	profile.Patch("/preferences", ph.UpdatePreferences)

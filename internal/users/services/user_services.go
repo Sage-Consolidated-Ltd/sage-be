@@ -2,6 +2,9 @@ package services
 
 import (
 	"context"
+	"errors"
+	"mime/multipart"
+	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/users/models"
 	"sage-backend/internal/users/repositories"
 	"sage-backend/internal/users/requests"
@@ -36,19 +39,23 @@ type UserServicesInt interface {
 	// Activity - /api/v1/profile/activity
 	GetActivity(ctx context.Context, userID, orgID string, page, pageSize int) ([]*models.UserActivityResponse, int, error)
 	LogActivity(ctx context.Context, userID, orgID, actionType, resourceType, resourceID string, metadata map[string]interface{}, ipAddress, userAgent string) error
+	// Storage
+	UploadAvatar(ctx context.Context, userID string, file multipart.File, mimeType string) (string, string, error)
 }
 
 type UserServices struct {
 	userRepo    repositories.UsersRepositoryInt
 	profileRepo repositories.ProfileRepositoryInt
 	redisClient *redis.Client
+	uploader    *s3.Uploader
 }
 
-func NewUsersServices(usersRepo repositories.UsersRepositoryInt, profileRepo repositories.ProfileRepositoryInt, redisClient *redis.Client) UserServicesInt {
+func NewUsersServices(usersRepo repositories.UsersRepositoryInt, profileRepo repositories.ProfileRepositoryInt, redisClient *redis.Client, uploader *s3.Uploader) UserServicesInt {
 	return &UserServices{
 		userRepo:    usersRepo,
 		profileRepo: profileRepo,
 		redisClient: redisClient,
+		uploader:    uploader,
 	}
 }
 
@@ -64,7 +71,16 @@ func (s *UserServices) GetProfile(ctx context.Context, userID string) (*models.G
 		return nil, err
 	}
 
-	return user.ToResponse(orgs), nil
+	resp := user.ToResponse(orgs)
+
+	if resp.AvatarURL != "" {
+		presignedUrl, err := s.uploader.GenerateSignedURL(ctx, resp.AvatarURL)
+		if err != nil {
+			return nil, err
+		}
+		resp.AvatarURL = presignedUrl
+	}
+	return resp, nil
 }
 
 // UpdateProfile updates basic profile fields (legacy method)
@@ -92,7 +108,15 @@ func (s *UserServices) GetIdentity(ctx context.Context, userID, orgID string) (*
 		}
 	}
 
-	return user.ToProfileResponse(org), nil
+	resp := user.ToProfileResponse(org)
+	if resp.AvatarURL != "" {
+		presignedUrl, err := s.uploader.GenerateSignedURL(ctx, resp.AvatarURL)
+		if err != nil {
+			return nil, err
+		}
+		resp.AvatarURL = presignedUrl
+	}
+	return resp, nil
 }
 
 // UpdateIdentity updates user identity fields (full_name, avatar_url)
@@ -113,8 +137,8 @@ func (s *UserServices) UpdateIdentity(ctx context.Context, userID string, req *r
 		}
 	}
 
-	if req.AvatarURL != "" {
-		if err := s.profileRepo.UpdateUserAvatar(ctx, userID, req.AvatarURL); err != nil {
+	if req.AvatarURL != nil {
+		if err := s.profileRepo.UpdateUserAvatar(ctx, userID, *req.AvatarURL); err != nil {
 			return err
 		}
 	}
@@ -231,6 +255,24 @@ func (s *UserServices) GetActivity(ctx context.Context, userID, orgID string, pa
 		responses = append(responses, log.ToResponse())
 	}
 	return responses, total, nil
+}
+
+// UploadAvatar uploads the provided file to S3 and updates the user's avatar URL
+func (s *UserServices) UploadAvatar(ctx context.Context, userID string, file multipart.File, mimeType string) (string, string, error) {
+	if s.uploader == nil {
+		return "", "", errors.New("uploader not configured")
+	}
+
+	url, key, err := s.uploader.UploadAvatar(ctx, file, userID, mimeType)
+	if err != nil {
+		return "", "", err
+	}
+
+	if err := s.profileRepo.UpdateUserAvatar(ctx, userID, key); err != nil {
+		return "", "", err
+	}
+
+	return url, key, nil
 }
 
 // LogActivity creates an audit log entry

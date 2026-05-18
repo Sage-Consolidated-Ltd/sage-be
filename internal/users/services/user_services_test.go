@@ -116,7 +116,7 @@ func (m *mockProfileRepo) UpdateUserAvatar(ctx context.Context, userID, avatarUR
 func TestUserServices_GetProfile_Success(t *testing.T) {
 	mockRepo := new(mockUserRepo)
 	profileRepo := &mockProfileRepo{}
-	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{})
+	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{}, nil)
 
 	mockUser := &models.User{
 		ID:        "user-123",
@@ -156,7 +156,7 @@ func TestUserServices_GetProfile_Success(t *testing.T) {
 func TestUserServices_GetProfile_UserNotFound(t *testing.T) {
 	mockRepo := new(mockUserRepo)
 	profileRepo := &mockProfileRepo{}
-	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{})
+	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{}, nil)
 
 	mockRepo.On("GetUserByID", mock.Anything, "user-123").Return(nil, apperrors.NotFoundError("USER NOT FOUND"))
 
@@ -172,7 +172,7 @@ func TestUserServices_GetProfile_UserNotFound(t *testing.T) {
 func TestUserServices_GetProfile_OrgsError(t *testing.T) {
 	mockRepo := new(mockUserRepo)
 	profileRepo := &mockProfileRepo{}
-	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{})
+	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{}, nil)
 
 	mockUser := &models.User{
 		ID:        "user-123",
@@ -197,7 +197,7 @@ func TestUserServices_GetProfile_OrgsError(t *testing.T) {
 func TestUserServices_UpdateProfile_Success(t *testing.T) {
 	mockRepo := new(mockUserRepo)
 	profileRepo := &mockProfileRepo{}
-	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{})
+	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{}, nil)
 
 	req := &requests.UpdateProfileRequest{
 		FirstName: "Jane",
@@ -216,7 +216,7 @@ func TestUserServices_UpdateProfile_Success(t *testing.T) {
 func TestUserServices_UpdateProfile_Error(t *testing.T) {
 	mockRepo := new(mockUserRepo)
 	profileRepo := &mockProfileRepo{}
-	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{})
+	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{}, nil)
 
 	req := &requests.UpdateProfileRequest{
 		FirstName: "Jane",

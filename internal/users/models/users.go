@@ -35,6 +35,7 @@ type GetUserResponse struct {
 	ID               string                    `json:"id"`
 	FirstName        string                    `json:"first_name"`
 	LastName         string                    `json:"last_name"`
+	AvatarURL        string                    `json:"avatar_url,omitempty"`
 	Email            string                    `json:"email"`
 	Role             string                    `json:"role"`
 	TwoFactorEnabled bool                      `json:"two_factor_enabled" db:"two_factor_enabled"`
@@ -51,10 +52,11 @@ func (u *User) ToResponse(orgs *[]Organization) *GetUserResponse {
 			organizationsResp = append(organizationsResp, *org.ToResponse())
 		}
 	}
-	return &GetUserResponse{
+	resp := &GetUserResponse{
 		ID:               u.ID,
 		FirstName:        u.FirstName,
 		LastName:         u.LastName,
+		AvatarURL:        u.AvatarURL.String,
 		Email:            u.Email,
 		Role:             string(u.Role),
 		TwoFactorEnabled: u.TwoFactorEnabled,
@@ -63,6 +65,11 @@ func (u *User) ToResponse(orgs *[]Organization) *GetUserResponse {
 		IsVerified:       u.IsVerified,
 		Organization:     organizationsResp,
 	}
+
+	if u.AvatarURL.Valid {
+		resp.AvatarURL = u.AvatarURL.String
+	}
+	return resp
 }
 
 // ProfileResponse is the comprehensive profile response for /api/v1/profile

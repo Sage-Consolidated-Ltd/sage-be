@@ -2,8 +2,8 @@ package requests
 
 // UpdateIdentityRequest updates user's identity info (full_name, avatar_url)
 type UpdateIdentityRequest struct {
-	FullName  string `json:"full_name,omitempty"`
-	AvatarURL string `json:"avatar_url,omitempty"`
+	FullName  string  `json:"full_name,omitempty"`
+	AvatarURL *string `json:"avatar_url,omitempty"`
 }
 
 // UpdatePreferencesRequest updates UI and product behavior preferences

@@ -144,8 +144,8 @@ func SetupAPI() *APIConfig {
 		AzureClientSecret:  requireEnv("AZURE_CLIENT_SECRET"),
 		AzureRedirectUrl:   requireEnv("AZURE_REDIRECT_URL"),
 		S3Region:           requireEnv("S3_REGION"),
-		S3AccessKey:        requireEnv("S3_ACCESS_KEY"),
-		S3SecretKey:        requireEnv("S3_SECRET_KEY"),
+		S3AccessKey:        requireEnv("AWS_ACCESS_KEY_ID"),
+		S3SecretKey:        requireEnv("AWS_SECRET_ACCESS_KEY"),
 		S3Bucket:           requireEnv("S3_BUCKET"),
 	}
 }

@@ -44,7 +44,7 @@ import (
 // @in cookie
 // @name session_id
 
-// @host      backend.sageconsolidated.com
+// @host      localhost:3333
 // @BasePath  /api/v1
 func main() {
 	cfg := config.SetupAPI()
@@ -67,7 +67,7 @@ func main() {
 
 	s3Ctx := context.Background()
 	s3Client, _ := s3.NewClient(s3Ctx, cfg.S3Bucket, cfg.S3Region)
-	_ = s3.NewUploader(s3Client)
+	uploader := s3.NewUploader(s3Client)
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder: func(v interface{}) ([]byte, error) {
@@ -131,7 +131,7 @@ func main() {
 	authServ := services.NewAuthService(userRepo, jwtService, cfg, redis, companyRepo, mailer)
 	companyServ := services.NewCompanyServices(companyRepo, userRepo, mailer, redis, &cfg.BaseConfig)
 	profileRepo := repositories.NewProfileRepository(db)
-	userServ := services.NewUsersServices(userRepo, profileRepo, redis)
+	userServ := services.NewUsersServices(userRepo, profileRepo, redis, uploader)
 
 	// handlers
 	authHandler := handlers.NewAuthHandler(authServ, cfgOAuth, cfg)

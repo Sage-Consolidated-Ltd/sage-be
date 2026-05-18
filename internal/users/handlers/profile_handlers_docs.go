@@ -24,6 +24,20 @@ type GetActivityResponse struct {
 	Data    GetActivityResponseData `json:"data"`
 }
 
+type UploadAvatarResponseData struct {
+	AvatarURL string `json:"avatar_url"`
+}
+
+type UploadAvatarResponse struct {
+	Success bool                     `json:"success"`
+	Message string                   `json:"message"`
+	Data    UploadAvatarResponseData `json:"data"`
+}
+
+type UserUpdateIdentityRequest struct {
+	FullName string `json:"full_name,omitempty"`
+}
+
 // @Summary Get User Profile
 // @Description Retrieves the comprehensive identity profile of the currently authenticated user, including personal details and organizational information.
 // @Tags User Profile
@@ -40,7 +54,8 @@ func _GetProfile() {}
 // @Accept json
 // @Produce json
 // @Security ApiKeyAuth
-// @Param request body requests.UpdateIdentityRequest true "Update Profile Request"
+// @Param avatar formData file true "Avatar image file"
+// @Param request body UserUpdateIdentityRequest true "Update Profile Request"
 // @Success 200 {object} UpdateProfileResponse
 // @Router /profile [patch]
 func _UpdateProfile() {}
@@ -116,3 +131,14 @@ func _RevokeSession() {}
 // @Success 200 {object} GetActivityResponse
 // @Router /profile/activity [get]
 func _GetActivity() {}
+
+// @Summary Upload User Avatar
+// @Description Uploads and sets the authenticated user's avatar. Expects multipart/form-data with the `avatar` file field.
+// @Tags User Profile
+// @Accept multipart/form-data
+// @Produce json
+// @Security ApiKeyAuth
+// @Param avatar formData file true "Avatar image file"
+// @Success 200 {object} UploadAvatarResponse
+// @Router /profile/avatar [post]
+func _UploadAvatar() {}

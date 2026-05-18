@@ -68,6 +68,30 @@ func (h *ProfileHandler) UpdateProfile(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
 	}
 
+	var url *string
+	fileHeader, _ := c.FormFile("avatar")
+	if fileHeader != nil {
+		file, err := fileHeader.Open()
+		if err != nil {
+			logger.Error("Error opening avatar file: ", zap.Error(err))
+			return response.Error(c, fiber.StatusInternalServerError, "failed to read file", nil)
+		}
+		defer file.Close()
+
+		mimeType := c.Locals("file_mime_type").(string)
+		_, key, err := h.userServ.UploadAvatar(c.Context(), userID, file, mimeType)
+		if err != nil {
+			logger.Error("Error with ProfileHandler.UploadAvatar: ", zap.Error(err))
+			if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+				return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+			}
+			return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+		}
+		url = &key
+	}
+
+	req.AvatarURL = url
+
 	if err := h.userServ.UpdateIdentity(c.Context(), userID, &req); err != nil {
 		logger.Error("Error with ProfileHandler.UpdateProfile: ", zap.Error(err))
 		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
@@ -254,4 +278,36 @@ func (h *ProfileHandler) GetActivity(c *fiber.Ctx) error {
 		"page":      page,
 		"page_size": pageSize,
 	})
+}
+
+// UploadAvatar uploads and sets the user's avatar
+func (h *ProfileHandler) UploadAvatar(c *fiber.Ctx) error {
+	userID, _, ok := getSessionUser(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	fileHeader, err := c.FormFile("avatar")
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "avatar file required", nil)
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		logger.Error("Error opening avatar file: ", zap.Error(err))
+		return response.Error(c, fiber.StatusInternalServerError, "failed to read file", nil)
+	}
+	defer file.Close()
+
+	mimeType := c.Locals("file_mime_type").(string)
+	url, _, err := h.userServ.UploadAvatar(c.Context(), userID, file, mimeType)
+	if err != nil {
+		logger.Error("Error with ProfileHandler.UploadAvatar: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Avatar uploaded successfully", fiber.Map{"avatar_url": url})
 }

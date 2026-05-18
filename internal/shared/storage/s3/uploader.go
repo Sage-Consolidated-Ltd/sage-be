@@ -2,10 +2,16 @@ package s3
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime/multipart"
+	"net/http"
+	"sage-backend/internal/shared/middlewares"
+	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
 type Uploader struct {
@@ -23,26 +29,89 @@ func NewUploader(client *Client) *Uploader {
 	}
 }
 
-func (u *Uploader) UploadAvatar(ctx context.Context, file multipart.File, userID string) (string, error) {
+func (u *Uploader) UploadAvatar(ctx context.Context, file multipart.File, userID string, mimeType string) (string, string, error) {
+	magicBytes := make([]byte, 512)
+	n, _ := file.Read(magicBytes)
+	if n == 0 {
+		return "", "", errors.New("empty file")
+	}
+	file.Seek(0, 0)
 
-	key := fmt.Sprintf("avatars/users/%s.png", userID)
+	detectedType := http.DetectContentType(magicBytes[:n])
+	if detectedType != mimeType || !middlewares.AvatarMimeTypes[detectedType] {
+		return "", "", fmt.Errorf("file content mismatch or invalid type")
+	}
 
-	_, err := u.manager.UploadObject(ctx, &transfermanager.UploadObjectInput{
+	ext, err := determineImageExtension(mimeType)
+	if err != nil {
+		return "", "", err
+	}
+
+	key := fmt.Sprintf("avatars/users/%s%s", userID, ext)
+
+	_, err = u.manager.UploadObject(ctx, &transfermanager.UploadObjectInput{
 		Bucket: &u.client.Bucket,
 		Key:    &key,
 		Body:   file,
+		Metadata: map[string]string{
+			"Content-Disposition": "inline",
+		},
 	})
 
+	if err != nil {
+		return "", "", err
+	}
+
+	presignerClient := s3.NewPresignClient(u.client.S3)
+
+	presignedRequest, err := presignerClient.PresignGetObject(ctx,
+		&s3.GetObjectInput{
+			Bucket: aws.String(u.client.Bucket),
+			Key:    aws.String(key),
+		},
+		func(opts *s3.PresignOptions) {
+			opts.Expires = time.Duration(24 * time.Hour)
+		},
+	)
+	if err != nil {
+		return "", "", err
+	}
+
+	return presignedRequest.URL, key, nil
+}
+
+func (u *Uploader) GenerateSignedURL(ctx context.Context, key string) (string, error) {
+	presignerClient := s3.NewPresignClient(u.client.S3)
+
+	presignRequest, err := presignerClient.PresignGetObject(ctx,
+		&s3.GetObjectInput{
+			Bucket:                     &u.client.Bucket,
+			Key:                        aws.String(key),
+			ResponseContentDisposition: aws.String("inline"),
+		},
+		func(opts *s3.PresignOptions) {
+			opts.Expires = time.Duration(24 * time.Hour)
+		},
+	)
 	if err != nil {
 		return "", err
 	}
 
-	url := fmt.Sprintf(
-		"https://%s.s3.%s.amazonaws.com/%s",
-		u.client.Bucket,
-		u.client.Region,
-		key,
-	)
+	return presignRequest.URL, nil
+}
 
-	return url, nil
+func determineImageExtension(mimeType string) (string, error) {
+	var ext string
+	switch mimeType {
+	case "image/jpeg":
+		ext = ".jpg"
+	case "image/png":
+		ext = ".png"
+	case "image/webp":
+		ext = ".webp"
+	default:
+		return "", errors.New("unsupported image type")
+	}
+
+	return ext, nil
 }
