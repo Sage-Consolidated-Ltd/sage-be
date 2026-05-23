@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"sage-backend/internal/shared/config"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -29,12 +31,26 @@ func main() {
 
 	restyClient := resty.New()
 
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	redisRef := os.Getenv("REDIS_DB_URL")
+	if redisRef == "" {
+		redisRef = os.Getenv("REDIS_ADDR")
 	}
-	taskClient := tasks.NewTaskClient(redisAddr)
+	if redisRef == "" {
+		redisRef = "localhost:6379"
+	}
+	taskClient := tasks.NewTaskClient(redisRef)
 	defer taskClient.Close()
+
+	serverOpt := asynq.RedisClientOpt{Addr: redisRef}
+	if strings.Contains(redisRef, "://") {
+		if parsed, err := redis.ParseURL(redisRef); err == nil {
+			serverOpt = asynq.RedisClientOpt{
+				Addr:     parsed.Addr,
+				Password: parsed.Password,
+				DB:       parsed.DB,
+			}
+		}
+	}
 
 	encryptor, err := crypto.NewAESEncryptor(cfg.AppEncryptionKey)
 	if err != nil {
@@ -48,10 +64,10 @@ func main() {
 
 	// Initialize task handler
 	taskHandler := tasks.NewTaskHandler(jobRepo, dataSourceRepo, eventRepo)
-	providerSyncHandler := tasks.NewProviderSyncHandler(dataSourceRepo, integrationRepo, taskClient, restyClient, encryptor)
+	providerSyncHandler := tasks.NewProviderSyncHandler(dataSourceRepo, integrationRepo, eventRepo, taskClient, restyClient, encryptor)
 
 	srv := asynq.NewServer(
-		asynq.RedisClientOpt{Addr: redisAddr},
+		serverOpt,
 		asynq.Config{
 			Concurrency: 10,
 			Queues: map[string]int{
@@ -81,7 +97,7 @@ func main() {
 	}()
 
 	// Start worker
-	log.Printf("Starting worker with Redis at %s", redisAddr)
+	log.Printf("Starting worker with Redis at %s", redisRef)
 	if err := srv.Run(mux); err != nil {
 		log.Fatalf("Could not run worker: %v", err)
 	}

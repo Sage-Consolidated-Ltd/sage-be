@@ -35,6 +35,7 @@ func NewProvider(
 	providerCreds any,
 	client *resty.Client,
 ) (Provider, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
 
 	switch provider {
 
@@ -87,6 +88,8 @@ func NewProvider(
 }
 
 func LaunchProviderSync(provider string, credentials map[string]string, checkpoint *models.Checkpoint, client *resty.Client) (Provider, error) {
+	provider = strings.ToLower(strings.TrimSpace(provider))
+
 	switch provider {
 
 	case "okta":
@@ -106,7 +109,14 @@ func LaunchProviderSync(provider string, credentials map[string]string, checkpoi
 
 		domain = strings.TrimRight(domain, "/")
 
-		return okta.NewOktaProvider(domain, token, checkpoint), nil
+		return NewProvider(provider,
+			OktaCredentials{
+				Domain:     domain,
+				Token:      token,
+				Checkpoint: checkpoint,
+			},
+			client,
+		)
 
 	case "entra":
 		tenantID := credentials["tenant_id"]

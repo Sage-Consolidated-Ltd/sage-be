@@ -63,14 +63,6 @@ func (ps *ProviderScheduler) run(ctx context.Context) {
 
 func (ps *ProviderScheduler) syncAllActiveSources(ctx context.Context) {
 	log.Println("Running scheduled provider sync for all active sources")
-
-	// Get all organizations (we need to iterate through all orgs to find all active sources)
-	// For now, we'll use a workaround: fetch sources by status across all orgs
-	// In production, you'd want a repository method that returns all active sources globally
-	// or iterate through known organizations
-
-	// Fetch all active data sources (this is a simplified approach)
-	// In a production system, you'd need to iterate through organizations or have a global query
 	allSources, err := ps.dataSourceRepo.ListAllActiveDataSources(ctx)
 
 	if err != nil {

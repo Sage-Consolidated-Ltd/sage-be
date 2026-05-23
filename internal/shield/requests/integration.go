@@ -2,7 +2,7 @@ package requests
 
 type CreateIntegrationRequest struct {
 	Name           string `json:"name" validate:"required"`
-	Provider       string `json:"provider" validate:"required"`
+	Provider       string `json:"provider" validate:"required,oneof=okta entra"`
 	ConnectionType string `json:"connection_type" validate:"required"`
 
 	Okta  *OktaParams  `json:"okta,omitempty"`

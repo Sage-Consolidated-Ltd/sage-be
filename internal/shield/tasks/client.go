@@ -3,11 +3,13 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"sage-backend/internal/shield/models"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -23,9 +25,20 @@ type TaskClient struct {
 	client *asynq.Client
 }
 
-func NewTaskClient(redisAddr string) *TaskClient {
+func NewTaskClient(redisRef string) *TaskClient {
+	opt := asynq.RedisClientOpt{Addr: redisRef}
+	if strings.Contains(redisRef, "://") {
+		if parsed, err := redis.ParseURL(redisRef); err == nil {
+			opt = asynq.RedisClientOpt{
+				Addr:     parsed.Addr,
+				Password: parsed.Password,
+				DB:       parsed.DB,
+			}
+		}
+	}
+
 	return &TaskClient{
-		client: asynq.NewClient(asynq.RedisClientOpt{Addr: redisAddr}),
+		client: asynq.NewClient(opt),
 	}
 }
 
@@ -49,6 +62,7 @@ func (c *TaskClient) EnqueueProviderSync(ctx context.Context, orgID uuid.UUID, s
 	_, err = c.client.Enqueue(
 		task,
 		asynq.MaxRetry(5),
+		asynq.Queue("default"),
 	)
 
 	return err
@@ -66,7 +80,7 @@ func (c *TaskClient) EnqueueProviderEventBatch(ctx context.Context, orgID uuid.U
 	}
 
 	task := asynq.NewTask(TypeProviderEventBatch, payload)
-	_, err = c.client.Enqueue(task)
+	_, err = c.client.Enqueue(task, asynq.Queue("default"))
 	return err
 }
 

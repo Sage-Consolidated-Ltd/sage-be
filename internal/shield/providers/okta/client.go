@@ -4,20 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	// "log"
 	"net/url"
+	"strings"
 	"time"
 )
 
 func (p *OktaProvider) GetSignInEvents(ctx context.Context, since time.Time) ([]OktaSignInEvent, error) {
 	// Okta filter: after=<timestamp>
-	filter := fmt.Sprintf("after=%s", since.Format(time.RFC3339))
-	url := fmt.Sprintf("%s/api/v1/logs?%s&limit=200", p.RestyClient.DisableWarn, p.Domain, filter)
+	filter := url.QueryEscape(fmt.Sprintf("after eq \"%s\"", since.Format(time.RFC3339)))
+	// filter := fmt.Sprintf("after=%s", since.Format(time.RFC3339))
+	url := fmt.Sprintf("/api/v1/logs?%s&limit=200", filter)
 
 	resp, err := p.RestyClient.R().
 		SetContext(ctx).
 		SetHeader("Accept", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("SSWS %s", p.ApiToken)).
+		SetHeader("Authorization", fmt.Sprintf("SSWS %s", strings.TrimSpace(p.ApiToken))).
 		Get(url)
 
 	if err != nil {
@@ -41,100 +43,145 @@ func (p *OktaProvider) GetSignInEvents(ctx context.Context, since time.Time) ([]
 	return events, nil
 }
 
+// func (p *OktaProvider) PollAuditLogs(
+// 	ctx context.Context,
+// ) ([]OktaSignInEvent, error) {
+
+// 	// Get checkpoint
+// 	var lastCreatedTime string
+
+// 	if p.Checkpoint == nil || p.Checkpoint.LastCheckpoint == nil {
+// 		lastCreatedTime = time.Now().
+// 			Add(-24 * time.Hour).
+// 			Format(time.RFC3339)
+
+// 	} else {
+// 		lastCreatedTime = *p.Checkpoint.LastCheckpoint
+// 	}
+
+// 	log.Printf(
+// 		"Polling Okta logs from checkpoint: %s",
+// 		lastCreatedTime,
+// 	)
+
+// 	// Build query params
+// 	params := url.Values{}
+
+// 	params.Add(
+// 		"since",
+// 		lastCreatedTime,
+// 	)
+
+// 	params.Add(
+// 		"limit",
+// 		"1000",
+// 	)
+
+// 	params.Add(
+// 		"filter",
+// 		`eventType eq "user.session.start"`,
+// 	)
+
+// 	endpoint := fmt.Sprintf(
+// 		"/api/v1/logs?%s",
+// 		params.Encode(),
+// 	)
+
+// 	var events []OktaSignInEvent
+
+// 	resp, err := p.RestyClient.R().
+// 		SetContext(ctx).
+// 		SetHeader(
+// 			"Authorization",
+// 			"SSWS "+ strings.TrimSpace(p.ApiToken),
+// 		).
+// 		SetHeader(
+// 			"Accept",
+// 			"application/json",
+// 		).
+// 		SetResult(&events).
+// 		Get(endpoint)
+
+// 	if err != nil {
+// 		log.Printf(
+// 			"Error fetching Okta logs: %v",
+// 			err,
+// 		)
+
+// 		return nil,
+// 			fmt.Errorf(
+// 				"failed to fetch okta logs: %w",
+// 				err,
+// 			)
+// 	}
+
+// 	// Handle rate limiting
+// 	if resp.StatusCode() == 429 {
+// 		retryAfter :=
+// 			resp.Header().
+// 				Get("Retry-After")
+
+// 		return nil, fmt.Errorf("provider rate limited (retry-after=%s)", retryAfter)
+// 	}
+
+// 	// Handle failures
+// 	if resp.StatusCode() != 200 {
+// 		return nil, fmt.Errorf(
+// 			"okta poll failed with status %d: %s",
+// 			resp.StatusCode(),
+// 			resp.String(),
+// 		)
+// 	}
+// 	log.Printf(
+// 		"Fetched %d Okta events",
+// 		len(events),
+// 	)
+
+// 	return events, nil
+// }
+
 func (p *OktaProvider) PollAuditLogs(
 	ctx context.Context,
-) ([]OktaSignInEvent, error) {
+) ([]map[string]interface{}, error) {
 
-	// Get checkpoint
 	var lastCreatedTime string
 
 	if p.Checkpoint == nil || p.Checkpoint.LastCheckpoint == nil {
 		lastCreatedTime = time.Now().
 			Add(-24 * time.Hour).
 			Format(time.RFC3339)
-
 	} else {
 		lastCreatedTime = *p.Checkpoint.LastCheckpoint
 	}
 
-	log.Printf(
-		"Polling Okta logs from checkpoint: %s",
-		lastCreatedTime,
-	)
-
-	// Build query params
 	params := url.Values{}
+	params.Add("since", lastCreatedTime)
+	params.Add("limit", "100")
 
-	params.Add(
-		"since",
-		lastCreatedTime,
-	)
+	endpoint := "/api/v1/logs?" + params.Encode()
 
-	params.Add(
-		"limit",
-		"1000",
-	)
-
-	params.Add(
-		"filter",
-		`eventType eq "user.session.start"`,
-	)
-
-	endpoint := fmt.Sprintf(
-		"%s/api/v1/logs?%s",
-		p.Domain,
-		params.Encode(),
-	)
-
-	var events []OktaSignInEvent
+	var events []map[string]interface{}
 
 	resp, err := p.RestyClient.R().
 		SetContext(ctx).
-		SetHeader(
-			"Authorization",
-			"SSWS "+p.ApiToken,
-		).
-		SetHeader(
-			"Accept",
-			"application/json",
-		).
+		SetHeader("Authorization", "SSWS "+strings.TrimSpace(p.ApiToken)).
+		SetHeader("Accept", "application/json").
 		SetResult(&events).
 		Get(endpoint)
 
 	if err != nil {
-		log.Printf(
-			"Error fetching Okta logs: %v",
-			err,
-		)
-
-		return nil,
-			fmt.Errorf(
-				"failed to fetch okta logs: %w",
-				err,
-			)
+		return nil, fmt.Errorf("failed to fetch okta logs: %w", err)
 	}
 
-	// Handle rate limiting
 	if resp.StatusCode() == 429 {
-		retryAfter :=
-			resp.Header().
-				Get("Retry-After")
-
-		return nil, fmt.Errorf("provider rate limited (retry-after=%s)", retryAfter)
+		return nil, fmt.Errorf("rate limited: retry-after=%s",
+			resp.Header().Get("Retry-After"))
 	}
 
-	// Handle failures
 	if resp.StatusCode() != 200 {
-		return nil, fmt.Errorf(
-			"okta poll failed with status %d: %s",
-			resp.StatusCode(),
-			resp.String(),
-		)
+		return nil, fmt.Errorf("okta poll failed: %d %s",
+			resp.StatusCode(), resp.String())
 	}
-	log.Printf(
-		"Fetched %d Okta events",
-		len(events),
-	)
 
 	return events, nil
 }
@@ -145,7 +192,7 @@ func (p *OktaProvider) HealthCheck(ctx context.Context) error {
 	resp, err := p.RestyClient.R().
 		SetContext(ctx).
 		SetHeader("Accept", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("SSWS %s", p.ApiToken)).
+		SetHeader("Authorization", fmt.Sprintf("SSWS %s", strings.TrimSpace(p.ApiToken))).
 		Get(url)
 
 	if err != nil {

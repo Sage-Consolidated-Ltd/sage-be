@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/models"
@@ -59,16 +60,16 @@ func (s *LogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *reque
 		Source:            "", // can be enriched later from data source
 		EventType:         req.EventType,
 		EventCategory:     types.EventCategory(req.EventCategory),
-		Severity:          req.Severity,
+		Severity:          &req.Severity,
 		ActorEmail:        &req.ActorEmail,
 		ActorUsername:     &req.ActorUsername,
 		IPAddress:         &req.IPAddress,
 		GeoCountry:        &req.GeoCountry,
 		GeoCity:           &req.GeoCity,
 		RawPayload:        req.RawPayload,
-		NormalizedPayload: make(map[string]interface{}),
+		NormalizedPayload: make(db.JSONMap),
 		ParseStatus:       types.ParseStatusPending,
-		ParseErrors:       make([]map[string]interface{}, 0),
+		ParseErrors:       make([]db.JSONMap, 0),
 		OccurredAt:        occurredAt,
 	}
 	if err := s.eventRepo.CreateEvent(ctx, event); err != nil {
@@ -105,16 +106,16 @@ func (s *LogsService) BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *
 			Source:            "",
 			EventType:         e.EventType,
 			EventCategory:     types.EventCategory(e.EventCategory),
-			Severity:          e.Severity,
+			Severity:          &e.Severity,
 			ActorEmail:        &e.ActorEmail,
 			ActorUsername:     &e.ActorUsername,
 			IPAddress:         &e.IPAddress,
 			GeoCountry:        &e.GeoCountry,
 			GeoCity:           &e.GeoCity,
 			RawPayload:        e.RawPayload,
-			NormalizedPayload: make(map[string]interface{}),
+			NormalizedPayload: make(db.JSONMap),
 			ParseStatus:       types.ParseStatusPending,
-			ParseErrors:       make([]map[string]interface{}, 0),
+			ParseErrors:       make([]db.JSONMap, 0),
 			OccurredAt:        occurredAt,
 		}
 		events = append(events, event)

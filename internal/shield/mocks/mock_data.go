@@ -27,6 +27,7 @@ func GenerateMockSecurityEvent(orgID uuid.UUID) *models.SecurityEvent {
 	actorEmail := "test@example.com"
 	actorUsername := "testuser"
 	ipAddress := "192.168.1.1"
+	severity := types.SeverityMedium
 
 	return &models.SecurityEvent{
 		ID:                id,
@@ -36,7 +37,7 @@ func GenerateMockSecurityEvent(orgID uuid.UUID) *models.SecurityEvent {
 		Source:            "microsoft_365",
 		EventType:         "user_login",
 		EventCategory:     types.EventCategoryAuthentication,
-		Severity:          types.SeverityMedium,
+		Severity:          &severity,
 		ActorEmail:        &actorEmail,
 		ActorUsername:     &actorUsername,
 		IPAddress:         &ipAddress,
@@ -65,7 +66,7 @@ func GenerateMockSecurityEvents(orgID uuid.UUID, count int) []models.SecurityEve
 		event := GenerateMockSecurityEvent(orgID)
 		event.EventType = eventTypes[i%len(eventTypes)]
 		event.EventCategory = categories[i%len(categories)]
-		event.Severity = severities[i%len(severities)]
+		event.Severity = &severities[i%len(severities)]
 		events[i] = *event
 	}
 	return events

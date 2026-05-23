@@ -59,11 +59,14 @@ func main() {
 
 	restyClient := resty.New()
 
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	redisRef := os.Getenv("REDIS_DB_URL")
+	if redisRef == "" {
+		redisRef = os.Getenv("REDIS_ADDR")
 	}
-	taskClient := tasks.NewTaskClient(redisAddr)
+	if redisRef == "" {
+		redisRef = "localhost:6379"
+	}
+	taskClient := tasks.NewTaskClient(redisRef)
 	defer taskClient.Close()
 
 	logger.Init(&cfg.BaseConfig)

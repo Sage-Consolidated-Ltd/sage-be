@@ -3,7 +3,9 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"sage-backend/internal/shared/db"
@@ -24,6 +26,7 @@ type SecurityEventRepositoryInt interface {
 	GetEventsByParser(ctx context.Context, parserID uuid.UUID, orgID uuid.UUID, limit int) ([]*models.SecurityEvent, error)
 	GetEventVolume(ctx context.Context, orgID uuid.UUID, startTime, endTime *time.Time, interval string, sourceID *uuid.UUID) ([]map[string]interface{}, error)
 	GetEventCountInWindow(ctx context.Context, orgID uuid.UUID, startTime, endTime *time.Time) (int64, error)
+	BulkCreateEventsWithReturning(ctx context.Context, events []*models.SecurityEvent) ([]uuid.UUID, error)
 }
 
 type SecurityEventRepository struct {
@@ -53,6 +56,18 @@ const (
 			parse_status, parse_errors, occurred_at, ingested_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
 	`
+	BULK_INSERT_EVENTS_WITH_RETURNING = `
+		WITH new_events AS (
+			INSERT INTO security_events (
+				organization_id, source_id, parser_id, source_event_id, source,
+				event_type, event_category, severity, actor_email, actor_username,
+				ip_address, geo_country, geo_city, raw_payload, normalized_payload,
+				parse_status, parse_errors, occurred_at, ingested_at
+			) VALUES %s
+			RETURNING id, created_at
+		)
+		SELECT id FROM new_events
+	`
 	GET_EVENT     = `SELECT * FROM security_events WHERE id = $1 AND organization_id = $2`
 	SEARCH_EVENTS = `
 		SELECT * FROM security_events
@@ -61,7 +76,11 @@ const (
 			AND ($3::varchar IS NULL OR source = $3)
 			AND ($4::varchar IS NULL OR event_type = $4)
 			AND ($5::varchar IS NULL OR event_category = $5)
-			AND ($6::varchar IS NULL OR severity = $6)
+			AND (
+				$6::varchar IS NULL
+				OR severity = $6
+				OR severity IS NULL
+			)
 			AND ($7::varchar IS NULL OR actor_email ILIKE '%' || $7 || '%')
 			AND ($8::varchar IS NULL OR ip_address ILIKE '%' || $8 || '%')
 			AND ($9::timestamptz IS NULL OR occurred_at >= $9)
@@ -126,7 +145,7 @@ func (r *SecurityEventRepository) CreateEvent(ctx context.Context, event *models
 	}
 	parseErrs := event.ParseErrors
 	if parseErrs == nil {
-		parseErrs = make([]map[string]interface{}, 0)
+		parseErrs = make([]db.JSONMap, 0)
 	}
 	err := r.db.QueryRowContext(
 		ctx, INSERT_EVENT,
@@ -167,7 +186,7 @@ func (r *SecurityEventRepository) BulkCreateEvents(ctx context.Context, events [
 		}
 		parseErrs := event.ParseErrors
 		if parseErrs == nil {
-			parseErrs = make([]map[string]interface{}, 0)
+			parseErrs = make([]db.JSONMap, 0)
 		}
 		_, err := stmt.ExecContext(
 			ctx,
@@ -204,50 +223,57 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 	}
 	offset := (page - 1) * pageSize
 
-	sourceID := uuid.Nil
+	var sourceID *uuid.UUID
+	fmt.Println("Got here")
 	if sid, ok := filters["source_id"].(uuid.UUID); ok && sid != uuid.Nil {
-		sourceID = sid
+		sourceID = &sid
 	} else if sidStr, ok := filters["source_id"].(string); ok && sidStr != "" {
 		if uid, err := uuid.Parse(sidStr); err == nil {
-			sourceID = uid
+			sourceID = &uid
 		}
 	}
-	source := ""
-	if s, ok := filters["source"].(string); ok {
-		source = s
+	fmt.Printf("Parsed source_id: %s\n", sourceID)
+
+	var source *string
+	if s, ok := filters["source"].(string); s != "" && ok {
+		source = &s
 	}
-	eventType := ""
-	if et, ok := filters["event_type"].(string); ok {
-		eventType = et
+
+	var eventType *string
+	if et, ok := filters["event_type"].(string); et != "" && ok {
+		eventType = &et
 	}
-	category := ""
-	if c, ok := filters["event_category"].(string); ok {
-		category = c
+	var category *string
+	if c, ok := filters["event_category"].(string); c != "" && ok {
+		category = &c
 	}
-	severity := ""
-	if s, ok := filters["severity"].(string); ok {
-		severity = s
+	var severity *string
+	if s, ok := filters["severity"].(string); s != "" && ok {
+		severity = &s
 	}
-	actorEmail := ""
-	if a, ok := filters["actor_email"].(string); ok {
-		actorEmail = a
+	var actorEmail *string
+	if a, ok := filters["actor_email"].(string); a != "" && ok {
+		actorEmail = &a
 	}
-	ipAddress := ""
-	if ip, ok := filters["ip_address"].(string); ok {
-		ipAddress = ip
+	var ipAddress *string
+	if ip, ok := filters["ip_address"].(string); ip != "" && ok {
+		ipAddress = &ip
 	}
-	startTime := time.Time{}
+	var startTime *time.Time
 	if st, ok := filters["start_time"].(time.Time); ok && !st.IsZero() {
-		startTime = st
+		startTime = &st
 	}
-	endTime := time.Time{}
+
+	var endTime *time.Time
 	if et, ok := filters["end_time"].(time.Time); ok && !et.IsZero() {
-		endTime = et
+		endTime = &et
 	}
-	search := ""
-	if s, ok := filters["search"].(string); ok {
-		search = s
+	var search *string
+	if s, ok := filters["search"].(string); s != "" && ok {
+		search = &s
 	}
+
+	fmt.Printf("Filters - sourceID: %v, source: %v, eventType: %v, category: %v, severity: %v, actorEmail: %v, ipAddress: %v, startTime: %v, endTime: %v, search: %v\n", sourceID, source, eventType, category, severity, actorEmail, ipAddress, startTime, endTime, search)
 
 	var total int
 	err := r.db.GetContext(ctx, &total, COUNT_EVENTS,
@@ -283,13 +309,14 @@ func (r *SecurityEventRepository) GetEventsBySource(ctx context.Context, sourceI
 	if s, ok := filters["severity"].(string); ok {
 		severity = s
 	}
-	startTime := time.Time{}
+	var startTime *time.Time
 	if st, ok := filters["start_time"].(time.Time); ok && !st.IsZero() {
-		startTime = st
+		startTime = &st
 	}
-	endTime := time.Time{}
+
+	var endTime *time.Time
 	if et, ok := filters["end_time"].(time.Time); ok && !et.IsZero() {
-		endTime = et
+		endTime = &et
 	}
 
 	var total int
@@ -397,4 +424,140 @@ func (r *SecurityEventRepository) GetEventCountInWindow(ctx context.Context, org
 	var count int64
 	err := r.db.GetContext(ctx, &count, query, args...)
 	return count, err
+}
+
+func (r *SecurityEventRepository) BulkCreateEventsWithReturning(ctx context.Context, events []*models.SecurityEvent) ([]uuid.UUID, error) {
+	if len(events) == 0 {
+		return []uuid.UUID{}, nil
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	const eventInsertColumnCount = 19
+
+	valueStrings := make([]string, 0, len(events))
+	valueArgs := make([]interface{}, 0, len(events)*eventInsertColumnCount)
+
+	for i, event := range events {
+		valueStrings = append(
+			valueStrings,
+			fmt.Sprintf(
+				"($%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d, $%d)",
+				i*eventInsertColumnCount+1,
+				i*eventInsertColumnCount+2,
+				i*eventInsertColumnCount+3,
+				i*eventInsertColumnCount+4,
+				i*eventInsertColumnCount+5,
+				i*eventInsertColumnCount+6,
+				i*eventInsertColumnCount+7,
+				i*eventInsertColumnCount+8,
+				i*eventInsertColumnCount+9,
+				i*eventInsertColumnCount+10,
+				i*eventInsertColumnCount+11,
+				i*eventInsertColumnCount+12,
+				i*eventInsertColumnCount+13,
+				i*eventInsertColumnCount+14,
+				i*eventInsertColumnCount+15,
+				i*eventInsertColumnCount+16,
+				i*eventInsertColumnCount+17,
+				i*eventInsertColumnCount+18,
+				i*eventInsertColumnCount+19,
+			),
+		)
+
+		raw := event.RawPayload
+		if raw == nil {
+			raw = map[string]interface{}{}
+		}
+
+		rawJSON, err := json.Marshal(raw)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"marshal raw payload for event %s: %w",
+				event.SourceEventID,
+				err,
+			)
+		}
+
+		norm := event.NormalizedPayload
+		if norm == nil {
+			norm = map[string]interface{}{}
+		}
+
+		normJSON, err := json.Marshal(norm)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"marshal normalized payload for event %s: %w",
+				event.SourceEventID,
+				err,
+			)
+		}
+
+		parseErrs := event.ParseErrors
+		if parseErrs == nil {
+			parseErrs = []db.JSONMap{}
+		}
+
+		parseErrsJSON, err := json.Marshal(parseErrs)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"marshal parse errors for event %s: %w",
+				event.SourceEventID,
+				err,
+			)
+		}
+
+		valueArgs = append(valueArgs,
+			event.OrganizationID,
+			event.SourceID,
+			event.ParserID,
+			event.SourceEventID,
+			event.Source,
+
+			event.EventType,
+			event.EventCategory,
+			event.Severity,
+			event.ActorEmail,
+			event.ActorUsername,
+
+			event.IPAddress,
+			event.GeoCountry,
+			event.GeoCity,
+
+			rawJSON,
+			normJSON,
+
+			event.ParseStatus,
+			parseErrsJSON,
+
+			event.OccurredAt,
+
+			time.Now().UTC(), // ingested_at
+		)
+	}
+
+	query := fmt.Sprintf(BULK_INSERT_EVENTS_WITH_RETURNING, strings.Join(valueStrings, ","))
+	rows, err := tx.QueryContext(ctx, query, valueArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return ids, nil
 }

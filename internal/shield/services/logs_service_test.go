@@ -78,6 +78,14 @@ func (m *mockEventRepo) GetEventCountInWindow(ctx context.Context, orgID uuid.UU
 	return args.Get(0).(int64), args.Error(1)
 }
 
+func (m *mockEventRepo) BulkCreateEventsWithReturning(ctx context.Context, events []*models.SecurityEvent) ([]uuid.UUID, error) {
+	args := m.Called(ctx, events)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]uuid.UUID), args.Error(1)
+}
+
 type mockDataSourceRepo struct {
 	mock.Mock
 }
@@ -526,12 +534,13 @@ func TestLogsService_GetLogByID_Success(t *testing.T) {
 	ctx := context.Background()
 	orgID := uuid.New()
 	eventID := uuid.New()
+	severity := types.SeverityMedium
 
 	event := &models.SecurityEvent{
 		ID:             eventID,
 		OrganizationID: orgID,
 		EventType:      "user_login",
-		Severity:       types.SeverityMedium,
+		Severity:       &severity,
 	}
 
 	mockEventRepo.On("GetEventByID", ctx, eventID, orgID).Return(event, nil)

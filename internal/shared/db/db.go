@@ -1,11 +1,14 @@
 package db
 
 import (
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
-	_ "github.com/lib/pq"
 	"log"
 	"sage-backend/internal/shared/config"
 	"time"
+
+	_ "github.com/lib/pq"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -30,4 +33,42 @@ func ConnectDB(cfg *config.BaseConfig) (*DB, error) {
 	log.Println("Database Connected")
 
 	return &DB{db}, nil
+}
+
+type JSONMap map[string]interface{}
+
+func (j *JSONMap) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to scan JSON")
+	}
+
+	return json.Unmarshal(bytes, j)
+}
+func (j JSONMap) Value() (driver.Value, error) {
+	return json.Marshal(j)
+}
+
+type JSONMapSlice []JSONMap
+
+func (j *JSONMapSlice) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to scan JSONMapSlice")
+	}
+
+	return json.Unmarshal(bytes, j)
+}
+func (j JSONMapSlice) Value() (driver.Value, error) {
+	return json.Marshal(j)
 }

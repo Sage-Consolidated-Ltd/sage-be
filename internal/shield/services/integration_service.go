@@ -68,7 +68,8 @@ func (s *DataSourceService) CreateDataSource(ctx context.Context, orgID uuid.UUI
 		}
 
 		credentialMap = map[string]string{
-			"token": req.Okta.Token,
+			"token":  req.Okta.Token,
+			"domain": req.Okta.Domain,
 		}
 
 		metadata = map[string]interface{}{
@@ -124,6 +125,7 @@ func (s *DataSourceService) CreateDataSource(ctx context.Context, orgID uuid.UUI
 	if err != nil {
 		return err
 	}
+	fmt.Println("encrypted credentials:", encrypted)
 
 	ds := &models.DataSource{
 		ID:             uuid.New(),

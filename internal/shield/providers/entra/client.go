@@ -22,6 +22,7 @@ func (p *EntraProvider) GetSignInLogs(ctx context.Context, filter string) (*Grap
 	)
 
 	token, err := p.getToken(ctx)
+	log.Println("Entra token: ", token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
@@ -97,8 +98,6 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 		return nil, fmt.Errorf("failed to fetch sign-in logs: %w", err)
 	}
 
-	log.Printf("Received Response: %v", graphResp.Value)
-
 	if resp.StatusCode() == http.StatusTooManyRequests {
 		retryAfter := resp.Header().Get("Retry-After")
 
@@ -117,6 +116,8 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 			body,
 		)
 	}
+
+	log.Printf("Received Response: %v", graphResp.Value)
 
 	log.Printf(
 		"Fetched %d sign-in events",
