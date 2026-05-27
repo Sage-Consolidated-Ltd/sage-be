@@ -91,3 +91,37 @@ func (s *SecurityEvent) ToResponse() *SecurityEventResponse {
 		UpdatedAt:         s.UpdatedAt,
 	}
 }
+
+type CreateRawEventResponse struct {
+	ID uuid.UUID `db:"id"`
+	CollectedAt time.Time `db:"collected_at"`
+}
+
+type RawEvent struct {
+	ID uuid.UUID `db:"id"`
+	OrganizationID uuid.UUID `db:"organization_id"`
+	SourceID uuid.UUID `db:"source_id"`
+
+	Provider string `db:"provider"`
+	EventType string `db:"event_type"`
+
+	UserID *string `db:"user_id,omitempty"`
+	UserName *string `db:"user_name,omitempty"`
+	IPAddress *string `db:"ip_address,omitempty"`
+
+	Application *string `db:"application,omitempty"`
+
+	EventTimeStamp time.Time `db:"event_timestamp"`
+	CollectedAt *time.Time `db:"collected_at"`
+
+	Status string `db:"status"`
+
+	ProviderStatus string `db:"provider_status"`
+
+	LockedAt *time.Time `db:"locked_at,omitempty"`
+	LockedBy *string `db:"locked_by,omitempty"`
+
+	ErrorMessage *string `db:"error_message,omitempty"`
+
+	RawPayload db.JSONMap `db:"raw_payload"`
+}

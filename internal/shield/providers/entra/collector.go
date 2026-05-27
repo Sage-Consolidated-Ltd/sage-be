@@ -8,10 +8,11 @@ import (
 
 func (p *EntraProvider) Collect(
 	ctx context.Context,
+	limit int,
 ) ([]models.NormalizedEvent, error) {
-
 	signIns, err := p.PollAuditLogs(
 		ctx,
+		limit,
 	)
 	if err != nil {
 		return nil, err

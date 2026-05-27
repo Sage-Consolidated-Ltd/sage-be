@@ -142,6 +142,7 @@ func (p *OktaProvider) GetSignInEvents(ctx context.Context, since time.Time) ([]
 
 func (p *OktaProvider) PollAuditLogs(
 	ctx context.Context,
+	limit int,
 ) ([]map[string]interface{}, error) {
 
 	var lastCreatedTime string
@@ -156,7 +157,7 @@ func (p *OktaProvider) PollAuditLogs(
 
 	params := url.Values{}
 	params.Add("since", lastCreatedTime)
-	params.Add("limit", "100")
+	params.Add("limit", fmt.Sprintf("%d", limit))
 
 	endpoint := "/api/v1/logs?" + params.Encode()
 

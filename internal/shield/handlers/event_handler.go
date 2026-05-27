@@ -19,7 +19,10 @@ func NewEventHandler(service services.LogsServiceInt) *EventHandler {
 }
 
 func (h *EventHandler) SearchLogs(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	// Allow override for testing
 	if localOrgID := c.Locals("orgID"); localOrgID != nil {
 		if id, ok := localOrgID.(uuid.UUID); ok && id != uuid.Nil {
@@ -57,7 +60,10 @@ func (h *EventHandler) SearchLogs(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Logs retrieved", paginated)
 }
 func (h *EventHandler) GetLogDetail(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	// Allow override for testing
 	if localOrgID := c.Locals("orgID"); localOrgID != nil {
 		if id, ok := localOrgID.(uuid.UUID); ok && id != uuid.Nil {
@@ -75,7 +81,10 @@ func (h *EventHandler) GetLogDetail(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Event retrieved", event.ToResponse())
 }
 func (h *EventHandler) IngestLog(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	// Allow override for testing
 	if orgID == uuid.Nil {
 		if localOrgID := c.Locals("orgID"); localOrgID != nil {
@@ -95,7 +104,10 @@ func (h *EventHandler) IngestLog(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusCreated, "Event ingested", event.ToResponse())
 }
 func (h *EventHandler) BulkIngestLogs(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	// Allow override for testing
 	if localOrgID := c.Locals("orgID"); localOrgID != nil {
 		if id, ok := localOrgID.(uuid.UUID); ok && id != uuid.Nil {

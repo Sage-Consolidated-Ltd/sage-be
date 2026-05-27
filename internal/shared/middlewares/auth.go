@@ -1,6 +1,8 @@
 package middlewares
 
 import (
+	"errors"
+	"fmt"
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/response"
 
@@ -46,23 +48,32 @@ func (am *AuthMiddleware) RequireRole(role string) fiber.Handler {
 	}
 }
 
-func GetOrgID(c *fiber.Ctx) uuid.UUID {
+func GetOrgID(c *fiber.Ctx) (uuid.UUID, error) {
 	if config.Store == nil {
-		return uuid.Nil
+		return uuid.Nil, errors.New("session store not initialized")
 	}
+
 	sess, err := config.Store.Get(c)
 	if err != nil {
-		return uuid.Nil
+		return uuid.Nil, fmt.Errorf("failed to get session: %w", err)
 	}
-	orgIDStr := sess.Get("organizationID")
-	if orgIDStr == nil {
-		return uuid.Nil
+
+	orgIDRaw := sess.Get("organizationID")
+	if orgIDRaw == nil {
+		return uuid.Nil, errors.New("organization ID missing in session")
 	}
-	orgID, err := uuid.Parse(orgIDStr.(string))
+
+	orgIDStr, ok := orgIDRaw.(string)
+	if !ok {
+		return uuid.Nil, errors.New("organization ID is not a string")
+	}
+
+	orgID, err := uuid.Parse(orgIDStr)
 	if err != nil {
-		return uuid.Nil
+		return uuid.Nil, fmt.Errorf("invalid organization ID: %w", err)
 	}
-	return orgID
+
+	return orgID, nil
 }
 
 func GetOrgIDStr(c *fiber.Ctx) string {

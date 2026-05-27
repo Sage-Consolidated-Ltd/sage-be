@@ -27,6 +27,8 @@ type SecurityEventRepositoryInt interface {
 	GetEventVolume(ctx context.Context, orgID uuid.UUID, startTime, endTime *time.Time, interval string, sourceID *uuid.UUID) ([]map[string]interface{}, error)
 	GetEventCountInWindow(ctx context.Context, orgID uuid.UUID, startTime, endTime *time.Time) (int64, error)
 	BulkCreateEventsWithReturning(ctx context.Context, events []*models.SecurityEvent) ([]uuid.UUID, error)
+	BulkInsertRawEvents(ctx context.Context, orgID uuid.UUID, sourceID *uuid.UUID, events []models.NormalizedEvent) ([]models.CreateRawEventResponse, error)
+	GetRawEventByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*models.RawEvent, error)
 }
 
 type SecurityEventRepository struct {
@@ -55,6 +57,8 @@ const (
 			ip_address, geo_country, geo_city, raw_payload, normalized_payload,
 			parse_status, parse_errors, occurred_at, ingested_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
+		ON CONFLICT (source, source_event_id) 
+		DO NOTHING
 	`
 	BULK_INSERT_EVENTS_WITH_RETURNING = `
 		WITH new_events AS (
@@ -130,6 +134,26 @@ const (
 		WHERE id = $1 AND organization_id = $5
 	`
 	GET_EVENTS_BY_PARSER = `SELECT * FROM security_events WHERE parser_id = $1 AND organization_id = $2 AND parse_status = $3 LIMIT $4`
+	GET_RAW_EVENT_BY_ID = `
+		WITH picked AS (
+			SELECT id
+			FROM raw_events
+			WHERE 
+				id = $1
+				AND organization_id = $2
+				AND (
+					locked_at IS NULL 
+					OR locked_at < NOW() - INTERVAL '5 minutes'
+				)
+			FOR UPDATE SKIP LOCKED
+		)
+		UPDATE raw_events re
+		SET 
+			locked_at = NOW(),
+			locked_by = $3
+		FROM picked
+		WHERE re.id = picked.id
+		RETURNING re.*;`
 )
 
 func (r *SecurityEventRepository) CreateEvent(ctx context.Context, event *models.SecurityEvent) error {
@@ -273,7 +297,7 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 		search = &s
 	}
 
-	fmt.Printf("Filters - sourceID: %v, source: %v, eventType: %v, category: %v, severity: %v, actorEmail: %v, ipAddress: %v, startTime: %v, endTime: %v, search: %v\n", sourceID, source, eventType, category, severity, actorEmail, ipAddress, startTime, endTime, search)
+	fmt.Printf("Filters - sourceID: %v, source: %v, eventType: %v, category: %v, severity: %v, actorEmail: %v, ipAddress: %v, startTime: %v, endTime: %v, search: %v, orgID:%v\n", sourceID, source, eventType, category, severity, actorEmail, ipAddress, startTime, endTime, search, orgID)
 
 	var total int
 	err := r.db.GetContext(ctx, &total, COUNT_EVENTS,
@@ -560,4 +584,134 @@ func (r *SecurityEventRepository) BulkCreateEventsWithReturning(ctx context.Cont
 		return nil, err
 	}
 	return ids, nil
+}
+
+func (r *SecurityEventRepository) BulkInsertRawEvents(
+	ctx context.Context,
+	orgID uuid.UUID,
+	sourceID *uuid.UUID,
+	events []models.NormalizedEvent,
+) ([]models.CreateRawEventResponse, error) {
+
+	if len(events) == 0 {
+		return nil, nil
+	}
+
+	var (
+		values       []string
+		args         []interface{}
+		placeholderN = 1
+	)
+
+	for _, event := range events {
+		rawPayload, err := json.Marshal(event.Raw)
+		if err != nil {
+			return nil, err
+		}
+
+		provider_status := event.Status
+		if provider_status == "" {
+			provider_status = "pending"
+		}
+
+		values = append(values,
+			fmt.Sprintf(
+				`($%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d,$%d)`,
+				placeholderN,
+				placeholderN+1,
+				placeholderN+2,
+				placeholderN+3,
+				placeholderN+4,
+				placeholderN+5,
+				placeholderN+6,
+				placeholderN+7,
+				placeholderN+8,
+				placeholderN+9,
+				placeholderN+10,
+				placeholderN+11,
+			),
+		)
+
+		args = append(args,
+			orgID,
+			sourceID,
+			event.Provider,
+			event.EventType,
+			nullIfEmpty(event.UserID),
+			nullIfEmpty(event.UserName),
+			nullIfEmpty(event.IPAddress),
+			nullIfEmpty(event.Application),
+			event.Timestamp,
+			provider_status,
+			rawPayload,
+			"pending",
+		)
+
+		placeholderN += 12
+	}
+
+	query := fmt.Sprintf(`
+		INSERT INTO raw_events (
+			organization_id,
+			source_id,
+			provider,
+			event_type,
+			user_id,
+			user_name,
+			ip_address,
+			application,
+			event_timestamp,
+			provider_status,
+			raw_payload,
+			status
+		)
+		VALUES %s
+		RETURNING id, collected_at
+	`, strings.Join(values, ","))
+
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := tx.QueryxContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []models.CreateRawEventResponse
+
+	for rows.Next() {
+		var r models.CreateRawEventResponse
+		if err := rows.StructScan(&r); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return results, rows.Err()
+}
+
+func (r *SecurityEventRepository) GetRawEventByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*models.RawEvent, error) {
+	var rawEvent models.RawEvent
+	err := r.db.GetContext(ctx, &rawEvent, GET_RAW_EVENT_BY_ID, id, orgID, "worker-1")
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperrors.NotFoundError("RAW EVENT NOT FOUND")
+		}
+		return nil, err
+	}
+	return &rawEvent, nil
+}
+
+func nullIfEmpty(s string) interface{} {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	return s
 }

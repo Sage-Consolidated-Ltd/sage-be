@@ -21,7 +21,10 @@ func NewParserHandler(service services.ParserServiceInt) *ParserHandler {
 }
 
 func (h *ParserHandler) GetParserSummary(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -38,7 +41,10 @@ func (h *ParserHandler) GetParserSummary(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Parser summary", summary)
 }
 func (h *ParserHandler) ListParsers(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -67,7 +73,10 @@ func (h *ParserHandler) ListParsers(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Parsers retrieved", paginated)
 }
 func (h *ParserHandler) GetParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -83,7 +92,10 @@ func (h *ParserHandler) GetParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Parser details", parser.ToResponse(nil))
 }
 func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -108,7 +120,10 @@ func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusCreated, "Parser created", parser.ToResponse(nil))
 }
 func (h *ParserHandler) UpdateParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "INVALID_ID", err.Error())
@@ -156,7 +171,10 @@ func (h *ParserHandler) UpdateParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Parser updated", existing.ToResponse(nil))
 }
 func (h *ParserHandler) TestParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "INVALID_ID", err.Error())
@@ -183,7 +201,10 @@ func (h *ParserHandler) PreviewParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Preview result", result)
 }
 func (h *ParserHandler) EnableParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -197,7 +218,10 @@ func (h *ParserHandler) EnableParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Parser enabled", nil)
 }
 func (h *ParserHandler) DisableParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -211,7 +235,10 @@ func (h *ParserHandler) DisableParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Parser disabled", nil)
 }
 func (h *ParserHandler) ValidateParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -226,7 +253,10 @@ func (h *ParserHandler) ValidateParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Validation queued", result)
 }
 func (h *ParserHandler) ValidateAllParsers(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -237,7 +267,10 @@ func (h *ParserHandler) ValidateAllParsers(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Validation queued for all parsers", result)
 }
 func (h *ParserHandler) ImportParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -262,7 +295,10 @@ func (h *ParserHandler) ImportParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusCreated, "Parser imported", parser.ToResponse(nil))
 }
 func (h *ParserHandler) ExportParser(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -277,7 +313,10 @@ func (h *ParserHandler) ExportParser(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Parser exported", parser)
 }
 func (h *ParserHandler) ListSampleLogs(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}

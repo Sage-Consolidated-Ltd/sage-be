@@ -68,20 +68,37 @@ func (c *TaskClient) EnqueueProviderSync(ctx context.Context, orgID uuid.UUID, s
 	return err
 }
 
-func (c *TaskClient) EnqueueProviderEventBatch(ctx context.Context, orgID uuid.UUID, sourceID uuid.UUID, provider string, events []models.NormalizedEvent) error {
-	payload, err := json.Marshal(map[string]interface{}{
-		"organization_id": orgID,
-		"source_id":       sourceID,
-		"provider":        provider,
-		"events":          events,
-	})
-	if err != nil {
-		return err
+func (c *TaskClient) EnqueueProviderEventBatch(
+	ctx context.Context,
+	orgID uuid.UUID,
+	sourceID uuid.UUID,
+	events []models.CreateRawEventResponse,
+	) error {
+	batchSize := 100
+	for i := 0; i < len(events); i += batchSize {
+		end := i + batchSize
+		if end > len(events) {
+			end = len(events)
+		}
+		chunk := events[i:end]
+
+		payload, err := json.Marshal(map[string]interface{}{
+			"organization_id": orgID,
+			"source_id": sourceID,
+			"events":          chunk,
+		})
+		if err != nil {
+			return err
+		}
+
+		task := asynq.NewTask(TypeProviderEventBatch, payload)
+
+		if _, err := c.client.Enqueue(task, asynq.Queue("default")); err != nil {
+			return err
+		}
 	}
 
-	task := asynq.NewTask(TypeProviderEventBatch, payload)
-	_, err = c.client.Enqueue(task, asynq.Queue("default"))
-	return err
+	return nil
 }
 
 // EnqueueIngestJob enqueues an ingestion job

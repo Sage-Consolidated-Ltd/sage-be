@@ -20,7 +20,10 @@ func NewQualityHandler(service services.DataQualityServiceInt) *QualityHandler {
 }
 
 func (h *QualityHandler) GetDataQualitySummary(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -31,7 +34,10 @@ func (h *QualityHandler) GetDataQualitySummary(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Quality summary", scan.ToResponse())
 }
 func (h *QualityHandler) RunDataQualityScan(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -42,7 +48,10 @@ func (h *QualityHandler) RunDataQualityScan(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Scan started", result)
 }
 func (h *QualityHandler) GetDataQualityBreakdown(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -72,7 +81,10 @@ func (h *QualityHandler) GetDataQualityBreakdown(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Quality breakdown", paginated)
 }
 func (h *QualityHandler) GetAIAnalysis(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -83,7 +95,10 @@ func (h *QualityHandler) GetAIAnalysis(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "AI analysis", map[string]interface{}{"insights": insights})
 }
 func (h *QualityHandler) ApplySuggestedFix(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
@@ -121,7 +136,10 @@ func (h *QualityHandler) GetSuggestedFixDiff(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Diff preview", diff)
 }
 func (h *QualityHandler) DownloadDataQualityReport(c *fiber.Ctx) error {
-	orgID := middlewares.GetOrgID(c)
+	orgID, err := middlewares.GetOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}

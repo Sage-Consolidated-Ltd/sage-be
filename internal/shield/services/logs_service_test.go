@@ -85,6 +85,18 @@ func (m *mockEventRepo) BulkCreateEventsWithReturning(ctx context.Context, event
 	}
 	return args.Get(0).([]uuid.UUID), args.Error(1)
 }
+func (m *mockEventRepo) GetRawEventByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*models.RawEvent, error) {
+	args := m.Called(ctx, id, orgID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func (m *mockEventRepo) BulkInsertRawEvents(ctx context.Context, orgID uuid.UUID, sourceID *uuid.UUID, events []models.NormalizedEvent) ([]models.CreateRawEventResponse, error) {
+	args := m.Called(ctx, events)
+	return nil, args.Error(0)
+}
 
 type mockDataSourceRepo struct {
 	mock.Mock
@@ -237,7 +249,7 @@ func TestLogsService_IngestLog_Success(t *testing.T) {
 	mockEventRepo.On("CreateEvent", ctx, mock.AnythingOfType("*models.SecurityEvent")).Return(nil)
 	// Async calls - don't assert on these as they run in goroutines
 	mockDataSourceRepo.On("IncrementEventsToday", ctx, sourceID).Return(nil).Maybe()
-	mockDataSourceRepo.On("UpdateHealthMetrics", ctx, sourceID, int64(1), int64(1), int64(0), (*time.Time)(nil), (*time.Time)(nil)).Return(nil).Maybe()
+	mockDataSourceRepo.On("UpdateHealthMetrics", ctx, sourceID, int64(1), int64(1), int64(0), mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	event, err := service.IngestLog(ctx, orgID, req)
 	assert.NoError(t, err)
@@ -377,7 +389,7 @@ func TestLogsService_BulkIngestLogs_Success(t *testing.T) {
 	mockEventRepo.On("BulkCreateEvents", ctx, mock.AnythingOfType("[]*models.SecurityEvent")).Return(nil)
 	// Async calls - don't assert on these as they run in goroutines
 	mockDataSourceRepo.On("IncrementEventsToday", ctx, sourceID).Return(nil).Maybe()
-	mockDataSourceRepo.On("UpdateHealthMetrics", ctx, sourceID, int64(1), int64(1), int64(0), (*time.Time)(nil), (*time.Time)(nil)).Return(nil).Maybe()
+	mockDataSourceRepo.On("UpdateHealthMetrics", ctx, sourceID, int64(1), int64(1), int64(0), mock.Anything, mock.Anything).Return(nil).Maybe()
 
 	result, err := service.BulkIngestLogs(ctx, orgID, req)
 	assert.NoError(t, err)

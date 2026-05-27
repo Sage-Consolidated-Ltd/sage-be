@@ -52,7 +52,7 @@ func (p *EntraProvider) GetSignInLogs(ctx context.Context, filter string) (*Grap
 
 	return &graphResp, nil
 }
-func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error) {
+func (p *EntraProvider) PollAuditLogs(ctx context.Context, limit int) ([]SignInEvent, error) {
 	token, err := p.getToken(ctx)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context) ([]SignInEvent, error
 
 	params := url.Values{}
 	params.Add("$filter", filter)
-	params.Add("$top", "999")
+	params.Add("$top", fmt.Sprintf("%d", limit))
 	params.Add("$orderby", "createdDateTime desc")
 
 	url := fmt.Sprintf(

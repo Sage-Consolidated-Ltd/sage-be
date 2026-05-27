@@ -14,7 +14,7 @@ import (
 
 type Provider interface {
 	Verify(ctx context.Context) error
-	Collect(ctx context.Context) ([]models.NormalizedEvent, error)
+	Collect(ctx context.Context, limit int) ([]models.NormalizedEvent, error)
 }
 
 type OktaCredentials struct {

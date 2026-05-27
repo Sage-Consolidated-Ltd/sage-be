@@ -63,8 +63,7 @@ func main() {
 	eventRepo := repositories.NewSecurityEventRepository(db)
 
 	// Initialize task handler
-	taskHandler := tasks.NewTaskHandler(jobRepo, dataSourceRepo, eventRepo)
-	providerSyncHandler := tasks.NewProviderSyncHandler(dataSourceRepo, integrationRepo, eventRepo, taskClient, restyClient, encryptor)
+	taskHandler := tasks.NewTaskHandler(jobRepo, dataSourceRepo, eventRepo, integrationRepo, taskClient, restyClient, encryptor)
 
 	srv := asynq.NewServer(
 		serverOpt,
@@ -85,7 +84,7 @@ func main() {
 	mux.HandleFunc(tasks.TypeQualityScanJob, taskHandler.HandleQualityScanJob)
 	mux.HandleFunc(tasks.TypeValidationJob, taskHandler.HandleValidationJob)
 	mux.HandleFunc(tasks.TypeProviderEventBatch, taskHandler.HandleProviderEventBatch)
-	mux.HandleFunc(tasks.TypeProviderSync, providerSyncHandler.ProcessTask)
+	mux.HandleFunc(tasks.TypeProviderSync, taskHandler.HandleProviderSync)
 
 	// Handle graceful shutdown
 	go func() {
