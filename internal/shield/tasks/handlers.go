@@ -32,9 +32,9 @@ import (
 // )
 
 type TaskHandler struct {
-	jobRepo        repositories.IngestionJobRepositoryInt
-	dataSourceRepo repositories.DataSourceRepositoryInt
-	eventRepo      repositories.SecurityEventRepositoryInt
+	jobRepo         repositories.IngestionJobRepositoryInt
+	dataSourceRepo  repositories.DataSourceRepositoryInt
+	eventRepo       repositories.SecurityEventRepositoryInt
 	integrationRepo repositories.IntegrationRepositoryInt
 	taskClient      *TaskClient
 	client          *resty.Client
@@ -51,9 +51,9 @@ func NewTaskHandler(
 	encryptor crypto.Encryptor,
 ) *TaskHandler {
 	return &TaskHandler{
-		jobRepo:        jobRepo,
-		dataSourceRepo: dataSourceRepo,
-		eventRepo:      eventRepo,
+		jobRepo:         jobRepo,
+		dataSourceRepo:  dataSourceRepo,
+		eventRepo:       eventRepo,
 		integrationRepo: integrationRepo,
 		taskClient:      taskClient,
 		client:          client,
@@ -200,8 +200,8 @@ func (h *TaskHandler) HandleValidationJob(ctx context.Context, t *asynq.Task) er
 
 func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Task) error {
 	var payload struct {
-		OrganizationID uuid.UUID                `json:"organization_id"`
-		SourceID       uuid.UUID                `json:"source_id"`
+		OrganizationID uuid.UUID                       `json:"organization_id"`
+		SourceID       uuid.UUID                       `json:"source_id"`
 		Events         []models.CreateRawEventResponse `json:"events"`
 	}
 
@@ -219,7 +219,7 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 		re, err := h.eventRepo.GetRawEventByID(ctx, ev.ID, payload.OrganizationID)
 		if err != nil {
 			log.Printf("Failed to fetch raw event for ID %s: %v", ev.ID, err)
-			return err 
+			return err
 		}
 		if re.EventTimeStamp.After(latest) {
 			latest = re.EventTimeStamp

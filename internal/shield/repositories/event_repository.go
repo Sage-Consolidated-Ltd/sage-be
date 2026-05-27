@@ -134,7 +134,7 @@ const (
 		WHERE id = $1 AND organization_id = $5
 	`
 	GET_EVENTS_BY_PARSER = `SELECT * FROM security_events WHERE parser_id = $1 AND organization_id = $2 AND parse_status = $3 LIMIT $4`
-	GET_RAW_EVENT_BY_ID = `
+	GET_RAW_EVENT_BY_ID  = `
 		WITH picked AS (
 			SELECT id
 			FROM raw_events

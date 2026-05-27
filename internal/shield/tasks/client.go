@@ -73,7 +73,7 @@ func (c *TaskClient) EnqueueProviderEventBatch(
 	orgID uuid.UUID,
 	sourceID uuid.UUID,
 	events []models.CreateRawEventResponse,
-	) error {
+) error {
 	batchSize := 100
 	for i := 0; i < len(events); i += batchSize {
 		end := i + batchSize
@@ -84,7 +84,7 @@ func (c *TaskClient) EnqueueProviderEventBatch(
 
 		payload, err := json.Marshal(map[string]interface{}{
 			"organization_id": orgID,
-			"source_id": sourceID,
+			"source_id":       sourceID,
 			"events":          chunk,
 		})
 		if err != nil {
