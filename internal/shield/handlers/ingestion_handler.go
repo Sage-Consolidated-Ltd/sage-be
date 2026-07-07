@@ -36,7 +36,7 @@ func getSessionInfo(c *fiber.Ctx) (orgID uuid.UUID, userID string, role string, 
 	}
 	orgStr, _ := sess.Get("organizationID").(string)
 	uid, _ := sess.Get("userID").(string)
-	r, _ := sess.Get("role").(string)
+	r, _ := sess.Get("roleInOrg").(string)
 	if orgStr == "" {
 		return uuid.Nil, "", "", false
 	}

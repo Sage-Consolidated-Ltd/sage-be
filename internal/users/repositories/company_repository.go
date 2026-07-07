@@ -38,6 +38,8 @@ type CompanyRepositoryInt interface {
 	GetMemberByID(ctx context.Context, memberID, orgID string) (*models.OrganizationMember, error)
 	AddMember(ctx context.Context, orgID, userID, role, invitedBy string) (*models.OrganizationMember, error)
 	UpdateMemberRole(ctx context.Context, memberID, orgID, newRole string) error
+	UpdateMemberStatus(ctx context.Context, memberID, orgID, newStatus string) error
+	ResetMember2FA(ctx context.Context, memberID, orgID string) error
 	RemoveMember(ctx context.Context, memberID, orgID string) error
 	GetMemberCountByRole(ctx context.Context, orgID, role string) (int, error)
 
@@ -59,6 +61,7 @@ type CompanyRepositoryInt interface {
 	GetRolePermissionGroups(ctx context.Context, roleID string) ([]string, error)
 	SetRolePermissionGroups(ctx context.Context, roleID string, groupIDs []string) error
 	SetRolePermissions(ctx context.Context, roleID string, permissionIDs []string) error
+	CheckMemberInOrganization(ctx context.Context, userID, orgID string) (bool, error)
 	IsValidRole(role string) bool
 	CanManageMembers(actorRole string) bool
 	CanUpdateSettings(actorRole string) bool
@@ -88,11 +91,12 @@ var (
 		    u.first_name,
 		    u.last_name,
 		    COALESCE(u.avatar_url, '') as avatar_url,
-		    om.role,
+		    omr.name as role,
 		    om.status,
 		    om.created_at
 		FROM organization_members om
 		JOIN users u ON u.id = om.user_id
+		JOIN organization_roles omr ON om.role_id = omr.id
 		WHERE u.email = $1
 		AND om.organization_id = $2;`
 	MARK_INVITATION_ACCEPTED = `
@@ -155,8 +159,7 @@ var (
 		    u.first_name,
 		    u.last_name,
 		    COALESCE(u.avatar_url, '') as avatar_url,
-		    om.role::text,
-		    om.department,
+		    omr.name::text as role,
 		    om.status::text,
 		    om.invited_by,
 		    om.invited_at,
@@ -166,10 +169,11 @@ var (
 		    om.updated_at
 		FROM organization_members om
 		JOIN users u ON u.id = om.user_id
+		JOIN organization_roles omr ON om.role_id = omr.id
 		WHERE om.organization_id = $1
-		  AND ($2 = '' OR om.role::text = $2)
+		  AND ($2 = '' OR omr.name::text = $2)
 		  AND ($3 = '' OR u.email ILIKE '%' || $3 || '%' OR u.first_name ILIKE '%' || $3 || '%' OR u.last_name ILIKE '%' || $3 || '%')
-		  AND om.status != 'removed'
+		  AND om.status != 'suspended'
 		ORDER BY om.created_at DESC
 		LIMIT $4 OFFSET $5
 	`
@@ -177,10 +181,11 @@ var (
 		SELECT COUNT(*)
 		FROM organization_members om
 		JOIN users u ON u.id = om.user_id
+		JOIN organization_roles omr ON om.role_id = omr.id
 		WHERE om.organization_id = $1
-		  AND ($2 = '' OR om.role::text = $2)
+		  AND ($2 = '' OR omr.name::text = $2)
 		  AND ($3 = '' OR u.email ILIKE '%' || $3 || '%' OR u.first_name ILIKE '%' || $3 || '%' OR u.last_name ILIKE '%' || $3 || '%')
-		  AND om.status != 'removed'
+		  AND om.status != 'suspended'
 	`
 	getMemberByIDSQL = `
 		SELECT 
@@ -191,8 +196,7 @@ var (
 		    u.first_name,
 		    u.last_name,
 		    COALESCE(u.avatar_url, '') as avatar_url,
-		    om.role::text,
-		    om.department,
+		    omr.name::text as role,
 		    om.status::text,
 		    om.invited_by,
 		    om.invited_at,
@@ -202,12 +206,35 @@ var (
 		    om.updated_at
 		FROM organization_members om
 		JOIN users u ON u.id = om.user_id
+		JOIN organization_roles omr ON om.role_id = omr.id
 		WHERE om.id = $1 AND om.organization_id = $2
+	`
+	getMemberByUserID = `
+		SELECT
+			om.id,
+			om.organization_id,
+			om.user_id,
+			u.email,
+			u.first_name,
+			u.last_name,
+			COALESCE(u.avatar_url, '') as avatar_url,
+			omr.name::text as role,
+		    om.status::text,
+		    om.invited_by,
+		    om.invited_at,
+		    om.joined_at,
+		    u.last_login_at,
+		    om.created_at,
+		    om.updated_at
+		FROM organization_members om
+		JOIN users u ON u.id = om.user_id
+		JOIN organization_roles omr ON om.role_id = omr.id
+		WHERE u.id = $1 AND om.organization_id = $2
 	`
 	addMemberSQL = `
 		INSERT INTO organization_members (organization_id, user_id, role, status, invited_by, invited_at)
 		VALUES ($1, $2, $3::organization_role, 'invited', $4, NOW())
-		RETURNING id, organization_id, user_id, role::text, status::text, invited_by, invited_at, created_at, updated_at
+		RETURNING id, organization_id, user_id, role::text as role, status::text, invited_by, invited_at, created_at, updated_at
 	`
 	updateMemberRoleSQL = `
 		UPDATE organization_members
@@ -216,9 +243,34 @@ var (
 		WHERE id = $1 AND organization_id = $2
 		RETURNING id
 	`
+	updateMemberStatusSQL = `
+		UPDATE organization_members
+		SET status = $3::member_status,
+		    updated_at = NOW()
+		WHERE id = $1 AND organization_id = $2
+		RETURNING id
+	`
+	checkMemberInOrganizationSQL = `
+		SELECT EXISTS (
+			SELECT 1
+			FROM organization_members
+			WHERE user_id = $1 AND organization_id = $2
+		) AS is_member
+	`
+	resetMember2FASQL = `
+		UPDATE users
+		SET two_factor_enabled = false,
+		    two_factor_secret = NULL,
+		    updated_at = NOW()
+		FROM organization_members om
+		WHERE om.id = $1
+		  AND om.organization_id = $2
+		  AND users.id = om.user_id
+		RETURNING users.id
+	`
 	removeMemberSQL = `
 		UPDATE organization_members
-		SET status = 'removed',
+		SET status = 'suspended',
 		    updated_at = NOW()
 		WHERE id = $1 AND organization_id = $2
 		RETURNING id
@@ -226,7 +278,7 @@ var (
 	countMembersByRoleSQL = `
 		SELECT COUNT(*)
 		FROM organization_members
-		WHERE organization_id = $1 AND role::text = $2 AND status != 'removed'
+		WHERE organization_id = $1 AND role::text = $2 AND status != 'suspended'
 	`
 	getOrganizationSettingsSQL = `
 		SELECT id, organization_id, default_alert_severity_threshold,
@@ -495,6 +547,32 @@ func (r *CompanyRepository) AddMember(ctx context.Context, orgID, userID, role, 
 // UpdateMemberRole updates a member's role
 func (r *CompanyRepository) UpdateMemberRole(ctx context.Context, memberID, orgID, newRole string) error {
 	result, err := r.db.ExecContext(ctx, updateMemberRoleSQL, memberID, orgID, newRole)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return apperrors.NotFoundError("MEMBER NOT FOUND")
+	}
+	return nil
+}
+
+// UpdateMemberStatus updates the member's status in the organization.
+func (r *CompanyRepository) UpdateMemberStatus(ctx context.Context, memberID, orgID, newStatus string) error {
+	result, err := r.db.ExecContext(ctx, updateMemberStatusSQL, memberID, orgID, newStatus)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return apperrors.NotFoundError("MEMBER NOT FOUND")
+	}
+	return nil
+}
+
+// ResetMember2FA disables 2FA for a member in the organization.
+func (r *CompanyRepository) ResetMember2FA(ctx context.Context, memberID, orgID string) error {
+	result, err := r.db.ExecContext(ctx, resetMember2FASQL, memberID, orgID)
 	if err != nil {
 		return err
 	}
@@ -895,6 +973,15 @@ func (r *CompanyRepository) SetRolePermissions(ctx context.Context, roleID strin
 	}
 
 	return tx.Commit()
+}
+
+func (r *CompanyRepository) CheckMemberInOrganization(ctx context.Context, userID, orgID string) (bool, error) {
+	var isMember bool
+	err := r.db.GetContext(ctx, &isMember, checkMemberInOrganizationSQL, userID, orgID)
+	if err != nil {
+		return false, err
+	}
+	return isMember, nil
 }
 
 // CanManageMembers checks if role can invite/remove members

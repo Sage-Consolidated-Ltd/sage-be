@@ -51,6 +51,45 @@ func _InviteMember() {}
 // @Router /company/invitations/accept [post]
 func _AcceptInvitation() {}
 
+type OrganizationMembersResponse struct {
+	Success bool                              `json:"success"`
+	Message string                            `json:"message"`
+	Data    []models.OrganizationMemberResponse `json:"data"`
+}
+
+// @Summary List Organization Members
+// @Description Retrieve members for the current organization, including role, status, and last active time.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security SessionAuth
+// @Success 200 {object} OrganizationMembersResponse
+// @Router /organization/members [get]
+func _ListMembers() {}
+
+// @Summary Update Member Status
+// @Description Update a member's status within the organization. Only owners and admins can perform this action.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security SessionAuth
+// @Param id path string true "Member ID"
+// @Param request body requests.UpdateMemberStatusRequest true "Update Member Status Request"
+// @Success 200 {object} response.Response
+// @Router /organization/members/{id}/status [patch]
+func _UpdateMemberStatus() {}
+
+// @Summary Reset Member MFA
+// @Description Reset a member's MFA configuration. Only the organization owner can perform this action.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security SessionAuth
+// @Param id path string true "Member ID"
+// @Success 200 {object} response.Response
+// @Router /organization/members/{id}/reset-mfa [post]
+func _ResetMemberMFA() {}
+
 type PermissionsResponse struct {
 	Success bool                `json:"success"`
 	Message string              `json:"message"`
@@ -149,3 +188,14 @@ func _UpdateCustomRole() {}
 // @Success 200 {object} response.Response
 // @Router /organization/custom-roles/{id} [delete]
 func _DeleteCustomRole() {}
+
+// @Summary Switch Active Organization
+// @Description Switch the active organization for the current user session. This allows users to change their context between different organizations they belong to.
+// @Tags Organization
+// @Accept json
+// @Produce json
+// @Security SessionAuth
+// @Param id path string true "Organization ID"
+// @Success 200 {object} response.Response
+// @Router /organization/{id}/switch [post]
+func _SwitchActiveOrganization() {}

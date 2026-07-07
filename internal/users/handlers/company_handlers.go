@@ -105,13 +105,16 @@ func (h *CompanyHandler) AcceptInvitation(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusInternalServerError, err.Error(), nil)
 	}
 
+	sess.Delete("pending_email_verification")
+	sess.Save()
+
 	return response.JSON(c, fiber.StatusOK, "invitation accepted successfully", nil)
 }
 
 // GetOrganization returns the current organization's core information
 // GET /api/v1/organization
 func (h *CompanyHandler) GetOrganization(c *fiber.Ctx) error {
-	orgID, _, _, ok := middlewares.GetSessionInfo(c)
+	orgID, _, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -131,7 +134,7 @@ func (h *CompanyHandler) GetOrganization(c *fiber.Ctx) error {
 // UpdateOrganization updates organization metadata
 // PATCH /api/v1/organization
 func (h *CompanyHandler) UpdateOrganization(c *fiber.Ctx) error {
-	orgID, _, role, ok := middlewares.GetSessionInfo(c)
+	orgID, roleInOrg, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -146,7 +149,7 @@ func (h *CompanyHandler) UpdateOrganization(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
 
-	if err := h.companyServ.UpdateOrganization(c.Context(), orgID, role, &req); err != nil {
+	if err := h.companyServ.UpdateOrganization(c.Context(), orgID, roleInOrg, &req); err != nil {
 		logger.Error("Error with CompanyHandler.UpdateOrganization: ", zap.Error(err))
 		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
@@ -160,7 +163,7 @@ func (h *CompanyHandler) UpdateOrganization(c *fiber.Ctx) error {
 // ListMembers returns all members in the organization
 // GET /api/v1/organization/members
 func (h *CompanyHandler) ListMembers(c *fiber.Ctx) error {
-	orgID, _, _, ok := middlewares.GetSessionInfo(c)
+	orgID, _, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -198,13 +201,13 @@ func (h *CompanyHandler) ListMembers(c *fiber.Ctx) error {
 // InviteMembers invites users to join the organization
 // POST /api/v1/organization/members/invite
 func (h *CompanyHandler) InviteMembers(c *fiber.Ctx) error {
-	orgID, userID, role, ok := middlewares.GetSessionInfo(c)
+	orgID, roleInOrg, userID, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
 
 	// Check permissions
-	if !h.companyServ.CanManageMembers(role) {
+	if !h.companyServ.CanManageMembers(roleInOrg) {
 		return response.Error(c, fiber.StatusForbidden, "only owner or admin can invite members", nil)
 	}
 
@@ -233,7 +236,7 @@ func (h *CompanyHandler) InviteMembers(c *fiber.Ctx) error {
 // UpdateMemberRole updates a member's role
 // PATCH /api/v1/organization/members/:id/role
 func (h *CompanyHandler) UpdateMemberRole(c *fiber.Ctx) error {
-	orgID, _, role, ok := middlewares.GetSessionInfo(c)
+	orgID, roleInOrg, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -253,7 +256,7 @@ func (h *CompanyHandler) UpdateMemberRole(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
 
-	if err := h.companyServ.UpdateMemberRole(c.Context(), memberID, orgID, role, req.Role); err != nil {
+	if err := h.companyServ.UpdateMemberRole(c.Context(), memberID, orgID, roleInOrg, req.Role); err != nil {
 		logger.Error("Error with CompanyHandler.UpdateMemberRole: ", zap.Error(err))
 		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
@@ -264,10 +267,10 @@ func (h *CompanyHandler) UpdateMemberRole(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Member role updated successfully", nil)
 }
 
-// RemoveMember removes a member from the organization
-// DELETE /api/v1/organization/members/:id
-func (h *CompanyHandler) RemoveMember(c *fiber.Ctx) error {
-	orgID, userID, role, ok := middlewares.GetSessionInfo(c)
+// ResetMemberMFA resets a member's MFA configuration.
+// POST /api/v1/organization/members/:id/reset-mfa
+func (h *CompanyHandler) ResetMemberMFA(c *fiber.Ctx) error {
+	orgID, roleInOrg, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -277,7 +280,31 @@ func (h *CompanyHandler) RemoveMember(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusBadRequest, "member id required", nil)
 	}
 
-	if err := h.companyServ.RemoveMember(c.Context(), memberID, orgID, role, userID); err != nil {
+	if err := h.companyServ.ResetMemberMFA(c.Context(), memberID, orgID, roleInOrg); err != nil {
+		logger.Error("Error with CompanyHandler.ResetMemberMFA: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Member MFA reset successfully", nil)
+}
+
+// RemoveMember removes a member from the organization
+// DELETE /api/v1/organization/members/:id
+func (h *CompanyHandler) RemoveMember(c *fiber.Ctx) error {
+	orgID, roleInOrg, userID, _, ok := middlewares.GetSessionInfo(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	memberID := c.Params("id")
+	if memberID == "" {
+		return response.Error(c, fiber.StatusBadRequest, "member id required", nil)
+	}
+
+	if err := h.companyServ.RemoveMember(c.Context(), memberID, orgID, roleInOrg, userID); err != nil {
 		logger.Error("Error with CompanyHandler.RemoveMember: ", zap.Error(err))
 		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
@@ -291,7 +318,7 @@ func (h *CompanyHandler) RemoveMember(c *fiber.Ctx) error {
 // GetOrganizationSettings returns organization-wide settings
 // GET /api/v1/organization/settings
 func (h *CompanyHandler) GetOrganizationSettings(c *fiber.Ctx) error {
-	orgID, _, _, ok := middlewares.GetSessionInfo(c)
+	orgID, _, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -311,7 +338,7 @@ func (h *CompanyHandler) GetOrganizationSettings(c *fiber.Ctx) error {
 // UpdateOrganizationSettings updates organization settings
 // PATCH /api/v1/organization/settings
 func (h *CompanyHandler) UpdateOrganizationSettings(c *fiber.Ctx) error {
-	orgID, _, role, ok := middlewares.GetSessionInfo(c)
+	orgID, roleInOrg, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -326,7 +353,7 @@ func (h *CompanyHandler) UpdateOrganizationSettings(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
 
-	if err := h.companyServ.UpdateOrganizationSettings(c.Context(), orgID, role, &req); err != nil {
+	if err := h.companyServ.UpdateOrganizationSettings(c.Context(), orgID, roleInOrg, &req); err != nil {
 		logger.Error("Error with CompanyHandler.UpdateOrganizationSettings: ", zap.Error(err))
 		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
 			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
@@ -370,7 +397,7 @@ func (h *CompanyHandler) ListPermissionGroups(c *fiber.Ctx) error {
 // ListCustomRoles returns all custom roles for the organization
 // GET /api/v1/organization/custom-roles
 func (h *CompanyHandler) ListCustomRoles(c *fiber.Ctx) error {
-	orgID, _, _, ok := middlewares.GetSessionInfo(c)
+	orgID, _, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -390,7 +417,7 @@ func (h *CompanyHandler) ListCustomRoles(c *fiber.Ctx) error {
 // GetCustomRole returns a specific custom role
 // GET /api/v1/organization/custom-roles/:id
 func (h *CompanyHandler) GetCustomRole(c *fiber.Ctx) error {
-	orgID, _, _, ok := middlewares.GetSessionInfo(c)
+	orgID, _, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
@@ -415,12 +442,12 @@ func (h *CompanyHandler) GetCustomRole(c *fiber.Ctx) error {
 // CreateCustomRole creates a new custom role
 // POST /api/v1/organization/custom-roles
 func (h *CompanyHandler) CreateCustomRole(c *fiber.Ctx) error {
-	orgID, _, role, ok := middlewares.GetSessionInfo(c)
+	orgID, roleInOrg, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
 
-	if !h.companyServ.CanManageMembers(role) {
+	if !h.companyServ.CanManageMembers(roleInOrg) {
 		return response.Error(c, fiber.StatusForbidden, "only owner or admin can create custom roles", nil)
 	}
 
@@ -449,12 +476,12 @@ func (h *CompanyHandler) CreateCustomRole(c *fiber.Ctx) error {
 // UpdateCustomRole updates a custom role
 // PATCH /api/v1/organization/custom-roles/:id
 func (h *CompanyHandler) UpdateCustomRole(c *fiber.Ctx) error {
-	orgID, _, role, ok := middlewares.GetSessionInfo(c)
+	orgID, roleInOrg, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
 
-	if !h.companyServ.CanManageMembers(role) {
+	if !h.companyServ.CanManageMembers(roleInOrg) {
 		return response.Error(c, fiber.StatusForbidden, "only owner or admin can update custom roles", nil)
 	}
 
@@ -487,12 +514,12 @@ func (h *CompanyHandler) UpdateCustomRole(c *fiber.Ctx) error {
 // DeleteCustomRole deletes a custom role
 // DELETE /api/v1/organization/custom-roles/:id
 func (h *CompanyHandler) DeleteCustomRole(c *fiber.Ctx) error {
-	orgID, _, role, ok := middlewares.GetSessionInfo(c)
+	orgID, roleInOrg, _, _, ok := middlewares.GetSessionInfo(c)
 	if !ok {
 		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
 	}
 
-	if !h.companyServ.CanManageMembers(role) {
+	if !h.companyServ.CanManageMembers(roleInOrg) {
 		return response.Error(c, fiber.StatusForbidden, "only owner or admin can delete custom roles", nil)
 	}
 
@@ -511,3 +538,81 @@ func (h *CompanyHandler) DeleteCustomRole(c *fiber.Ctx) error {
 
 	return response.JSON(c, fiber.StatusOK, "Custom role deleted successfully", nil)
 }
+
+func (h *CompanyHandler) UpdateMemberStatus(c *fiber.Ctx) error {
+	orgID, roleInOrg, _, _, ok := middlewares.GetSessionInfo(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	if !h.companyServ.CanManageMembers(roleInOrg) {
+		return response.Error(c, fiber.StatusForbidden, "only owner or admin can update member status", nil)
+	}
+
+	memberID := c.Params("id")
+	if memberID == "" {
+		return response.Error(c, fiber.StatusBadRequest, "member id required", nil)
+	}
+
+	var req requests.UpdateMemberStatusRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, "Invalid request body", nil)
+	}
+
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	if err := h.companyServ.UpdateMemberStatus(c.Context(), memberID, orgID, roleInOrg, req.Status); err != nil {
+		logger.Error("Error with CompanyHandler.UpdateMemberStatus: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Member status updated successfully", nil)
+}
+
+func (h *CompanyHandler) SwitchActiveOrganization(c *fiber.Ctx) error {
+	_, _, userID, _, ok := middlewares.GetSessionInfo(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	organizationID := c.Params("id")
+	if organizationID == "" {
+		return response.Error(c, fiber.StatusBadRequest, "organization id required", nil)
+	}
+
+	if _, err := h.companyServ.GetOrganizationByID(c.Context(), organizationID); err != nil {
+		logger.Error("Could not fetch organization at CompanyHandler.SwitchActiveOrganization", zap.Error(err))
+		return response.Error(c, fiber.StatusNotFound, "organization not found", nil)
+	}
+
+	isMember, err := h.companyServ.CheckMemberInOrganization(c.Context(), userID, organizationID)
+	if err != nil {
+		logger.Error("Could not check member in organization at CompanyHandler.SwitchActiveOrganization", zap.Error(err))
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	if !isMember {
+		return response.Error(c, fiber.StatusForbidden, "user is not a member of the organization", nil)
+	}
+
+	sess, err := config.Store.Get(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	sess.Set("activeOrgID", organizationID)
+	if err := sess.Save(); err != nil {
+		logger.Error("Could not save session at CompanyHandler.SwitchActiveOrganization", zap.Error(err))
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Switched active organization successfully", fiber.Map{
+		"organization_id": organizationID,
+	})
+}	

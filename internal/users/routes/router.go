@@ -64,12 +64,15 @@ func RegisterCompanyRoutes(router fiber.Router, ch *handlers.CompanyHandler, m *
 	org := router.Group("/organization", m.RequireAuth)
 	org.Get("/", ch.GetOrganization)
 	org.Patch("/", ch.UpdateOrganization)
+	org.Post("/:id/switch", ch.SwitchActiveOrganization)
 
 	// Members
 	members := org.Group("/members")
 	members.Get("/", ch.ListMembers)
 	members.Post("/invite", ch.InviteMembers)
 	members.Patch("/:id/role", ch.UpdateMemberRole)
+	members.Patch("/:id/status", ch.UpdateMemberStatus)
+	members.Post("/:id/reset-mfa", ch.ResetMemberMFA)
 	members.Delete("/:id", ch.RemoveMember)
 
 	// Settings

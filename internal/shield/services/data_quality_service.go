@@ -159,12 +159,17 @@ func (s *DataQualityService) ApplySuggestedFix(ctx context.Context, orgID uuid.U
 		}
 		// Update parser fields based on suggested_fix
 		// expected suggested_fix contains 'logic' and/or 'mappings'
-		if logic, ok := target.SuggestedFix["logic"].(map[string]interface{}); ok {
-			parser.Logic = logic
+		logicBytes, err := json.Marshal(target.SuggestedFix["logic"])
+		if err != nil {
+			return apperrors.InternalServerError("INVALID_SUGGESTED_FIX" + "Failed to parse suggested logic" + err.Error())
 		}
-		if mappings, ok := target.SuggestedFix["mappings"].([]map[string]interface{}); ok {
-			parser.Mappings = mappings
+		parser.Logic = logicBytes
+
+		mappingBytes, err := json.Marshal(target.SuggestedFix["mappings"])
+		if err != nil {
+			return apperrors.InternalServerError("INVALID_SUGGESTED_FIX" + "Failed to parse suggested mappings" + err.Error())
 		}
+		parser.Mappings = mappingBytes
 		// Create version before update
 		version := &models.ParserVersion{
 			OrganizationID: orgID,

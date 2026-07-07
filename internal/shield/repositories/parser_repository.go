@@ -26,6 +26,7 @@ type ParserRepositoryInt interface {
 	GetParserSummary(ctx context.Context, orgID uuid.UUID) (total, active int, errorRate float64, lastUpdated *time.Time, err error)
 	ImportParser(ctx context.Context, parser *models.Parser) error
 	IncrementParserMetrics(ctx context.Context, parserID uuid.UUID, eventsParsed int64, errorRate float64) error
+	GetParserBySourceID(ctx context.Context, sourceID string, orgID uuid.UUID) (*models.Parser, error)
 }
 
 type ParserRepository struct {
@@ -276,4 +277,18 @@ func (r *ParserRepository) ImportParser(ctx context.Context, parser *models.Pars
 func (r *ParserRepository) IncrementParserMetrics(ctx context.Context, parserID uuid.UUID, eventsParsed int64, errorRate float64) error {
 	_, err := r.db.ExecContext(ctx, INCREMENT_PARSER_METRICS, parserID, eventsParsed, errorRate)
 	return err
+}
+
+func (r *ParserRepository) GetParserBySourceID(ctx context.Context, sourceID string, orgID uuid.UUID) (*models.Parser, error) {
+	const GET_PARSER_BY_SOURCE_ID = `SELECT * FROM parsers WHERE source_id = $1 AND organization_id = $2 AND deleted_at IS NULL`
+
+	var parser models.Parser
+	err := r.db.GetContext(ctx, &parser, GET_PARSER_BY_SOURCE_ID, sourceID, orgID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, apperrors.NotFoundError("PARSER NOT FOUND")
+		}
+		return nil, err
+	}
+	return &parser, nil
 }

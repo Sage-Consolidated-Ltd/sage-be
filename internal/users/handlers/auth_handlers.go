@@ -157,13 +157,19 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 		return response.JSON(c, fiber.StatusAccepted, "2FA required", nil)
 	}
 
-	var orgID string
+	var orgID, roleInOrg string
 	if len(resp.Organization) > 0 {
 		for _, org := range resp.Organization {
 			if org.OwnerID == resp.ID {
 				orgID = org.ID
+				roleInOrg = org.Role
 			}
 		}
+	}
+
+	if orgID == "" && len(resp.Organization) > 0 {
+    	orgID = resp.Organization[0].ID
+		roleInOrg = resp.Organization[0].Role
 	}
 
 	if _, err := config.SetSession(c, config.SessionParam{
@@ -171,6 +177,8 @@ func (a *AuthHandler) AuthCallback(c *fiber.Ctx) error {
 		Role:           string(resp.Role),
 		Email:          resp.Email,
 		OrganizationId: orgID,
+		ActiveOrganizationID: orgID,
+		RoleInOrganization: roleInOrg,
 	}); err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
 	}
@@ -210,13 +218,18 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 		return response.JSON(c, fiber.StatusAccepted, "2FA required", nil)
 	}
 
-	var orgID string
+	var orgID, roleInOrg string
 	if len(resp.Organization) > 0 {
 		for _, org := range resp.Organization {
 			if org.OwnerID == resp.ID {
 				orgID = org.ID
+				roleInOrg = org.Role
 			}
 		}
+	}
+	if orgID == "" && len(resp.Organization) > 0 {
+    	orgID = resp.Organization[0].ID
+		roleInOrg = resp.Organization[0].Role
 	}
 
 	if _, err := config.SetSession(c, config.SessionParam{
@@ -224,6 +237,8 @@ func (a *AuthHandler) Login(c *fiber.Ctx) error {
 		Role:           string(resp.Role),
 		Email:          resp.Email,
 		OrganizationId: orgID,
+		ActiveOrganizationID: orgID,
+		RoleInOrganization: roleInOrg,
 	}); err != nil {
 		logger.Error("Error with AuthHandler.Login: ", zap.Error(err))
 		return response.Error(c, fiber.StatusInternalServerError, "error setting up session", nil)
