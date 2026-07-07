@@ -4,6 +4,8 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sage-backend/internal/shared/storage/s3"
+	"sage-backend/internal/shield/ai_detector"
 	"strings"
 	"syscall"
 
@@ -30,6 +32,7 @@ func main() {
 	defer db.Close()
 
 	restyClient := resty.New()
+	aiDetectorHTTPClient := resty.New()
 
 	redisRef := os.Getenv("REDIS_DB_URL")
 	if redisRef == "" {
@@ -56,14 +59,35 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize encryptor: %v", err)
 	}
+
+	s3Client, err := s3.NewClient(s3.S3Config{
+		Region:          cfg.BaseConfig.S3Region,
+		Bucket:          cfg.BaseConfig.S3Bucket,
+		AccessKeyID:     cfg.BaseConfig.S3AccessKey,
+		SecretAccessKey: cfg.BaseConfig.S3SecretKey,
+		PresignExpiry:   24 * 60,
+		MaxFileSizeMB:   20 * 1024 * 1024,
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize S3 client: %v", err)
+	}
+
+	uploader := s3.NewUploader(s3Client)
+	aiDetectorBaseURL := strings.TrimSpace(cfg.DetectorAIBaseURL)
+	aiDetectorToken := strings.TrimSpace(cfg.DetectorAIAuthToken)
+	aiDetectorClient := ai_detector.NewAIDetectorClient(aiDetectorBaseURL, aiDetectorToken, aiDetectorHTTPClient)
 	// Initialize repositories
 	jobRepo := repositories.NewIngestionJobRepository(db)
 	integrationRepo := repositories.NewIntegrationRepository(db)
 	dataSourceRepo := repositories.NewDataSourceRepository(db)
 	eventRepo := repositories.NewSecurityEventRepository(db)
+	parserRepo := repositories.NewParserRepository(db)
+	logUploadRepo := repositories.NewLogUploadRepository(db)
+	analysisRepo := repositories.NewAnalysisRepository(db)
+	threatDetector := ai_detector.NewThreatDetector(aiDetectorClient, uploader, logUploadRepo, analysisRepo)
 
 	// Initialize task handler
-	taskHandler := tasks.NewTaskHandler(jobRepo, dataSourceRepo, eventRepo, integrationRepo, taskClient, restyClient, encryptor)
+	taskHandler := tasks.NewTaskHandler(jobRepo, dataSourceRepo, eventRepo, integrationRepo, parserRepo, taskClient, restyClient, encryptor, threatDetector)
 
 	srv := asynq.NewServer(
 		serverOpt,
@@ -85,6 +109,7 @@ func main() {
 	mux.HandleFunc(tasks.TypeValidationJob, taskHandler.HandleValidationJob)
 	mux.HandleFunc(tasks.TypeProviderEventBatch, taskHandler.HandleProviderEventBatch)
 	mux.HandleFunc(tasks.TypeProviderSync, taskHandler.HandleProviderSync)
+	mux.HandleFunc(tasks.TypeSubmitLogFileForAnalysis, taskHandler.HandleSubmitLogFileForAnalysis)
 
 	// Handle graceful shutdown
 	go func() {

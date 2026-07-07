@@ -1,9 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"sage-backend/internal/shared/middlewares"
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/shared/types"
+	"sage-backend/internal/shared/utils"
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/requests"
 	"sage-backend/internal/shield/services"
@@ -103,6 +106,25 @@ func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "INVALID_REQUEST", err.Error())
 	}
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	logic, err := validateCreateParser(&req); 
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}	
+
+	mappingBytes, err := json.Marshal(req.Mappings)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, "INVALID_MAPPINGS", err.Error())
+	}
+	logicBytes, err := json.Marshal(logic)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, "INVALID_LOGIC", err.Error())
+	}
+
 	parser := &models.Parser{
 		OrganizationID: orgID,
 		Name:           req.Name,
@@ -111,9 +133,10 @@ func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
 		ParserType:     req.ParserType,
 		Status:         types.ParserStatusActive,
 		Tags:           req.Tags,
-		Logic:          req.Logic,
-		Mappings:       req.Mappings,
+		Logic:          logicBytes,
+		Mappings:       mappingBytes,
 	}
+
 	if err := h.service.CreateParser(c.Context(), parser); err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "CREATE_FAILED", err.Error())
 	}
@@ -137,6 +160,10 @@ func (h *ParserHandler) UpdateParser(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, fiber.StatusNotFound, "PARSER_NOT_FOUND", err.Error())
 	}
+	mappingBytes, err := json.Marshal(req.Mappings)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, "INVALID_MAPPINGS", err.Error())
+	}
 	// Apply updates
 	if req.Name != nil {
 		existing.Name = *req.Name
@@ -154,13 +181,13 @@ func (h *ParserHandler) UpdateParser(c *fiber.Ctx) error {
 		existing.Status = *req.Status
 	}
 	if req.Tags != nil {
-		existing.Tags = req.Tags
+		existing.Tags = *req.Tags
 	}
 	if req.Logic != nil {
 		existing.Logic = req.Logic
 	}
 	if req.Mappings != nil {
-		existing.Mappings = req.Mappings
+		existing.Mappings = mappingBytes
 	}
 	// Get actor user ID from context for change log
 	actorUserID := middlewares.GetUserID(c) // implement GetUserID in middleware (maybe exists)
@@ -274,10 +301,24 @@ func (h *ParserHandler) ImportParser(c *fiber.Ctx) error {
 	if orgID == uuid.Nil {
 		orgID = c.Locals("orgID").(uuid.UUID)
 	}
-	var req requests.ImportParserRequest
+	var req requests.CreateParserRequest
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "INVALID_REQUEST", err.Error())
 	}
+	logic, err := validateCreateParser(&req); 
+	if err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}	
+
+	mappingBytes, err := json.Marshal(req.Mappings)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, "INVALID_MAPPINGS", err.Error())
+	}
+	logicBytes, err := json.Marshal(logic)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, "INVALID_LOGIC", err.Error())
+	}
+
 	parser := &models.Parser{
 		OrganizationID: orgID,
 		Name:           req.Name,
@@ -286,8 +327,8 @@ func (h *ParserHandler) ImportParser(c *fiber.Ctx) error {
 		ParserType:     req.ParserType,
 		Status:         req.Status,
 		Tags:           req.Tags,
-		Logic:          req.Logic,
-		Mappings:       req.Mappings,
+		Logic:          logicBytes,
+		Mappings:       mappingBytes,
 	}
 	if err := h.service.ImportParser(c.Context(), parser); err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "IMPORT_FAILED", err.Error())
@@ -348,4 +389,63 @@ func (h *ParserHandler) ListSampleLogs(c *fiber.Ctx) error {
 		"page_size": pageSize,
 	}
 	return response.JSON(c, fiber.StatusOK, "Sample logs", paginated)
+}
+
+func validateCreateParser(
+	req *requests.CreateParserRequest,
+) (any, error) {
+
+	if req.AutoGenerate {
+		return nil, fmt.Errorf("auto generate not available at the moment")
+	}
+
+	if req.ParserType == "" {
+		return nil, fmt.Errorf("PARSER_TYPE_REQUIRED")
+	}
+
+	switch req.ParserType {
+
+	case types.ParserTypeRegex:
+		if req.RegexLogic == nil || req.RegexLogic.Pattern == "" {
+			return nil, fmt.Errorf("regex pattern is required for regex parser type")
+		}
+
+		return req.RegexLogic, nil
+
+	case types.ParserTypeJSON:
+		if req.JSONLogic == nil || req.JSONLogic.Path == "" {
+			return nil, fmt.Errorf("json path is required for json parser type")
+		}
+
+		return req.JSONLogic, nil
+
+	case types.ParserTypeCSV:
+		if req.CSVLogic == nil || req.CSVLogic.Delimiter == "" {
+			return nil, fmt.Errorf("delimiter is required for csv parser type")
+		}
+
+		return req.CSVLogic, nil
+
+	case types.ParserTypeKeyValue:
+		if req.KeyValueLogic == nil ||
+			req.KeyValueLogic.PairSeparator == "" ||
+			req.KeyValueLogic.KeyValueSep == "" {
+
+			return nil, fmt.Errorf(
+				"pair_separator and key_value_separator are required for key_value parser type",
+			)
+		}
+
+		return req.KeyValueLogic, nil
+
+	case types.ParserTypeAINLP:
+		// no required fields
+		return map[string]any{}, nil
+
+	default:
+		return nil, fmt.Errorf(
+			"invalid parser type: %s",
+			req.ParserType,
+		)
+	}
 }

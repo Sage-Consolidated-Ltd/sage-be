@@ -9,10 +9,13 @@ import (
 	"os/signal"
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/db"
+	"sage-backend/internal/shared/db/redis"
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/mailer"
 	"sage-backend/internal/shared/middlewares"
+	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shield/handlers"
+	shieldMiddlewares "sage-backend/internal/shield/middlewares"
 	"sage-backend/internal/shield/repositories"
 	"sage-backend/internal/shield/routes"
 	"sage-backend/internal/shield/scheduler"
@@ -25,6 +28,7 @@ import (
 	"sage-backend/pkg/crypto"
 
 	"context"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
@@ -69,9 +73,24 @@ func main() {
 	taskClient := tasks.NewTaskClient(redisRef)
 	defer taskClient.Close()
 
+	redisClient, err := redis.LaunchRedis(&cfg.BaseConfig)
+	if err != nil {
+		log.Fatalf("Error connecting redis: %s", err)
+	}
+
 	logger.Init(&cfg.BaseConfig)
 
 	_ = mailer.NewEmailClient(&cfg.BaseConfig)
+
+	s3Client, _ := s3.NewClient(s3.S3Config{
+		Region: cfg.BaseConfig.S3Region,
+		Bucket: cfg.BaseConfig.S3Bucket,
+		AccessKeyID: cfg.BaseConfig.S3AccessKey,
+		SecretAccessKey: cfg.BaseConfig.S3SecretKey,
+		PresignExpiry: 24 * 60,
+		MaxFileSizeMB: 20 * 1024 * 1024,
+	})
+	uploader := s3.NewUploader(s3Client)
 
 	app := fiber.New(fiber.Config{
 		JSONEncoder: func(v interface{}) ([]byte, error) {
@@ -121,23 +140,40 @@ func main() {
 	eventRepo := repositories.NewSecurityEventRepository(db)
 	ingestionRepo := repositories.NewIngestionJobRepository(db)
 	parserRepo := repositories.NewParserRepository(db)
+	uploadLogRepo := repositories.NewLogUploadRepository(db)
 
 	dataQualityServ := services.NewDataQualityService(dataQualtyRepo, parserRepo, dataSourceRepo, ingestionRepo)
 	logsDataServ := services.NewLogsDataService(dataSourceRepo, eventRepo, ingestionRepo, taskClient)
 	logsServ := services.NewLogsService(eventRepo, dataSourceRepo, ingestionRepo)
 	parserServ := services.NewParserService(parserRepo, eventRepo, dataSourceRepo, ingestionRepo)
 	integrationServ := services.NewDataSourceService(dataSourceRepo, integrationRepo, encryptor, restyClient)
+	logUploadServ := services.NewUploadService(uploader, uploadLogRepo, taskClient)
 
 	integrationHandler := handlers.NewIntegrationHandler(integrationServ)
 	eventHandler := handlers.NewEventHandler(logsServ)
 	logsDataHandler := handlers.NewLogsDataHandlerWithService(logsDataServ)
 	parserHandler := handlers.NewParserHandler(parserServ)
 	qualityHandler := handlers.NewQualityHandler(dataQualityServ)
+	uploadLogHandler := handlers.NewUploadHandler(logUploadServ)
 
 	// Initialize provider scheduler for periodic syncs (300 seconds = 5 minutes)
 	providerScheduler := scheduler.NewProviderScheduler(taskClient, dataSourceRepo, 300)
 
-	routes.Setup(app, integrationHandler, qualityHandler, logsDataHandler, parserHandler, eventHandler, authMiddleware)
+	routes.Setup(
+		app, 
+		integrationHandler, 
+		qualityHandler, 
+		logsDataHandler, 
+		parserHandler, 
+		eventHandler, 
+		uploadLogHandler, 
+		shieldMiddlewares.NewRateLimiter(
+			3, 
+			logger.Default(), 
+			shieldMiddlewares.NewRedisLimiterStore(redisClient),
+		), 
+		authMiddleware,
+		)
 
 	port := strings.TrimSpace(cfg.PORT)
 

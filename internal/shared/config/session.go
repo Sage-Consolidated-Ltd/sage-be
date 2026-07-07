@@ -14,6 +14,8 @@ type SessionParam struct {
 	Role           string
 	Email          string
 	OrganizationId string
+	ActiveOrganizationID string
+	RoleInOrganization string
 }
 
 var Store *session.Store
@@ -52,6 +54,8 @@ func SetSession(c *fiber.Ctx, param SessionParam) (*session.Session, error) {
 	sess.Set("role", param.Role)
 	sess.Set("email", param.Email)
 	sess.Set("organizationID", param.OrganizationId)
+	sess.Set("activeOrgID", param.ActiveOrganizationID)
+	sess.Set("roleInOrganization", param.RoleInOrganization)
 
 	if err := sess.Save(); err != nil {
 		return nil, fmt.Errorf("could not save session: %w", err)

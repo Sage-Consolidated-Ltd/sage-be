@@ -110,7 +110,7 @@ func _UpdateNotifications() {}
 // @Security ApiKeyAuth
 // @Success 200 {array} models.UserSessionResponse
 // @Router /profile/session [get]
-func _GetSession() {}
+func _GetSessions() {}
 
 // @Summary Revoke User Session
 // @Description Revokes the user's current session, effectively logging them out from the current device.

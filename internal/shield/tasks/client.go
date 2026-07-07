@@ -3,6 +3,7 @@ package tasks
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"strings"
 
 	"sage-backend/internal/shield/models"
@@ -19,6 +20,7 @@ const (
 	TypeSyncJob            = "sync:job"
 	TypeQualityScanJob     = "quality:scan:job"
 	TypeValidationJob      = "validation:job"
+	TypeSubmitLogFileForAnalysis = "analysis:submit-log-file"
 )
 
 type TaskClient struct {
@@ -162,6 +164,19 @@ func (c *TaskClient) EnqueueValidationJob(ctx context.Context, jobID, orgID, par
 
 	task := asynq.NewTask(TypeValidationJob, payload)
 	_, err = c.client.Enqueue(task)
+	return err
+}
+
+// EnqueueSubmitLogFileForAnalysis enqueues uploaded log analysis for worker processing.
+func (c *TaskClient) EnqueueSubmitLogFileForAnalysis(ctx context.Context, input models.SubmitLogFileInput) error {
+	log.Printf("Enqueuing log file for analysis: LogFileID=%s, OrganizationID=%s, S3Key=%s", input.LogFileID, input.OrganizationID, input.S3Key)
+	payload, err := json.Marshal(input)
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(TypeSubmitLogFileForAnalysis, payload)
+	_, err = c.client.Enqueue(task, asynq.MaxRetry(5), asynq.Queue("default"))
 	return err
 }
 

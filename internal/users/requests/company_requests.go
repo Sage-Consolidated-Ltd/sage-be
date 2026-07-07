@@ -31,7 +31,6 @@ type ListMembersRequest struct {
 type MemberInvite struct {
 	FullName   string `json:"full_name" validate:"required,min=2,max=100"`
 	Email      string `json:"email" validate:"required,email"`
-	Department string `json:"department,omitempty"`
 	Role       string `json:"role" validate:"required,oneof=admin analyst viewer automation_admin billing_admin"`
 	ForceMFA   bool   `json:"force_mfa"`
 	Message    string `json:"message,omitempty" validate:"omitempty,max=500"`
@@ -71,4 +70,8 @@ type UpdateCustomRoleRequest struct {
 	Description      string   `json:"description,omitempty" validate:"omitempty,max=500"`
 	PermissionGroups []string `json:"permission_groups,omitempty"`
 	Permissions      []string `json:"permissions,omitempty"`
+}
+
+type UpdateMemberStatusRequest struct {
+	Status string `json:"status" validate:"required,oneof=active suspended"`
 }

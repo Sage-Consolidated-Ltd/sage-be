@@ -8,6 +8,7 @@ import (
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/mailer"
+	"sage-backend/internal/shared/middlewares"
 	"sage-backend/internal/shared/utils"
 	"sage-backend/internal/users/models"
 	"sage-backend/internal/users/repositories"
@@ -37,6 +38,7 @@ type CompanyServicesInt interface {
 	ListMembers(ctx context.Context, orgID string, req *requests.ListMembersRequest) ([]*models.OrganizationMemberResponse, int, error)
 	InviteMembers(ctx context.Context, orgID, invitedBy string, req *requests.InviteMembersRequest) (*InviteMembersResult, error)
 	UpdateMemberRole(ctx context.Context, memberID, orgID, actorRole, newRole string) error
+	ResetMemberMFA(ctx context.Context, memberID, orgID, actorRole string) error
 	RemoveMember(ctx context.Context, memberID, orgID, actorRole, actorUserID string) error
 
 	// Settings
@@ -55,6 +57,9 @@ type CompanyServicesInt interface {
 	CreateCustomRole(ctx context.Context, orgID string, req *requests.CreateCustomRoleRequest) (*models.CustomRoleResponse, error)
 	UpdateCustomRole(ctx context.Context, roleID, orgID string, req *requests.UpdateCustomRoleRequest) error
 	DeleteCustomRole(ctx context.Context, roleID, orgID string) error
+	UpdateMemberStatus(ctx context.Context, memberID, orgID, actorRole, newStatus string) error
+	GetOrganizationByID(ctx context.Context, orgID string) (*models.Organization, error)
+	CheckMemberInOrganization(ctx context.Context, userID, orgID string) (bool, error)
 }
 
 type InviteMembersResult struct {
@@ -250,11 +255,67 @@ func (s *CompanyServices) ListMembers(ctx context.Context, orgID string, req *re
 		return nil, 0, err
 	}
 
+	lastActiveByUserID := map[string]*time.Time{}
+	if s.redisClient != nil && len(members) > 0 {
+		keys := make([]string, 0, len(members))
+		for _, m := range members {
+			keys = append(keys, middlewares.UserActivityKey(orgID, m.UserID))
+		}
+
+		values, err := s.redisClient.MGet(ctx, keys...).Result()
+		if err == nil {
+			for i, value := range values {
+				if i >= len(members) {
+					break
+				}
+				if parsed, ok := parseLastActiveValue(value); ok {
+					lastActive := parsed
+					lastActiveByUserID[members[i].UserID] = &lastActive
+				}
+			}
+		}
+	}
+
 	var responses []*models.OrganizationMemberResponse
 	for _, m := range members {
-		responses = append(responses, m.ToResponse())
+		responses = append(responses, m.ToResponse(lastActiveByUserID[m.UserID]))
 	}
 	return responses, total, nil
+}
+
+func parseLastActiveValue(value interface{}) (time.Time, bool) {
+	switch v := value.(type) {
+	case nil:
+		return time.Time{}, false
+	case string:
+		if v == "" {
+			return time.Time{}, false
+		}
+		t, err := time.Parse(time.RFC3339Nano, v)
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t, true
+	case []byte:
+		if len(v) == 0 {
+			return time.Time{}, false
+		}
+		t, err := time.Parse(time.RFC3339Nano, string(v))
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t, true
+	default:
+		text := fmt.Sprint(v)
+		if text == "" || text == "<nil>" {
+			return time.Time{}, false
+		}
+		t, err := time.Parse(time.RFC3339Nano, text)
+		if err != nil {
+			return time.Time{}, false
+		}
+		return t, true
+	}
 }
 
 // InviteMembers invites users to join the organization
@@ -288,7 +349,7 @@ func (s *CompanyServices) InviteMembers(ctx context.Context, orgID, invitedBy st
 			continue
 		}
 		result.InvitedCount++
-		// TODO: Send invitation email with invite.FullName, invite.Department, invite.ForceMFA, invite.Message
+		// TODO: Send invitation email with invite.FullName, invite.ForceMFA, invite.Message
 	}
 
 	return result, nil
@@ -315,6 +376,20 @@ func (s *CompanyServices) UpdateMemberRole(ctx context.Context, memberID, orgID,
 	}
 
 	return s.companyRepo.UpdateMemberRole(ctx, memberID, orgID, newRole)
+}
+
+// ResetMemberMFA disables MFA for a member. Only owners can perform this action.
+func (s *CompanyServices) ResetMemberMFA(ctx context.Context, memberID, orgID, actorRole string) error {
+	if actorRole != "owner" {
+		return apperrors.NewCustomError("ONLY OWNER CAN RESET MEMBER MFA", fiber.StatusForbidden, "FORBIDDEN")
+	}
+
+	_, err := s.companyRepo.GetMemberByID(ctx, memberID, orgID)
+	if err != nil {
+		return err
+	}
+
+	return s.companyRepo.ResetMember2FA(ctx, memberID, orgID)
 }
 
 // RemoveMember removes a member from the organization
@@ -488,4 +563,42 @@ func (s *CompanyServices) UpdateCustomRole(ctx context.Context, roleID, orgID st
 // DeleteCustomRole deletes a custom role
 func (s *CompanyServices) DeleteCustomRole(ctx context.Context, roleID, orgID string) error {
 	return s.companyRepo.DeleteCustomRole(ctx, roleID, orgID)
+}
+
+func (s *CompanyServices) UpdateMemberStatus(ctx context.Context, memberID, orgID, actorRole, newStatus string) error {
+	if newStatus != "active" && newStatus != "suspended" {
+		return apperrors.BadException("INVALID_MEMBER_STATUS")
+	}
+
+	member, err := s.companyRepo.GetMemberByID(ctx, memberID, orgID)
+	if err != nil {
+		return err
+	}
+
+	if member.Role == "owner" && actorRole != "owner" {
+		return apperrors.NewCustomError("ONLY_OWNER_CAN_UPDATE_OWNER_STATUS", fiber.StatusForbidden, "FORBIDDEN")
+	}
+
+	if member.Role == "owner" && newStatus != "active" {
+		return apperrors.NewCustomError("CANNOT_SUSPEND_OWNER", fiber.StatusForbidden, "FORBIDDEN")
+	}
+
+	return s.companyRepo.UpdateMemberStatus(ctx, memberID, orgID, newStatus)
+}
+
+func (s *CompanyServices) GetOrganizationByID(ctx context.Context, orgID string) (*models.Organization, error) {
+	org, err := s.companyRepo.GetOrganizationByID(ctx, orgID)
+	if err != nil {
+		return nil, err
+	}
+	return org, nil
+}
+
+func (s *CompanyServices) CheckMemberInOrganization(ctx context.Context, userID, orgID string) (bool, error) {
+	// check if user is a member of the organization
+	isMember, err := s.companyRepo.CheckMemberInOrganization(ctx, userID, orgID)
+	if err != nil {
+		return false, err
+	}
+	return isMember, nil
 }

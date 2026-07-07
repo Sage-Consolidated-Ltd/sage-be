@@ -7,23 +7,18 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
-type Client struct {
-	S3     *s3.Client
-	Bucket string
-	Region string
-}
-
-func NewClient(ctx context.Context, bucket, region string) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
+func NewClient(cfg S3Config) (*S3Client, error) {
+	awsConfig, err := config.LoadDefaultConfig(context.Background(),
+		config.WithRegion(cfg.Region),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Client{
-		S3:     s3.NewFromConfig(cfg),
-		Bucket: bucket,
-		Region: region,
+	c := s3.NewFromConfig(awsConfig)
+	return &S3Client{
+		S3:     c,
+		Presign: s3.NewPresignClient(c),
+		cfg: cfg,
 	}, nil
 }

@@ -1,23 +1,25 @@
 package models
 
 import (
+	"encoding/json"
 	"sage-backend/internal/shared/types"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type Parser struct {
-	ID              uuid.UUID                `db:"id" json:"id"`
-	OrganizationID  uuid.UUID                `db:"organization_id" json:"organization_id"`
-	SourceID        *uuid.UUID               `db:"source_id,omitempty" json:"source_id,omitempty"`
-	Name            string                   `db:"name" json:"name"`
-	Description     *string                  `db:"description,omitempty" json:"description,omitempty"`
-	ParserType      types.ParserType         `db:"parser_type" json:"parser_type"`
-	Status          types.ParserStatus       `db:"status" json:"status"`
-	Tags            []string                 `db:"tags" json:"tags"`
-	Logic           map[string]interface{}   `db:"logic" json:"logic"`
-	Mappings        []map[string]interface{} `db:"mappings" json:"mappings"`
+	ID             uuid.UUID           `db:"id"`
+	OrganizationID uuid.UUID           `db:"organization_id"`
+	Name           string              `db:"name"`
+	Description    *string             `db:"description"`
+	SourceID       *uuid.UUID          `db:"source_id"`
+	ParserType     types.ParserType    `db:"parser_type"`
+	Status         types.ParserStatus  `db:"status"`
+	Tags           pq.StringArray      `db:"tags"`
+	Logic          json.RawMessage     `db:"logic"`
+	Mappings       json.RawMessage     `db:"mappings"`
 	EventsParsed24h int64                    `db:"events_parsed_24h" json:"events_parsed_24h"`
 	ErrorRate       float64                  `db:"error_rate" json:"error_rate"`
 	OwnerUserID     *uuid.UUID               `db:"owner_user_id,omitempty" json:"owner_user_id,omitempty"`
@@ -26,13 +28,32 @@ type Parser struct {
 	DeletedAt       *time.Time               `db:"deleted_at,omitempty" json:"deleted_at,omitempty"`
 }
 
+// type Parser struct {
+// 	ID              uuid.UUID                `db:"id" json:"id"`
+// 	OrganizationID  uuid.UUID                `db:"organization_id" json:"organization_id"`
+// 	SourceID        *uuid.UUID               `db:"source_id,omitempty" json:"source_id,omitempty"`
+// 	Name            string                   `db:"name" json:"name"`
+// 	Description     *string                  `db:"description,omitempty" json:"description,omitempty"`
+// 	ParserType      types.ParserType         `db:"parser_type" json:"parser_type"`
+// 	Status          types.ParserStatus       `db:"status" json:"status"`
+// 	Tags            []string                 `db:"tags" json:"tags"`
+// 	Logic           map[string]interface{}   `db:"logic" json:"logic"`
+// 	Mappings        []map[string]interface{} `db:"mappings" json:"mappings"`
+// 	EventsParsed24h int64                    `db:"events_parsed_24h" json:"events_parsed_24h"`
+// 	ErrorRate       float64                  `db:"error_rate" json:"error_rate"`
+// 	OwnerUserID     *uuid.UUID               `db:"owner_user_id,omitempty" json:"owner_user_id,omitempty"`
+// 	CreatedAt       time.Time                `db:"created_at" json:"created_at"`
+// 	UpdatedAt       time.Time                `db:"updated_at" json:"updated_at"`
+// 	DeletedAt       *time.Time               `db:"deleted_at,omitempty" json:"deleted_at,omitempty"`
+// }
+
 type ParserVersion struct {
 	ID             uuid.UUID                `db:"id" json:"id"`
 	OrganizationID uuid.UUID                `db:"organization_id" json:"organization_id"`
 	ParserID       uuid.UUID                `db:"parser_id" json:"parser_id"`
 	VersionNumber  int                      `db:"version_number" json:"version_number"`
-	Logic          map[string]interface{}   `db:"logic" json:"logic"`
-	Mappings       []map[string]interface{} `db:"mappings" json:"mappings"`
+	Logic          json.RawMessage   `db:"logic" json:"logic"`
+	Mappings       json.RawMessage `db:"mappings" json:"mappings"`
 	ChangedBy      *uuid.UUID               `db:"changed_by,omitempty" json:"changed_by,omitempty"`
 	ChangeNote     *string                  `db:"change_note,omitempty" json:"change_note,omitempty"`
 	CreatedAt      time.Time                `db:"created_at" json:"created_at"`
@@ -59,8 +80,8 @@ type ParserResponse struct {
 	ParserType      string                   `json:"parser_type"`
 	Status          string                   `json:"status"`
 	Tags            []string                 `json:"tags"`
-	Logic           map[string]interface{}   `json:"logic"`
-	Mappings        []map[string]interface{} `json:"mappings"`
+	Logic           json.RawMessage   `json:"logic"`
+	Mappings        json.RawMessage `json:"mappings"`
 	EventsParsed24h int64                    `json:"events_parsed_24h"`
 	ErrorRate       float64                  `json:"error_rate"`
 	Owner           *string                  `json:"owner,omitempty"` // owner name

@@ -54,6 +54,10 @@ func (m *mockUserRepo) Enable2FA(ctx context.Context, secret string, userID stri
 	return nil
 }
 
+func (m *mockUserRepo) Reset2FA(ctx context.Context, userID string) error {
+	return nil
+}
+
 func (m *mockUserRepo) GetTOTPSecret(ctx context.Context, userID string) (string, error) {
 	return "", nil
 }

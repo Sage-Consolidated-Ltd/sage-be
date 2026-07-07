@@ -2,9 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
-	"sage-backend/internal/shared/errors/apperrors"
+	// "sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/repositories"
@@ -68,9 +69,9 @@ func (s *ParserService) GetParser(ctx context.Context, id uuid.UUID, orgID uuid.
 
 func (s *ParserService) CreateParser(ctx context.Context, parser *models.Parser) error {
 	// Basic validation
-	if parser.ParserType == "" {
-		return apperrors.BadException("PARSER_TYPE_REQUIRED")
-	}
+	// if parser.ParserType == "" {
+	// 	return apperrors.BadException("PARSER_TYPE_REQUIRED")
+	// }
 	if parser.Status == "" {
 		parser.Status = types.ParserStatusActive
 	}
@@ -78,10 +79,19 @@ func (s *ParserService) CreateParser(ctx context.Context, parser *models.Parser)
 		parser.Tags = []string{}
 	}
 	if parser.Logic == nil {
-		parser.Logic = make(map[string]interface{})
+		parser.Logic = make(json.RawMessage, 0)
 	}
 	if parser.Mappings == nil {
-		parser.Mappings = []map[string]interface{}{}
+		parser.Mappings = json.RawMessage{}
+	}
+	if parser.SourceID != nil {
+		// validate data source exists and belongs to org
+		_, err := s.sourceRepo.GetDataSourceByID(ctx, *parser.SourceID, parser.OrganizationID)
+		if err != nil {
+			return err
+		}
+
+		// update parser_id in data source
 	}
 	// Create initial version
 	if err := s.parserRepo.CreateParser(ctx, parser); err != nil {

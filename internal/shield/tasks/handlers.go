@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"sage-backend/internal/shared/types"
+	"sage-backend/internal/shield/ai_detector"
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/providers"
 	"sage-backend/internal/shield/repositories"
@@ -36,9 +37,11 @@ type TaskHandler struct {
 	dataSourceRepo  repositories.DataSourceRepositoryInt
 	eventRepo       repositories.SecurityEventRepositoryInt
 	integrationRepo repositories.IntegrationRepositoryInt
+	parserRepo repositories.ParserRepositoryInt
 	taskClient      *TaskClient
 	client          *resty.Client
 	encryptor       crypto.Encryptor
+	threatDetector  ai_detector.ThreatDetectorInt
 }
 
 func NewTaskHandler(
@@ -46,19 +49,43 @@ func NewTaskHandler(
 	dataSourceRepo repositories.DataSourceRepositoryInt,
 	eventRepo repositories.SecurityEventRepositoryInt,
 	integrationRepo repositories.IntegrationRepositoryInt,
+	parserRepo repositories.ParserRepositoryInt,
 	taskClient *TaskClient,
 	client *resty.Client,
 	encryptor crypto.Encryptor,
+	threatDetector ai_detector.ThreatDetectorInt,
 ) *TaskHandler {
 	return &TaskHandler{
 		jobRepo:         jobRepo,
 		dataSourceRepo:  dataSourceRepo,
 		eventRepo:       eventRepo,
 		integrationRepo: integrationRepo,
+		parserRepo:      parserRepo,
 		taskClient:      taskClient,
 		client:          client,
 		encryptor:       encryptor,
+		threatDetector:  threatDetector,
 	}
+}
+
+func (h *TaskHandler) HandleSubmitLogFileForAnalysis(ctx context.Context, t *asynq.Task) error {
+	if h.threatDetector == nil {
+		return fmt.Errorf("threat detector is not configured")
+	}
+
+	var payload models.SubmitLogFileInput
+	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal submit log file payload: %w", err)
+	}
+
+	fmt.Printf("Submitting log file for analysis:Handler: %s", payload.LogFileID)
+	result, err := h.threatDetector.SubmitLogFileForAnalysis(ctx, payload)
+	if err != nil {
+		return fmt.Errorf("submit log file for analysis failed: %w", err)
+	}
+
+	log.Printf("Completed analysis submission for log_file_id=%s job_id=%s", payload.LogFileID, result.JobID)
+	return nil
 }
 
 // HandleIngestJob processes log ingestion from a data source
@@ -273,6 +300,15 @@ func (h *TaskHandler) HandleProviderSync(
 
 	if err := json.Unmarshal(task.Payload(), &payload); err != nil {
 		return err
+	}
+
+	parser, err := h.parserRepo.GetParserBySourceID(ctx, payload.SourceID.String(), payload.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch parser for source %s: %w", payload.SourceID, err)
+	}
+
+	if parser == nil {
+		return fmt.Errorf("no parser found for source %s; verify that a parser is linked to the data source", payload.SourceID)
 	}
 
 	log.Printf("Starting provider sync task for org=%s source=%s", payload.OrganizationID, payload.SourceID)

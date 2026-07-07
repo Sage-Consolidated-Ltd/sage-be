@@ -22,6 +22,10 @@ type BaseConfig struct {
 	ResendApiKey     string
 	ResendFromEmail  string
 	FrontendBaseURL  string
+	S3Region           string
+	S3Bucket           string
+	S3AccessKey        string
+	S3SecretKey        string
 }
 
 type APIConfig struct {
@@ -38,10 +42,6 @@ type APIConfig struct {
 	AzureClientId      string
 	AzureClientSecret  string
 	AzureRedirectUrl   string
-	S3Region           string
-	S3Bucket           string
-	S3AccessKey        string
-	S3SecretKey        string
 }
 
 type OffenseConfig struct {
@@ -54,6 +54,8 @@ type ShieldConfig struct {
 	BaseConfig
 	PORT             string
 	GomniSecurityKey string
+	DetectorAIBaseURL string
+	DetectorAIAuthToken string
 }
 
 type VisionConfig struct {
@@ -124,6 +126,10 @@ func loadBase() BaseConfig {
 		ResendApiKey:     requireEnv("RESEND_API_KEY"),
 		ResendFromEmail:  requireEnv("RESEND_FROM_EMAIL"),
 		FrontendBaseURL:  requireEnv("FRONTEND_BASE_URL"),
+		S3Region:           requireEnv("S3_REGION"),
+		S3AccessKey:        requireEnv("AWS_ACCESS_KEY_ID"),
+		S3SecretKey:        requireEnv("AWS_SECRET_ACCESS_KEY"),
+		S3Bucket:           requireEnv("S3_BUCKET"),
 	}
 }
 
@@ -143,10 +149,6 @@ func SetupAPI() *APIConfig {
 		AzureClientId:      requireEnv("AZURE_CLIENT_ID"),
 		AzureClientSecret:  requireEnv("AZURE_CLIENT_SECRET"),
 		AzureRedirectUrl:   requireEnv("AZURE_REDIRECT_URL"),
-		S3Region:           requireEnv("S3_REGION"),
-		S3AccessKey:        requireEnv("AWS_ACCESS_KEY_ID"),
-		S3SecretKey:        requireEnv("AWS_SECRET_ACCESS_KEY"),
-		S3Bucket:           requireEnv("S3_BUCKET"),
 	}
 }
 
@@ -163,6 +165,8 @@ func SetupShield() *ShieldConfig {
 	return &ShieldConfig{
 		BaseConfig: loadBase(),
 		PORT:       getEnv("SHIELD_PORT", "3335"),
+		DetectorAIBaseURL: requireEnv("DETECTOR_AI_BASE_URL"),
+		DetectorAIAuthToken: requireEnv("DETECTOR_AI_AUTH_TOKEN"),
 	}
 }
 

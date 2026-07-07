@@ -198,7 +198,7 @@ func (s *AuthService) Login(ctx context.Context, req *requests.LoginRequest) (*m
 	}
 
 	// if !user.IsVerified {
-	// 	return nil, "", apperrors.UnauthorizedException("email not verified")
+	// 	return nil, apperrors.UnauthorizedException("email not verified")
 	// }
 
 	if match := utils.CompareHashAndPassword(req.Password, user.PasswordHash); !match {

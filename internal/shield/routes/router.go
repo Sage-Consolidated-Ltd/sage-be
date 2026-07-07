@@ -1,9 +1,11 @@
 package routes
 
 import (
+	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/middlewares"
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/shield/handlers"
+	shieldMiddlewares "sage-backend/internal/shield/middlewares"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,6 +17,8 @@ func Setup(
 	ldh *handlers.LogsDataHandler,
 	ph *handlers.ParserHandler,
 	eh *handlers.EventHandler,
+	uh *handlers.UploadHandler,
+	rl *shieldMiddlewares.RateLimiter,
 	m *middlewares.AuthMiddleware) {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Welcome to SAGE Shield SERVICE")
@@ -26,7 +30,7 @@ func Setup(
 		return response.JSON(c, fiber.StatusOK, "API is Healthy", nil)
 	})
 
-	RegisterLogsDataRoutes(v1, ldh, ph, qh, ih, m)
+	RegisterLogsDataRoutes(v1, ldh, ph, qh, ih, uh, m, rl)
 	RegisterEventRoutes(v1, eh, m)
 
 	app.Use(func(c *fiber.Ctx) error {
@@ -39,7 +43,9 @@ func RegisterLogsDataRoutes(
 	ph *handlers.ParserHandler,
 	qh *handlers.QualityHandler,
 	ih *handlers.IntegrationHandler,
+	uh *handlers.UploadHandler,
 	m *middlewares.AuthMiddleware,
+	rl *shieldMiddlewares.RateLimiter,
 ) {
 	integrations := router.Group("/integrations")
 	integrations.Post("/", m.RequireAuth, ih.IntegrateDataSource)
@@ -80,6 +86,19 @@ func RegisterLogsDataRoutes(
 	quality.Post("/apply-suggested-fix", qh.ApplySuggestedFix)
 	quality.Post("/diff", qh.GetSuggestedFixDiff)
 	quality.Get("/report", qh.DownloadDataQualityReport)
+
+	upload := logsData.Group(
+		"/upload", 
+		m.RequireAuth,
+		rl.Handler(),
+		shieldMiddlewares.RequestID(),
+		shieldMiddlewares.Recover(logger.Default()),
+		shieldMiddlewares.MaxBody(20*1024*1024), // 20MB
+		shieldMiddlewares.Logger(logger.Default()),
+	)
+
+	upload.Post("/presign", uh.UploadLog) //upload log and get pre-signed URL
+	upload.Post("/complete", uh.UploadComplete) //notify server that upload is complete
 }
 
 func RegisterEventRoutes(router fiber.Router, eh *handlers.EventHandler, m *middlewares.AuthMiddleware) {

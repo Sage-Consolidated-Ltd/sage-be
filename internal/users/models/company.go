@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 )
 
@@ -27,9 +28,9 @@ func (i *Industry) ToGetIndustriesResponse() GetIndustriesResponse {
 type Organization struct {
 	ID                   string         `json:"id" db:"id"`
 	Name                 string         `json:"name" db:"name"`
-	Slug                 string         `json:"slug" db:"slug"`
+	Slug                 *string         `json:"slug" db:"slug"`
 	OwnerID              string         `json:"owner_id" db:"owner_id"`
-	Industry             string         `json:"industry" db:"industry"`
+	Industry             *string         `json:"industry" db:"industry"`
 	Country              sql.NullString `json:"country" db:"country"`
 	Timezone             string         `json:"timezone" db:"timezone"`
 	RiskThresholdDefault int            `json:"risk_threshold_default" db:"risk_threshold_default"`
@@ -60,12 +61,22 @@ func (o *Organization) ToResponse() *GetOrganizationResponse {
 	if o.DeletedAt.Valid {
 		deletedAt = &o.DeletedAt.Time
 	}
+	var slug string
+	if o.Slug == nil {
+		slug = ""
+	}else {
+		slug = *o.Slug
+	}
+	var industry string
+	if o.Industry != nil {
+		industry = *o.Industry
+	}
 	resp := &GetOrganizationResponse{
 		ID:                   o.ID,
 		Name:                 o.Name,
-		Slug:                 o.Slug,
+		Slug:                 slug,
 		OwnerID:              o.OwnerID,
-		Industry:             o.Industry,
+		Industry:             industry,
 		Timezone:             o.Timezone,
 		RiskThresholdDefault: o.RiskThresholdDefault,
 		Role:                 o.Role,
@@ -103,7 +114,6 @@ type OrganizationMember struct {
 	LastName       string         `json:"last_name" db:"last_name"`
 	AvatarURL      sql.NullString `json:"avatar_url" db:"avatar_url"`
 	Role           string         `json:"role" db:"role"`
-	Department     sql.NullString `json:"department" db:"department"`
 	Status         string         `json:"status" db:"status"`
 	InvitedBy      sql.NullString `json:"invited_by" db:"invited_by"`
 	InvitedAt      sql.NullTime   `json:"invited_at" db:"invited_at"`
@@ -115,36 +125,28 @@ type OrganizationMember struct {
 
 // OrganizationMemberResponse is the API response for member list
 type OrganizationMemberResponse struct {
-	ID          string    `json:"id"`
-	UserID      string    `json:"user_id"`
-	Email       string    `json:"email"`
-	FullName    string    `json:"full_name"`
-	AvatarURL   string    `json:"avatar_url,omitempty"`
-	Role        string    `json:"role"`
-	Department  string    `json:"department,omitempty"`
-	Status      string    `json:"status"`
-	LastLoginAt time.Time `json:"last_login_at,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
+	UserID       string    `json:"user_id"`
+	MemberID     string    `json:"member_id"`
+	Name         string    `json:"name"`
+	Email        string    `json:"email"`
+	Role         string    `json:"role"`
+	LastActiveAt time.Time `json:"last_active_at,omitempty"`
+	Status       string    `json:"status"`
 }
 
-func (m *OrganizationMember) ToResponse() *OrganizationMemberResponse {
+func (m *OrganizationMember) ToResponse(lastActiveAt *time.Time) *OrganizationMemberResponse {
 	resp := &OrganizationMemberResponse{
-		ID:        m.ID,
-		UserID:    m.UserID,
-		Email:     m.Email,
-		FullName:  m.FirstName + " " + m.LastName,
-		Role:      m.Role,
-		Status:    m.Status,
-		CreatedAt: m.CreatedAt,
+		UserID:   m.UserID,
+		MemberID: m.ID,
+		Name:     strings.TrimSpace(m.FirstName + " " + m.LastName),
+		Email:    m.Email,
+		Role:     m.Role,
+		Status:   m.Status,
 	}
-	if m.AvatarURL.Valid {
-		resp.AvatarURL = m.AvatarURL.String
-	}
-	if m.LastLoginAt.Valid {
-		resp.LastLoginAt = m.LastLoginAt.Time
-	}
-	if m.Department.Valid {
-		resp.Department = m.Department.String
+	if lastActiveAt != nil {
+		resp.LastActiveAt = *lastActiveAt
+	} else if m.LastLoginAt.Valid {
+		resp.LastActiveAt = m.LastLoginAt.Time
 	}
 	return resp
 }

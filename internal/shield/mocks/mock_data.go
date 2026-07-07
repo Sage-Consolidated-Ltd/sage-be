@@ -126,6 +126,8 @@ func GenerateMockDataSources(orgID uuid.UUID, count int) []models.DataSource {
 func GenerateMockParser(orgID uuid.UUID) *models.Parser {
 	id := uuid.New()
 	sourceID := uuid.New()
+	logic := json.RawMessage(`{"extract":{"user":"actor_email","timestamp":"occurred_at"}}`)
+	mappings := json.RawMessage(`[{"field":"user","target":"actor.email"}]`)
 
 	return &models.Parser{
 		ID:              id,
@@ -136,8 +138,8 @@ func GenerateMockParser(orgID uuid.UUID) *models.Parser {
 		ParserType:      types.ParserTypeJSON,
 		Status:          types.ParserStatusActive,
 		Tags:            []string{"authentication", "microsoft"},
-		Logic:           map[string]interface{}{"extract": map[string]string{"user": "actor_email", "timestamp": "occurred_at"}},
-		Mappings:        []map[string]interface{}{{"field": "user", "target": "actor.email"}},
+		Logic:           logic,
+		Mappings:        mappings,
 		EventsParsed24h: 5000,
 		ErrorRate:       0.02,
 		CreatedAt:       time.Now().Add(-7 * 24 * time.Hour),
