@@ -49,7 +49,7 @@ import (
 // @in cookie
 // @name session_id
 
-// @host      localhost:3335
+// @host      backend.sageconsolidated.com
 // @BasePath  /api/v1
 func main() {
 	cfg := config.SetupShield()
