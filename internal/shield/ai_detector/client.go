@@ -11,8 +11,8 @@ import (
 )
 
 type AIDetectorClient struct {
-	BaseURL string
-	Token   string
+	BaseURL     string
+	Token       string
 	restyClient *resty.Client
 }
 
@@ -25,13 +25,13 @@ func NewAIDetectorClient(baseURL, token string, restyClient *resty.Client) *AIDe
 	}
 
 	return &AIDetectorClient{
-		BaseURL: trimmedBaseURL,
-		Token:   strings.TrimSpace(token),
+		BaseURL:     trimmedBaseURL,
+		Token:       strings.TrimSpace(token),
 		restyClient: restyClient,
 	}
 }
 
-func (a *AIDetectorClient) Health(ctx context.Context) (*models.CheckHealthResponse, error){
+func (a *AIDetectorClient) Health(ctx context.Context) (*models.CheckHealthResponse, error) {
 	var result models.CheckHealthResponse
 
 	resp, err := a.restyClient.R().

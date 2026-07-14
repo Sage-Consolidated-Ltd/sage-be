@@ -25,7 +25,7 @@ type LimiterStore interface {
 }
 
 type RateLimiter struct {
-	rpm int
+	rpm    int
 	window time.Duration
 
 	mu      sync.Mutex

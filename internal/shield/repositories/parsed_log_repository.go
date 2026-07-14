@@ -38,7 +38,7 @@ type ParsedLogRepositoryInt interface {
 }
 
 type LogSearcher interface {
-    Search(ctx context.Context, params models.SearchParams) (models.SearchResult, error)
+	Search(ctx context.Context, params models.SearchParams) (models.SearchResult, error)
 }
 
 type ParsedLogRepository struct {
@@ -216,6 +216,6 @@ func buildSearchQuery(params models.SearchParams) (string, []any, error) {
 		AND ds.organization_id = $1
 		ORDER BY pl.timestamp DESC
 		LIMIT %d`, strings.Join(conds, " AND "), limit)
-	
+
 	return query, args, nil
 }

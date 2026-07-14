@@ -615,4 +615,4 @@ func (h *CompanyHandler) SwitchActiveOrganization(c *fiber.Ctx) error {
 	return response.JSON(c, fiber.StatusOK, "Switched active organization successfully", fiber.Map{
 		"organization_id": organizationID,
 	})
-}	
+}

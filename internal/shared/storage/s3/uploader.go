@@ -37,8 +37,8 @@ var allowedExts = map[string]FileInfo{
 }
 
 type Uploader struct {
-	client  *S3Client
-	manager *transfermanager.Client
+	client          *S3Client
+	manager         *transfermanager.Client
 	logUploadPolicy *UploadPolicy
 }
 
@@ -51,7 +51,7 @@ func NewUploader(client *S3Client) *Uploader {
 		}),
 		logUploadPolicy: &UploadPolicy{
 			AllowedExt: allowedExts,
-			MaxSize: client.cfg.MaxFileSizeMB * 1024 * 1024,
+			MaxSize:    client.cfg.MaxFileSizeMB * 1024 * 1024,
 		},
 	}
 }
@@ -132,10 +132,10 @@ func (u *Uploader) PresignPut(ctx context.Context, key, contentType string, size
 	expiresAt := time.Now().Add(expiry)
 
 	req, err := u.client.Presign.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:        aws.String(u.client.cfg.Bucket),
-		Key:           aws.String(key),
-		ContentType:   aws.String(contentType),
-		ContentLength: aws.Int64(sizeBytes),
+		Bucket:               aws.String(u.client.cfg.Bucket),
+		Key:                  aws.String(key),
+		ContentType:          aws.String(contentType),
+		ContentLength:        aws.Int64(sizeBytes),
 		ServerSideEncryption: types.ServerSideEncryptionAes256,
 		Metadata: map[string]string{
 			"upload-source": "siem-upload-service",
@@ -210,10 +210,10 @@ func (u *Uploader) PresignUpload(
 	expiresAt := time.Now().Add(expiry)
 
 	req, err := u.client.Presign.PresignPutObject(ctx, &s3.PutObjectInput{
-		Bucket:        aws.String(u.client.cfg.Bucket),
-		Key:           aws.String(key),
-		ContentType:   aws.String(contentType),
-		ContentLength: aws.Int64(sizeBytes),
+		Bucket:               aws.String(u.client.cfg.Bucket),
+		Key:                  aws.String(key),
+		ContentType:          aws.String(contentType),
+		ContentLength:        aws.Int64(sizeBytes),
 		ServerSideEncryption: types.ServerSideEncryptionAes256,
 
 		Metadata: map[string]string{
@@ -242,71 +242,71 @@ func (u *Uploader) PresignUpload(
 }
 
 func (u *Uploader) PresignUploadPost(
-    ctx context.Context,
-    rc middlewares.RequestContext,
-    filename string,
-    sizeBytes int64,
+	ctx context.Context,
+	rc middlewares.RequestContext,
+	filename string,
+	sizeBytes int64,
 ) (*PresignedPost, string, *time.Time, error) {
 
-    info, err := u.logUploadPolicy.Validate(filename, sizeBytes)
-    if err != nil {
-        return nil, "", nil, err
-    }
+	info, err := u.logUploadPolicy.Validate(filename, sizeBytes)
+	if err != nil {
+		return nil, "", nil, err
+	}
 
-    ext := strings.ToLower(filepath.Ext(filename))
-    key := fmt.Sprintf(
-        "uploads/pending/%s/%s/%s-%d%s",
-        info.Class,
-        rc.UserID,
-        rc.RequestID,
-        time.Now().UnixNano(),
-        ext,
-    )
+	ext := strings.ToLower(filepath.Ext(filename))
+	key := fmt.Sprintf(
+		"uploads/pending/%s/%s/%s-%d%s",
+		info.Class,
+		rc.UserID,
+		rc.RequestID,
+		time.Now().UnixNano(),
+		ext,
+	)
 
-    expiration := time.Now().Add(time.Duration(u.client.cfg.PresignExpiry) * time.Minute)
-    now := time.Now().UTC()
+	expiration := time.Now().Add(time.Duration(u.client.cfg.PresignExpiry) * time.Minute)
+	now := time.Now().UTC()
 	fmt.Printf("s3config: %q", u.client.cfg)
 	creds := buildCredential(u.client.cfg, now)
 
-    policy := map[string]interface{}{
-        "expiration": expiration.UTC().Format(time.RFC3339),
-        "conditions": []interface{}{
-            map[string]string{"bucket": u.client.cfg.Bucket},
-            map[string]string{"key": key},
-            map[string]string{"Content-Type": info.ContentType},
-            []interface{}{"content-length-range", 0, sizeBytes},
-            map[string]string{"x-amz-algorithm": "AWS4-HMAC-SHA256"},
-            map[string]string{"x-amz-credential": creds},
-            map[string]string{"x-amz-date": now.Format("20060102T150405Z")},
-            map[string]string{"x-amz-meta-expected-class": string(info.Class)},
-            map[string]string{"x-amz-meta-original-name": filename},
-            map[string]string{"x-amz-meta-upload-source": "siem"},
-        },
-    }
+	policy := map[string]interface{}{
+		"expiration": expiration.UTC().Format(time.RFC3339),
+		"conditions": []interface{}{
+			map[string]string{"bucket": u.client.cfg.Bucket},
+			map[string]string{"key": key},
+			map[string]string{"Content-Type": info.ContentType},
+			[]interface{}{"content-length-range", 0, sizeBytes},
+			map[string]string{"x-amz-algorithm": "AWS4-HMAC-SHA256"},
+			map[string]string{"x-amz-credential": creds},
+			map[string]string{"x-amz-date": now.Format("20060102T150405Z")},
+			map[string]string{"x-amz-meta-expected-class": string(info.Class)},
+			map[string]string{"x-amz-meta-original-name": filename},
+			map[string]string{"x-amz-meta-upload-source": "siem"},
+		},
+	}
 
-    policyBytes, err := json.Marshal(policy)
-    if err != nil {
-        return nil, "", nil, fmt.Errorf("marshal policy: %w", err)
-    }
-    policyBase64 := base64.StdEncoding.EncodeToString(policyBytes)
+	policyBytes, err := json.Marshal(policy)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("marshal policy: %w", err)
+	}
+	policyBase64 := base64.StdEncoding.EncodeToString(policyBytes)
 
-    fields := PresignedPostFields{
-        Key:                   key,
-        ContentType:           info.ContentType,
-        Policy:                policyBase64,
-        XAmzAlgorithm:         "AWS4-HMAC-SHA256",
-        XAmzCredential:        creds,
-        XAmzDate:              now.Format("20060102T150405Z"),
-        XAmzSignature:         signPolicy(policyBase64, u.client.cfg, now),
-        XAmzMetaExpectedClass: string(info.Class),
-        XAmzMetaOriginalName:  filename,
-        XAmzMetaUploadSource:  "siem",
-    }
+	fields := PresignedPostFields{
+		Key:                   key,
+		ContentType:           info.ContentType,
+		Policy:                policyBase64,
+		XAmzAlgorithm:         "AWS4-HMAC-SHA256",
+		XAmzCredential:        creds,
+		XAmzDate:              now.Format("20060102T150405Z"),
+		XAmzSignature:         signPolicy(policyBase64, u.client.cfg, now),
+		XAmzMetaExpectedClass: string(info.Class),
+		XAmzMetaOriginalName:  filename,
+		XAmzMetaUploadSource:  "siem",
+	}
 
-    return &PresignedPost{
-        URL:    fmt.Sprintf("https://%s.s3.%s.amazonaws.com", u.client.cfg.Bucket, u.client.cfg.Region),
-        Fields: fields,
-    }, key, &expiration, nil
+	return &PresignedPost{
+		URL:    fmt.Sprintf("https://%s.s3.%s.amazonaws.com", u.client.cfg.Bucket, u.client.cfg.Region),
+		Fields: fields,
+	}, key, &expiration, nil
 }
 
 func (u *Uploader) DownloadObject(ctx context.Context, key string) ([]byte, error) {

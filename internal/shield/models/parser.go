@@ -10,22 +10,22 @@ import (
 )
 
 type Parser struct {
-	ID             uuid.UUID           `db:"id"`
-	OrganizationID uuid.UUID           `db:"organization_id"`
-	Name           string              `db:"name"`
-	Description    *string             `db:"description"`
-	SourceID       *uuid.UUID          `db:"source_id"`
-	ParserType     types.ParserType    `db:"parser_type"`
-	Status         types.ParserStatus  `db:"status"`
-	Tags           pq.StringArray      `db:"tags"`
-	Logic          json.RawMessage     `db:"logic"`
-	Mappings       json.RawMessage     `db:"mappings"`
-	EventsParsed24h int64                    `db:"events_parsed_24h" json:"events_parsed_24h"`
-	ErrorRate       float64                  `db:"error_rate" json:"error_rate"`
-	OwnerUserID     *uuid.UUID               `db:"owner_user_id,omitempty" json:"owner_user_id,omitempty"`
-	CreatedAt       time.Time                `db:"created_at" json:"created_at"`
-	UpdatedAt       time.Time                `db:"updated_at" json:"updated_at"`
-	DeletedAt       *time.Time               `db:"deleted_at,omitempty" json:"deleted_at,omitempty"`
+	ID              uuid.UUID          `db:"id"`
+	OrganizationID  uuid.UUID          `db:"organization_id"`
+	Name            string             `db:"name"`
+	Description     *string            `db:"description"`
+	SourceID        *uuid.UUID         `db:"source_id"`
+	ParserType      types.ParserType   `db:"parser_type"`
+	Status          types.ParserStatus `db:"status"`
+	Tags            pq.StringArray     `db:"tags"`
+	Logic           json.RawMessage    `db:"logic"`
+	Mappings        json.RawMessage    `db:"mappings"`
+	EventsParsed24h int64              `db:"events_parsed_24h" json:"events_parsed_24h"`
+	ErrorRate       float64            `db:"error_rate" json:"error_rate"`
+	OwnerUserID     *uuid.UUID         `db:"owner_user_id,omitempty" json:"owner_user_id,omitempty"`
+	CreatedAt       time.Time          `db:"created_at" json:"created_at"`
+	UpdatedAt       time.Time          `db:"updated_at" json:"updated_at"`
+	DeletedAt       *time.Time         `db:"deleted_at,omitempty" json:"deleted_at,omitempty"`
 }
 
 // type Parser struct {
@@ -48,15 +48,15 @@ type Parser struct {
 // }
 
 type ParserVersion struct {
-	ID             uuid.UUID                `db:"id" json:"id"`
-	OrganizationID uuid.UUID                `db:"organization_id" json:"organization_id"`
-	ParserID       uuid.UUID                `db:"parser_id" json:"parser_id"`
-	VersionNumber  int                      `db:"version_number" json:"version_number"`
-	Logic          json.RawMessage   `db:"logic" json:"logic"`
+	ID             uuid.UUID       `db:"id" json:"id"`
+	OrganizationID uuid.UUID       `db:"organization_id" json:"organization_id"`
+	ParserID       uuid.UUID       `db:"parser_id" json:"parser_id"`
+	VersionNumber  int             `db:"version_number" json:"version_number"`
+	Logic          json.RawMessage `db:"logic" json:"logic"`
 	Mappings       json.RawMessage `db:"mappings" json:"mappings"`
-	ChangedBy      *uuid.UUID               `db:"changed_by,omitempty" json:"changed_by,omitempty"`
-	ChangeNote     *string                  `db:"change_note,omitempty" json:"change_note,omitempty"`
-	CreatedAt      time.Time                `db:"created_at" json:"created_at"`
+	ChangedBy      *uuid.UUID      `db:"changed_by,omitempty" json:"changed_by,omitempty"`
+	ChangeNote     *string         `db:"change_note,omitempty" json:"change_note,omitempty"`
+	CreatedAt      time.Time       `db:"created_at" json:"created_at"`
 }
 
 type ParserTestRun struct {
@@ -73,20 +73,20 @@ type ParserTestRun struct {
 }
 
 type ParserResponse struct {
-	ID              string                   `json:"id"`
-	Name            string                   `json:"name"`
-	Description     *string                  `json:"description,omitempty"`
-	DataSource      *DataSourceResponse      `json:"data_source,omitempty"`
-	ParserType      string                   `json:"parser_type"`
-	Status          string                   `json:"status"`
-	Tags            []string                 `json:"tags"`
-	Logic           json.RawMessage   `json:"logic"`
-	Mappings        json.RawMessage `json:"mappings"`
-	EventsParsed24h int64                    `json:"events_parsed_24h"`
-	ErrorRate       float64                  `json:"error_rate"`
-	Owner           *string                  `json:"owner,omitempty"` // owner name
-	CreatedAt       time.Time                `json:"created_at"`
-	UpdatedAt       time.Time                `json:"updated_at"`
+	ID              string              `json:"id"`
+	Name            string              `json:"name"`
+	Description     *string             `json:"description,omitempty"`
+	DataSource      *DataSourceResponse `json:"data_source,omitempty"`
+	ParserType      string              `json:"parser_type"`
+	Status          string              `json:"status"`
+	Tags            []string            `json:"tags"`
+	Logic           json.RawMessage     `json:"logic"`
+	Mappings        json.RawMessage     `json:"mappings"`
+	EventsParsed24h int64               `json:"events_parsed_24h"`
+	ErrorRate       float64             `json:"error_rate"`
+	Owner           *string             `json:"owner,omitempty"` // owner name
+	CreatedAt       time.Time           `json:"created_at"`
+	UpdatedAt       time.Time           `json:"updated_at"`
 }
 
 func (p *Parser) ToResponse(ownerName *string) *ParserResponse {

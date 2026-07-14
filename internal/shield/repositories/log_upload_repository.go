@@ -7,8 +7,6 @@ import (
 	"sage-backend/internal/shield/models"
 )
 
-
-
 type LogUploadRepositoryInt interface {
 	CreatePending(ctx context.Context, params models.CreateLogFileParams) (*models.LogFile, error)
 	Confirm(ctx context.Context, params models.ConfirmLogFileParams) (*models.LogFile, error)

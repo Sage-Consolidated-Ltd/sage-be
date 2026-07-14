@@ -16,28 +16,28 @@ import (
 	"github.com/google/uuid"
 )
 
-type UploadServiceInt interface{
+type UploadServiceInt interface {
 	GetUploadURL(
-	ctx context.Context,
-	rc middlewares.RequestContext,
-	orgID uuid.UUID,
-	filename string,
-	contentType string,
-	sizeBytes int64,
+		ctx context.Context,
+		rc middlewares.RequestContext,
+		orgID uuid.UUID,
+		filename string,
+		contentType string,
+		sizeBytes int64,
 	) (*models.PresignUploadResponse, error)
-	
+
 	ValidateUploadComplete(
-	ctx context.Context,
-	rc *middlewares.RequestContext,
-	req *requests.UploadCompleteRequest,
+		ctx context.Context,
+		rc *middlewares.RequestContext,
+		req *requests.UploadCompleteRequest,
 	) (*models.LogFile, error)
 }
 
 type UploadService struct {
-	uploader *s3.Uploader
+	uploader            *s3.Uploader
 	logUploadRepository repositories.LogUploadRepositoryInt
-	taskClient *tasks.TaskClient
-	dataSourceRepo repositories.DataSourceRepositoryInt
+	taskClient          *tasks.TaskClient
+	dataSourceRepo      repositories.DataSourceRepositoryInt
 }
 
 func NewUploadService(
@@ -47,10 +47,10 @@ func NewUploadService(
 	dataSourceRepo repositories.DataSourceRepositoryInt,
 ) UploadServiceInt {
 	return &UploadService{
-		uploader: uploader,
+		uploader:            uploader,
 		logUploadRepository: logUploadRepository,
-		taskClient: taskClient,
-		dataSourceRepo: dataSourceRepo,
+		taskClient:          taskClient,
+		dataSourceRepo:      dataSourceRepo,
 	}
 }
 
@@ -89,21 +89,21 @@ func (s *UploadService) GetUploadURL(
 		return nil, fmt.Errorf("failed to parse UUID: %v", err)
 	}
 
-	// save pending 
+	// save pending
 	_, err = s.logUploadRepository.CreatePending(ctx, models.CreateLogFileParams{
-		UserID: parsedUUID,
+		UserID:         parsedUUID,
 		OrganizationID: orgID,
-		S3Key: key,
-		FileClass: fileClass,
+		S3Key:          key,
+		FileClass:      fileClass,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	result := &models.PresignUploadResponse{
-		Key: 	 key,
+		Key:       key,
 		ExpiresAt: *expiresAt,
-		Post: *presignResult,
+		Post:      *presignResult,
 	}
 
 	return result, nil
@@ -119,9 +119,9 @@ func (s *UploadService) ValidateUploadComplete(
 		return nil, fmt.Errorf("parse organization id: %w", err)
 	}
 	ds, err := s.ResolveDataSource(ctx, orgID, req.Metadata)
-    if err != nil {
-        return nil, err
-    }
+	if err != nil {
+		return nil, err
+	}
 
 	req.Metadata.SourceID = &ds.ID
 
@@ -156,11 +156,11 @@ func (s *UploadService) ValidateUploadComplete(
 	}
 
 	lf, err = s.logUploadRepository.Confirm(ctx, models.ConfirmLogFileParams{
-		S3Key:       req.Key,
-		SourceType:  req.Metadata.SourceType,
-		SourceID:    req.Metadata.SourceID,
-		Description: &req.Metadata.Description,
-		Category: &req.Metadata.Category,
+		S3Key:        req.Key,
+		SourceType:   req.Metadata.SourceType,
+		SourceID:     req.Metadata.SourceID,
+		Description:  &req.Metadata.Description,
+		Category:     &req.Metadata.Category,
 		AppOrContext: &req.Metadata.AppOrContext,
 	})
 	if err != nil {
@@ -256,52 +256,52 @@ func ValidateFileExtension(filename string, class models.FileClass) error {
 }
 
 func (s *UploadService) ResolveDataSource(
-    ctx context.Context,
-    orgID uuid.UUID,
-    meta requests.LogUploadMetadata,
+	ctx context.Context,
+	orgID uuid.UUID,
+	meta requests.LogUploadMetadata,
 ) (*models.DataSource, error) {
 
-    // 1. If user provided SourceID → fetch it
-    if meta.SourceID != nil {
-        ds, err := s.dataSourceRepo.GetDataSourceByID(ctx, *meta.SourceID, orgID)
-        if err != nil {
-            return nil, err
-        }
-        return ds, nil
-    }
+	// 1. If user provided SourceID → fetch it
+	if meta.SourceID != nil {
+		ds, err := s.dataSourceRepo.GetDataSourceByID(ctx, *meta.SourceID, orgID)
+		if err != nil {
+			return nil, err
+		}
+		return ds, nil
+	}
 
-    // 2. Otherwise → create one automatically
+	// 2. Otherwise → create one automatically
 
-    name := meta.Category
-    provider := meta.SourceType // or meta.Category
+	name := meta.Category
+	provider := meta.SourceType // or meta.Category
 
-    ds := &models.DataSource{
-        ID:             uuid.New(),
-        OrganizationID: orgID,
-        Name:           name,
-        Type:           "log",
-        Provider:       &provider,
-        Status:         "active",
-        Metadata:       buildMetadata(meta),
-    }
+	ds := &models.DataSource{
+		ID:             uuid.New(),
+		OrganizationID: orgID,
+		Name:           name,
+		Type:           "log",
+		Provider:       &provider,
+		Status:         "active",
+		Metadata:       buildMetadata(meta),
+	}
 
-    err := s.dataSourceRepo.CreateDataSource(ctx, ds)
-    if err != nil {
-        return nil, err
-    }
+	err := s.dataSourceRepo.CreateDataSource(ctx, ds)
+	if err != nil {
+		return nil, err
+	}
 
-    return ds, nil
+	return ds, nil
 }
 
 func buildMetadata(meta requests.LogUploadMetadata) []byte {
-    m := map[string]interface{}{
-        "source_type": meta.SourceType,
-        "category":    meta.Category,
-        "context":     meta.AppOrContext,
-		"host": meta.Host,
-		"index_name": meta.IndexName,
-    }
+	m := map[string]interface{}{
+		"source_type": meta.SourceType,
+		"category":    meta.Category,
+		"context":     meta.AppOrContext,
+		"host":        meta.Host,
+		"index_name":  meta.IndexName,
+	}
 
-    b, _ := json.Marshal(m)
-    return b
+	b, _ := json.Marshal(m)
+	return b
 }

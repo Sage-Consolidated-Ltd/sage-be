@@ -1,8 +1,8 @@
 package middlewares
 
 import (
-	"strconv"
 	"github.com/google/uuid"
+	"strconv"
 )
 
 func generateID() string {

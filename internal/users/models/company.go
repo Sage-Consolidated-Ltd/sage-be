@@ -28,9 +28,9 @@ func (i *Industry) ToGetIndustriesResponse() GetIndustriesResponse {
 type Organization struct {
 	ID                   string         `json:"id" db:"id"`
 	Name                 string         `json:"name" db:"name"`
-	Slug                 *string         `json:"slug" db:"slug"`
+	Slug                 *string        `json:"slug" db:"slug"`
 	OwnerID              string         `json:"owner_id" db:"owner_id"`
-	Industry             *string         `json:"industry" db:"industry"`
+	Industry             *string        `json:"industry" db:"industry"`
 	Country              sql.NullString `json:"country" db:"country"`
 	Timezone             string         `json:"timezone" db:"timezone"`
 	RiskThresholdDefault int            `json:"risk_threshold_default" db:"risk_threshold_default"`
@@ -64,7 +64,7 @@ func (o *Organization) ToResponse() *GetOrganizationResponse {
 	var slug string
 	if o.Slug == nil {
 		slug = ""
-	}else {
+	} else {
 		slug = *o.Slug
 	}
 	var industry string

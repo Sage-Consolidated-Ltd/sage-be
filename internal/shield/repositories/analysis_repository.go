@@ -27,7 +27,7 @@ func NewAnalysisRepository(db *db.DB) AnalysisRepositoryInt {
 	}
 }
 
-func(r *AnalysisRepository) RecordAnalysis(ctx context.Context, params *models.CreateAnalysisParams) (*models.AnalysisResult, error) {
+func (r *AnalysisRepository) RecordAnalysis(ctx context.Context, params *models.CreateAnalysisParams) (*models.AnalysisResult, error) {
 	summaryJSON, err := json.Marshal(params.Summary)
 	if err != nil {
 		return nil, fmt.Errorf("marshal summary: %w", err)

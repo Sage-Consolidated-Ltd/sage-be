@@ -236,11 +236,11 @@ func (LinuxSyslogParser) Parse(raw []byte) ([]models.ParsedLog, error) {
 type WindowsEventLogParser struct{}
 
 var eventTypeToLevel = map[string]string{
-	"1":  "error",       // Error
-	"2":  "warning",     // Warning
-	"4":  "info",        // Information
-	"8":  "info",        // Success Audit
-	"16": "warning",     // Failure Audit
+	"1":  "error",   // Error
+	"2":  "warning", // Warning
+	"4":  "info",    // Information
+	"8":  "info",    // Success Audit
+	"16": "warning", // Failure Audit
 }
 
 func (WindowsEventLogParser) Parse(raw []byte) ([]models.ParsedLog, error) {

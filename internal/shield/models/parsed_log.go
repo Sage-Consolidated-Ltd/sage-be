@@ -7,14 +7,14 @@ import (
 )
 
 type SearchParams struct {
-	DataSourceID *uuid.UUID
+	DataSourceID   *uuid.UUID
 	OrganizationID uuid.UUID
-	Level        *string
-	FreeText     *string
-	RawFilters   map[string]string
-	From, To     *time.Time
-	Limit        int
-	Cursor       *time.Time
+	Level          *string
+	FreeText       *string
+	RawFilters     map[string]string
+	From, To       *time.Time
+	Limit          int
+	Cursor         *time.Time
 }
 
 type SearchResult struct {
@@ -24,7 +24,7 @@ type SearchResult struct {
 
 type QueryAST struct {
 	Level        *string
-	DataSourceID *string 
+	DataSourceID *string
 	RawFilters   map[string]string
 	Phrases      []string
 }

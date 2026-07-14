@@ -22,10 +22,10 @@ type BaseConfig struct {
 	ResendApiKey     string
 	ResendFromEmail  string
 	FrontendBaseURL  string
-	S3Region           string
-	S3Bucket           string
-	S3AccessKey        string
-	S3SecretKey        string
+	S3Region         string
+	S3Bucket         string
+	S3AccessKey      string
+	S3SecretKey      string
 }
 
 type APIConfig struct {
@@ -52,9 +52,9 @@ type OffenseConfig struct {
 
 type ShieldConfig struct {
 	BaseConfig
-	PORT             string
-	GomniSecurityKey string
-	DetectorAIBaseURL string
+	PORT                string
+	GomniSecurityKey    string
+	DetectorAIBaseURL   string
 	DetectorAIAuthToken string
 }
 
@@ -126,10 +126,10 @@ func loadBase() BaseConfig {
 		ResendApiKey:     requireEnv("RESEND_API_KEY"),
 		ResendFromEmail:  requireEnv("RESEND_FROM_EMAIL"),
 		FrontendBaseURL:  requireEnv("FRONTEND_BASE_URL"),
-		S3Region:           requireEnv("S3_REGION"),
-		S3AccessKey:        requireEnv("AWS_ACCESS_KEY_ID"),
-		S3SecretKey:        requireEnv("AWS_SECRET_ACCESS_KEY"),
-		S3Bucket:           requireEnv("S3_BUCKET"),
+		S3Region:         requireEnv("S3_REGION"),
+		S3AccessKey:      requireEnv("AWS_ACCESS_KEY_ID"),
+		S3SecretKey:      requireEnv("AWS_SECRET_ACCESS_KEY"),
+		S3Bucket:         requireEnv("S3_BUCKET"),
 	}
 }
 
@@ -163,9 +163,9 @@ func SetupOffense() *OffenseConfig {
 func SetupShield() *ShieldConfig {
 	_ = godotenv.Load(".env")
 	return &ShieldConfig{
-		BaseConfig: loadBase(),
-		PORT:       getEnv("SHIELD_PORT", "3335"),
-		DetectorAIBaseURL: requireEnv("DETECTOR_AI_BASE_URL"),
+		BaseConfig:          loadBase(),
+		PORT:                getEnv("SHIELD_PORT", "3335"),
+		DetectorAIBaseURL:   requireEnv("DETECTOR_AI_BASE_URL"),
 		DetectorAIAuthToken: requireEnv("DETECTOR_AI_AUTH_TOKEN"),
 	}
 }

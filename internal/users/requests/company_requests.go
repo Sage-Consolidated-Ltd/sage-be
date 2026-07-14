@@ -29,11 +29,11 @@ type ListMembersRequest struct {
 
 // MemberInvite represents a single member invitation
 type MemberInvite struct {
-	FullName   string `json:"full_name" validate:"required,min=2,max=100"`
-	Email      string `json:"email" validate:"required,email"`
-	Role       string `json:"role" validate:"required,oneof=admin analyst viewer automation_admin billing_admin"`
-	ForceMFA   bool   `json:"force_mfa"`
-	Message    string `json:"message,omitempty" validate:"omitempty,max=500"`
+	FullName string `json:"full_name" validate:"required,min=2,max=100"`
+	Email    string `json:"email" validate:"required,email"`
+	Role     string `json:"role" validate:"required,oneof=admin analyst viewer automation_admin billing_admin"`
+	ForceMFA bool   `json:"force_mfa"`
+	Message  string `json:"message,omitempty" validate:"omitempty,max=500"`
 }
 
 // InviteMembersRequest invites users to join the organization

@@ -96,7 +96,7 @@ func registerUploadRoutes(router fiber.Router, uh *handlers.UploadHandler, m *mi
 		shieldMiddlewares.Logger(logger.Default()),
 	)
 
-	upload.Post("/presign", uh.UploadLog)	 // upload log and get pre-signed URL
+	upload.Post("/presign", uh.UploadLog)       // upload log and get pre-signed URL
 	upload.Post("/complete", uh.UploadComplete) // notify server that upload is complete
 }
 

@@ -65,12 +65,12 @@ func main() {
 	mailer := mailer.NewEmailClient(&cfg.BaseConfig)
 
 	s3Client, _ := s3.NewClient(s3.S3Config{
-		Region: cfg.BaseConfig.S3Region,
-		Bucket: cfg.BaseConfig.S3Bucket,
-		AccessKeyID: cfg.BaseConfig.S3AccessKey,
+		Region:          cfg.BaseConfig.S3Region,
+		Bucket:          cfg.BaseConfig.S3Bucket,
+		AccessKeyID:     cfg.BaseConfig.S3AccessKey,
 		SecretAccessKey: cfg.BaseConfig.S3SecretKey,
-		PresignExpiry: 24 * 60,
-		MaxFileSizeMB: 5 * 1024 * 1024,
+		PresignExpiry:   24 * 60,
+		MaxFileSizeMB:   5 * 1024 * 1024,
 	})
 	uploader := s3.NewUploader(s3Client)
 

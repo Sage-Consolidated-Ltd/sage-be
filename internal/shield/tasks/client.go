@@ -14,13 +14,13 @@ import (
 )
 
 const (
-	TypeProviderSync       = "provider:sync"
-	TypeProviderEventBatch = "provider:event-batch"
-	TypeIngestJob          = "ingest:job"
-	TypeSyncJob            = "sync:job"
-	TypeQualityScanJob     = "quality:scan:job"
-	TypeValidationJob      = "validation:job"
-	TypeSubmitLogFileForAnalysis = "analysis:submit-log-file"
+	TypeProviderSync               = "provider:sync"
+	TypeProviderEventBatch         = "provider:event-batch"
+	TypeIngestJob                  = "ingest:job"
+	TypeSyncJob                    = "sync:job"
+	TypeQualityScanJob             = "quality:scan:job"
+	TypeValidationJob              = "validation:job"
+	TypeSubmitLogFileForAnalysis   = "analysis:submit-log-file"
 	TypeSubmitLogFileForProcessing = "processing:submit-log-file"
 )
 

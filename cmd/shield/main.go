@@ -83,12 +83,12 @@ func main() {
 	_ = mailer.NewEmailClient(&cfg.BaseConfig)
 
 	s3Client, _ := s3.NewClient(s3.S3Config{
-		Region: cfg.BaseConfig.S3Region,
-		Bucket: cfg.BaseConfig.S3Bucket,
-		AccessKeyID: cfg.BaseConfig.S3AccessKey,
+		Region:          cfg.BaseConfig.S3Region,
+		Bucket:          cfg.BaseConfig.S3Bucket,
+		AccessKeyID:     cfg.BaseConfig.S3AccessKey,
 		SecretAccessKey: cfg.BaseConfig.S3SecretKey,
-		PresignExpiry: 24 * 60,
-		MaxFileSizeMB: 20 * 1024 * 1024,
+		PresignExpiry:   24 * 60,
+		MaxFileSizeMB:   20 * 1024 * 1024,
 	})
 	uploader := s3.NewUploader(s3Client)
 
@@ -163,21 +163,21 @@ func main() {
 	providerScheduler := scheduler.NewProviderScheduler(taskClient, dataSourceRepo, 300)
 
 	routes.Setup(
-		app, 
-		integrationHandler, 
-		qualityHandler, 
-		logsDataHandler, 
-		parserHandler, 
-		eventHandler, 
-		uploadLogHandler, 
+		app,
+		integrationHandler,
+		qualityHandler,
+		logsDataHandler,
+		parserHandler,
+		eventHandler,
+		uploadLogHandler,
 		parsedLogHandler,
 		shieldMiddlewares.NewRateLimiter(
-			3, 
-			logger.Default(), 
+			3,
+			logger.Default(),
 			shieldMiddlewares.NewRedisLimiterStore(redisClient),
-		), 
+		),
 		authMiddleware,
-		)
+	)
 
 	port := strings.TrimSpace(cfg.PORT)
 

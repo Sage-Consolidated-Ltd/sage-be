@@ -111,10 +111,10 @@ func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
 	}
 
-	logic, err := validateCreateParser(&req); 
+	logic, err := validateCreateParser(&req)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
-	}	
+	}
 
 	mappingBytes, err := json.Marshal(req.Mappings)
 	if err != nil {
@@ -305,10 +305,10 @@ func (h *ParserHandler) ImportParser(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return response.Error(c, fiber.StatusBadRequest, "INVALID_REQUEST", err.Error())
 	}
-	logic, err := validateCreateParser(&req); 
+	logic, err := validateCreateParser(&req)
 	if err != nil {
 		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
-	}	
+	}
 
 	mappingBytes, err := json.Marshal(req.Mappings)
 	if err != nil {

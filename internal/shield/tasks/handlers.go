@@ -40,16 +40,16 @@ import (
 // )
 
 type TaskHandler struct {
-	jobRepo         repositories.IngestionJobRepositoryInt
-	dataSourceRepo  repositories.DataSourceRepositoryInt
-	eventRepo       repositories.SecurityEventRepositoryInt
-	integrationRepo repositories.IntegrationRepositoryInt
-	parserRepo repositories.ParserRepositoryInt
-	taskClient      *TaskClient
-	client          *resty.Client
-	encryptor       crypto.Encryptor
-	threatDetector  ai_detector.ThreatDetectorInt
-	s3Uploader *s3.Uploader
+	jobRepo             repositories.IngestionJobRepositoryInt
+	dataSourceRepo      repositories.DataSourceRepositoryInt
+	eventRepo           repositories.SecurityEventRepositoryInt
+	integrationRepo     repositories.IntegrationRepositoryInt
+	parserRepo          repositories.ParserRepositoryInt
+	taskClient          *TaskClient
+	client              *resty.Client
+	encryptor           crypto.Encryptor
+	threatDetector      ai_detector.ThreatDetectorInt
+	s3Uploader          *s3.Uploader
 	parsedLogRepository repositories.ParsedLogRepositoryInt
 }
 
@@ -67,16 +67,16 @@ func NewTaskHandler(
 	parsedLogRepository repositories.ParsedLogRepositoryInt,
 ) *TaskHandler {
 	return &TaskHandler{
-		jobRepo:         jobRepo,
-		dataSourceRepo:  dataSourceRepo,
-		eventRepo:       eventRepo,
-		integrationRepo: integrationRepo,
-		parserRepo:      parserRepo,
-		taskClient:      taskClient,
-		client:          client,
-		encryptor:       encryptor,
-		threatDetector:  threatDetector,
-		s3Uploader:      s3Uploader,
+		jobRepo:             jobRepo,
+		dataSourceRepo:      dataSourceRepo,
+		eventRepo:           eventRepo,
+		integrationRepo:     integrationRepo,
+		parserRepo:          parserRepo,
+		taskClient:          taskClient,
+		client:              client,
+		encryptor:           encryptor,
+		threatDetector:      threatDetector,
+		s3Uploader:          s3Uploader,
 		parsedLogRepository: parsedLogRepository,
 	}
 }

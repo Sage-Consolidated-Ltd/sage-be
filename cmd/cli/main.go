@@ -51,7 +51,7 @@ func main() {
 				Action: func(c *cli.Context) error {
 					fmt.Println("Stopping worker...")
 					// In production, this would send SIGTERM to the worker process
-					
+
 					return nil
 				},
 			},

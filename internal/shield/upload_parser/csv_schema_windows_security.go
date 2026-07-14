@@ -14,18 +14,18 @@ var eventTypeToLevel = map[string]string{
 }
 
 func windowsSecurityCSVMapper(row []string, colIdx map[string]int) (sql.NullTime, string) {
-	ts :=  ParseNullTime( GetCol(row, colIdx, "timegenerated"))
+	ts := ParseNullTime(GetCol(row, colIdx, "timegenerated"))
 	fmt.Println("windowsSecurityCSVMapper: ts:", ts, "row:", row, "colIdx:", colIdx)
 
 	level := ""
-	if et :=  GetCol(row, colIdx, "eventtype"); et != "" {
+	if et := GetCol(row, colIdx, "eventtype"); et != "" {
 		level = eventTypeToLevel[et]
 	}
 	return ts, level
 }
 
 func init() {
-	 RegisterCSVSchema( CSVSourceSchema{
+	RegisterCSVSchema(CSVSourceSchema{
 		Name: "windows_security",
 		Matches: func(colIdx map[string]int) bool {
 			_, hasTG := colIdx["timegenerated"]

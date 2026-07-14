@@ -52,8 +52,8 @@ func _InviteMember() {}
 func _AcceptInvitation() {}
 
 type OrganizationMembersResponse struct {
-	Success bool                              `json:"success"`
-	Message string                            `json:"message"`
+	Success bool                                `json:"success"`
+	Message string                              `json:"message"`
 	Data    []models.OrganizationMemberResponse `json:"data"`
 }
 

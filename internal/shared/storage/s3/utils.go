@@ -5,9 +5,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"net/http"
 	"time"
-	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/go-resty/resty/v2"
 )

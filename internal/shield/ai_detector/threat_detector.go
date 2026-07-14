@@ -21,26 +21,25 @@ type ThreatDetectorInt interface {
 }
 
 type ThreatDetector struct {
-	client     *AIDetectorClient
-	s3Uploader *s3.Uploader
+	client        *AIDetectorClient
+	s3Uploader    *s3.Uploader
 	logUploadRepo repositories.LogUploadRepositoryInt
-	analysisRepo repositories.AnalysisRepositoryInt
+	analysisRepo  repositories.AnalysisRepositoryInt
 }
 
 func NewThreatDetector(
-	client *AIDetectorClient, 
-	s3Uploader *s3.Uploader, 
+	client *AIDetectorClient,
+	s3Uploader *s3.Uploader,
 	logUploadRepo repositories.LogUploadRepositoryInt,
 	analysisRepo repositories.AnalysisRepositoryInt,
-	) ThreatDetectorInt {
+) ThreatDetectorInt {
 	return &ThreatDetector{
-		client:     client,
-		s3Uploader: s3Uploader,
+		client:        client,
+		s3Uploader:    s3Uploader,
 		logUploadRepo: logUploadRepo,
-		analysisRepo: analysisRepo,
+		analysisRepo:  analysisRepo,
 	}
 }
-
 
 func (td *ThreatDetector) SubmitLogFileForAnalysis(
 	ctx context.Context,
@@ -79,7 +78,7 @@ func (td *ThreatDetector) SubmitLogFileForAnalysis(
 	}
 
 	fmt.Printf("AI detector service is healthy\n")
-	
+
 	fmt.Printf("Detecting threats in log file: %s\n", input.FileName)
 	analysis, err := td.client.DetectFileThreats(ctx, input.FileReader, input.FileName)
 	if err != nil {
@@ -88,14 +87,14 @@ func (td *ThreatDetector) SubmitLogFileForAnalysis(
 	}
 
 	payload := models.CreateAnalysisParams{
-		LogFileID: &input.LogFileID,
-		RequestType: models.AnalysisRequestTypeFile,
-		LogType: input.FileClass,
-		Approach: analysis.Approach,
-		Overall: analysis.Overall,
-		Summary: analysis.Summary,
-		Outcome: analysis.Outcome,
-		Threats: analysis.Threats,
+		LogFileID:      &input.LogFileID,
+		RequestType:    models.AnalysisRequestTypeFile,
+		LogType:        input.FileClass,
+		Approach:       analysis.Approach,
+		Overall:        analysis.Overall,
+		Summary:        analysis.Summary,
+		Outcome:        analysis.Outcome,
+		Threats:        analysis.Threats,
 		OrganizationID: input.OrganizationID,
 	}
 

@@ -10,6 +10,7 @@ import (
 )
 
 type Status string
+
 const (
 	StatusPending    Status = "pending"
 	StatusUploaded   Status = "uploaded"
@@ -20,8 +21,8 @@ const (
 	StatusRetrying   Status = "retrying"
 )
 
- 
 type FileClass string
+
 const (
 	FileClassCSV  FileClass = "csv"
 	FileClassXLSX FileClass = "xlsx"
@@ -31,6 +32,7 @@ const (
 )
 
 type DetectedType string
+
 const (
 	DetectedWindowsEventLog DetectedType = "windows_event_log"
 	DetectedLinuxSyslog     DetectedType = "linux_syslog"
@@ -40,41 +42,41 @@ const (
 )
 
 type PresignUploadResponse struct {
-	Key       string        `json:"key"`
-	ExpiresAt time.Time     `json:"expires_at"`
+	Key       string           `json:"key"`
+	ExpiresAt time.Time        `json:"expires_at"`
 	Post      s3.PresignedPost `json:"post"`
 }
 
 type LogFile struct {
-	ID             uuid.UUID  `db:"id"`
-	UserID         uuid.UUID  `db:"user_id"`
-	OrganizationID uuid.UUID  `db:"organization_id"`
-	S3Key          string     `db:"s3_key"`
-	FileClass      FileClass     `db:"file_class"`
-	EventCount     *int       `db:"event_count"`
-	ProcessedAt    *time.Time `db:"processed_at"`
-	SourceType     *string     `db:"source_type"`
-	SourceID       *uuid.UUID `db:"source_id"`
-	Description    *string    `db:"description"`
-	Category       *string    `db:"category"`
-	AppOrContext   *string    `db:"app_or_context"`
-	Status         string     `db:"status"`
-	ErrorMessage   *string    `db:"error_message"`
-	DetectedType  *DetectedType `db:"detected_type"`
+	ID               uuid.UUID     `db:"id"`
+	UserID           uuid.UUID     `db:"user_id"`
+	OrganizationID   uuid.UUID     `db:"organization_id"`
+	S3Key            string        `db:"s3_key"`
+	FileClass        FileClass     `db:"file_class"`
+	EventCount       *int          `db:"event_count"`
+	ProcessedAt      *time.Time    `db:"processed_at"`
+	SourceType       *string       `db:"source_type"`
+	SourceID         *uuid.UUID    `db:"source_id"`
+	Description      *string       `db:"description"`
+	Category         *string       `db:"category"`
+	AppOrContext     *string       `db:"app_or_context"`
+	Status           string        `db:"status"`
+	ErrorMessage     *string       `db:"error_message"`
+	DetectedType     *DetectedType `db:"detected_type"`
 	UserSelectedType *DetectedType `db:"user_selected_type"`
-	CreatedAt      time.Time  `db:"created_at"`
-	UpdatedAt      time.Time  `db:"updated_at"`
+	CreatedAt        time.Time     `db:"created_at"`
+	UpdatedAt        time.Time     `db:"updated_at"`
 }
 
 type ParsedLog struct {
-	ID           uuid.UUID `db:"id"`
-	LogFileID    uuid.UUID `db:"log_file_id"`
-	DataSourceID uuid.UUID `db:"data_source_id"`
-	FileID       uuid.UUID `db:"file_id"`
+	ID           uuid.UUID    `db:"id"`
+	LogFileID    uuid.UUID    `db:"log_file_id"`
+	DataSourceID uuid.UUID    `db:"data_source_id"`
+	FileID       uuid.UUID    `db:"file_id"`
 	Timestamp    sql.NullTime `db:"timestamp"`
-	Level        string    `db:"level"`
-	Message      string    `db:"message"`
-	RawJSON      db.JSONMap `db:"raw_json"`
+	Level        string       `db:"level"`
+	Message      string       `db:"message"`
+	RawJSON      db.JSONMap   `db:"raw_json"`
 }
 
 func (f *LogFile) effectiveType() DetectedType {
@@ -95,10 +97,10 @@ type CreateLogFileParams struct {
 }
 
 type ConfirmLogFileParams struct {
-	S3Key       string
-	SourceType  string
-	SourceID    *uuid.UUID
-	Description *string
-	Category *string
+	S3Key        string
+	SourceType   string
+	SourceID     *uuid.UUID
+	Description  *string
+	Category     *string
 	AppOrContext *string
 }

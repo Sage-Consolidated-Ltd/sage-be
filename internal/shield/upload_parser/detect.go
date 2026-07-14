@@ -1,6 +1,5 @@
 package upload_parser
 
-
 import (
 	"path/filepath"
 	"regexp"

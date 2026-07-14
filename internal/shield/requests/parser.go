@@ -15,9 +15,9 @@ type CreateParserRequest struct {
 	ParserType   types.ParserType `json:"parser_type" validate:"required"`
 	Tags         []string         `json:"tags,omitempty"`
 
-	RegexLogic   *RegexLogic   `json:"regex_logic,omitempty"`
-	JSONLogic    *JSONLogic    `json:"json_logic,omitempty"`
-	CSVLogic     *CSVLogic     `json:"csv_logic,omitempty"`
+	RegexLogic    *RegexLogic    `json:"regex_logic,omitempty"`
+	JSONLogic     *JSONLogic     `json:"json_logic,omitempty"`
+	CSVLogic      *CSVLogic      `json:"csv_logic,omitempty"`
 	KeyValueLogic *KeyValueLogic `json:"key_value_logic,omitempty"`
 
 	Mappings     []FieldMapping `json:"mappings,omitempty"`
@@ -60,8 +60,8 @@ type UpdateParserRequest struct {
 	Status       *types.ParserStatus `json:"status,omitempty" validate:"omitempty,oneof=active warning error disabled"`
 	Tags         *[]string           `json:"tags,omitempty"`
 
-	Logic     json.RawMessage `json:"logic,omitempty"`
-	Mappings  *[]FieldMapping `json:"mappings,omitempty"`
+	Logic    json.RawMessage `json:"logic,omitempty"`
+	Mappings *[]FieldMapping `json:"mappings,omitempty"`
 }
 
 // TestParserRequest for testing a parser against sample

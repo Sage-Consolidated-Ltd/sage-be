@@ -10,12 +10,12 @@ import (
 )
 
 type SessionParam struct {
-	ID             string
-	Role           string
-	Email          string
-	OrganizationId string
+	ID                   string
+	Role                 string
+	Email                string
+	OrganizationId       string
 	ActiveOrganizationID string
-	RoleInOrganization string
+	RoleInOrganization   string
 }
 
 var Store *session.Store

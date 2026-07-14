@@ -17,8 +17,8 @@ func NewClient(cfg S3Config) (*S3Client, error) {
 
 	c := s3.NewFromConfig(awsConfig)
 	return &S3Client{
-		S3:     c,
+		S3:      c,
 		Presign: s3.NewPresignClient(c),
-		cfg: cfg,
+		cfg:     cfg,
 	}, nil
 }

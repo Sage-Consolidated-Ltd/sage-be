@@ -17,11 +17,10 @@ type AuthMiddleware struct {
 	RedisClient *redis.Client
 }
 
-
 type RequestContext struct {
-	UserID         string
-	RequestID      string
-	OrganizationID string
+	UserID             string
+	RequestID          string
+	OrganizationID     string
 	RoleInOrganization string
 }
 
@@ -111,10 +110,10 @@ func GetRequestContext(c *fiber.Ctx) RequestContext {
 	requestID, _ := c.Locals("requestID").(string)
 
 	return RequestContext{
-		UserID:         GetUserIDStr(c),   // reads from session
-		OrganizationID: GetOrgIDStr(c),    // reads from session
+		UserID:             GetUserIDStr(c),    // reads from session
+		OrganizationID:     GetOrgIDStr(c),     // reads from session
 		RoleInOrganization: GetRoleInOrgStr(c), // reads from session
-		RequestID:      requestID,
+		RequestID:          requestID,
 	}
 }
 
