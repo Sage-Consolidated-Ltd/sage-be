@@ -34,4 +34,6 @@ RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /out/service ./service
 COPY --from=builder /src/docs ./docs
+COPY --from=builder /src/migrations ./migrations
+COPY --from=builder /src/seeds ./seeds
 ENTRYPOINT ["./service"]
