@@ -141,13 +141,15 @@ func main() {
 	ingestionRepo := repositories.NewIngestionJobRepository(db)
 	parserRepo := repositories.NewParserRepository(db)
 	uploadLogRepo := repositories.NewLogUploadRepository(db)
+	parsedLogRepo := repositories.NewParsedLogRepository(db)
 
 	dataQualityServ := services.NewDataQualityService(dataQualtyRepo, parserRepo, dataSourceRepo, ingestionRepo)
 	logsDataServ := services.NewLogsDataService(dataSourceRepo, eventRepo, ingestionRepo, taskClient)
 	logsServ := services.NewLogsService(eventRepo, dataSourceRepo, ingestionRepo)
 	parserServ := services.NewParserService(parserRepo, eventRepo, dataSourceRepo, ingestionRepo)
 	integrationServ := services.NewDataSourceService(dataSourceRepo, integrationRepo, encryptor, restyClient)
-	logUploadServ := services.NewUploadService(uploader, uploadLogRepo, taskClient)
+	logUploadServ := services.NewUploadService(uploader, uploadLogRepo, taskClient, dataSourceRepo)
+	parsedLogServ := services.NewParsedLogService(parsedLogRepo, parsedLogRepo)
 
 	integrationHandler := handlers.NewIntegrationHandler(integrationServ)
 	eventHandler := handlers.NewEventHandler(logsServ)
@@ -155,6 +157,7 @@ func main() {
 	parserHandler := handlers.NewParserHandler(parserServ)
 	qualityHandler := handlers.NewQualityHandler(dataQualityServ)
 	uploadLogHandler := handlers.NewUploadHandler(logUploadServ)
+	parsedLogHandler := handlers.NewParsedLogHandler(*parsedLogServ)
 
 	// Initialize provider scheduler for periodic syncs (300 seconds = 5 minutes)
 	providerScheduler := scheduler.NewProviderScheduler(taskClient, dataSourceRepo, 300)
@@ -167,6 +170,7 @@ func main() {
 		parserHandler, 
 		eventHandler, 
 		uploadLogHandler, 
+		parsedLogHandler,
 		shieldMiddlewares.NewRateLimiter(
 			3, 
 			logger.Default(), 

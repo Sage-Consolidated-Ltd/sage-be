@@ -1,21 +1,28 @@
 package tasks
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"sage-backend/internal/shared/logger"
+	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/ai_detector"
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/providers"
 	"sage-backend/internal/shield/repositories"
+	"sage-backend/internal/shield/upload_parser"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"sage-backend/pkg/crypto"
 
@@ -42,6 +49,8 @@ type TaskHandler struct {
 	client          *resty.Client
 	encryptor       crypto.Encryptor
 	threatDetector  ai_detector.ThreatDetectorInt
+	s3Uploader *s3.Uploader
+	parsedLogRepository repositories.ParsedLogRepositoryInt
 }
 
 func NewTaskHandler(
@@ -54,6 +63,8 @@ func NewTaskHandler(
 	client *resty.Client,
 	encryptor crypto.Encryptor,
 	threatDetector ai_detector.ThreatDetectorInt,
+	s3Uploader *s3.Uploader,
+	parsedLogRepository repositories.ParsedLogRepositoryInt,
 ) *TaskHandler {
 	return &TaskHandler{
 		jobRepo:         jobRepo,
@@ -65,10 +76,12 @@ func NewTaskHandler(
 		client:          client,
 		encryptor:       encryptor,
 		threatDetector:  threatDetector,
+		s3Uploader:      s3Uploader,
+		parsedLogRepository: parsedLogRepository,
 	}
 }
 
-func (h *TaskHandler) HandleSubmitLogFileForAnalysis(ctx context.Context, t *asynq.Task) error {
+func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) error {
 	if h.threatDetector == nil {
 		return fmt.Errorf("threat detector is not configured")
 	}
@@ -78,13 +91,64 @@ func (h *TaskHandler) HandleSubmitLogFileForAnalysis(ctx context.Context, t *asy
 		return fmt.Errorf("failed to unmarshal submit log file payload: %w", err)
 	}
 
-	fmt.Printf("Submitting log file for analysis:Handler: %s", payload.LogFileID)
-	result, err := h.threatDetector.SubmitLogFileForAnalysis(ctx, payload)
+	fileBytes, err := h.s3Uploader.DownloadObject(ctx, payload.S3Key)
 	if err != nil {
-		return fmt.Errorf("submit log file for analysis failed: %w", err)
+		return fmt.Errorf("download from s3: %w", err)
 	}
 
-	log.Printf("Completed analysis submission for log_file_id=%s job_id=%s", payload.LogFileID, result.JobID)
+	filename := filepath.Base(payload.S3Key)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		fmt.Println("Parsing logs")
+		if payload.SourceID == nil {
+			logger.Error("Source ID is nil for log file", zap.Any("log_file_id", payload.LogFileID))
+			return fmt.Errorf("source ID is nil for log file %s", payload.LogFileID)
+		}
+		parsedLogs, err := h.parseFile(payload, filename, fileBytes)
+		if err != nil {
+			logger.Error("Error parsing file in HandleProcessLogFile", zap.Error(err))
+			return fmt.Errorf("parse file: %w", err)
+		}
+
+		if err := h.parsedLogRepository.StoreParsedLogs(ctx, parsedLogs); err != nil {
+			logger.Error("Error storing parsed logs in HandleProcessLogFile", zap.Error(err))
+			return fmt.Errorf("store parsed logs: %w", err)
+		}
+
+		fmt.Printf("Stored %d parsed logs for file %s\n", len(parsedLogs), filename)
+		return nil
+	})
+
+	g.Go(func() error {
+		input := models.SubmitLogFileForAnalysis{
+			OrganizationID: payload.OrganizationID,
+			FileName:       filename,
+			FileClass:      payload.FileClass,
+			LogFileID:      payload.LogFileID,
+			FileReader:     bytes.NewReader(fileBytes),
+			S3Key:          payload.S3Key,
+			UserID:         payload.UserID,
+		}
+
+		fmt.Printf("Submitting log file for analysis: Handler: %s\n", payload.LogFileID)
+
+		result, err := h.threatDetector.SubmitLogFileForAnalysis(ctx, input)
+		if err != nil {
+			return fmt.Errorf("submit log file for analysis failed: %w", err)
+		}
+
+		log.Printf("Completed analysis submission for log_file_id=%s job_id=%s",
+			payload.LogFileID, result.JobID)
+
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -395,7 +459,7 @@ func (h *TaskHandler) HandleProviderSync(
 
 	rawEvents, _, err := h.persistNormalizedEvents(ctx, events, source.OrganizationID, source.ID)
 	if err != nil {
-		log.Printf("failed to persist events for source %s: %w", source.ID, err)
+		log.Printf("failed to persist events for source %s: %v", source.ID, err)
 		return fmt.Errorf("failed to persist events for source %s: %w", source.ID, err)
 	}
 
@@ -438,6 +502,36 @@ func (h *TaskHandler) persistNormalizedEvents(
 
 	return allResults, &latest, nil
 }
+
+func (h *TaskHandler) parseFile(payload models.SubmitLogFileInput, filename string, fileBytes []byte) ([]models.ParsedLog, error) {
+	sampleLen := len(fileBytes)
+	if sampleLen > 4096 {
+		sampleLen = 4096
+	}
+
+	detected := upload_parser.DetectType(filename, fileBytes[:sampleLen])
+	if detected == models.DetectedUnknown {
+		return nil, fmt.Errorf("unable to detect log type for %q", filename)
+	}
+
+	parser, err := upload_parser.ParserFor(detected)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedLogs, err := parser.Parse(fileBytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse %q as %s: %w", filename, detected, err)
+	}
+
+	for i := range parsedLogs {
+		parsedLogs[i].FileID = payload.LogFileID
+		parsedLogs[i].DataSourceID = *payload.SourceID
+	}
+
+	return parsedLogs, nil
+}
+
 func latestEventCheckpoint(events []models.RawEvent) string {
 	var latest time.Time
 	for _, event := range events {

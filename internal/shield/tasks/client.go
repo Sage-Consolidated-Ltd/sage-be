@@ -21,6 +21,7 @@ const (
 	TypeQualityScanJob     = "quality:scan:job"
 	TypeValidationJob      = "validation:job"
 	TypeSubmitLogFileForAnalysis = "analysis:submit-log-file"
+	TypeSubmitLogFileForProcessing = "processing:submit-log-file"
 )
 
 type TaskClient struct {
@@ -176,6 +177,18 @@ func (c *TaskClient) EnqueueSubmitLogFileForAnalysis(ctx context.Context, input 
 	}
 
 	task := asynq.NewTask(TypeSubmitLogFileForAnalysis, payload)
+	_, err = c.client.Enqueue(task, asynq.MaxRetry(5), asynq.Queue("default"))
+	return err
+}
+
+func (c *TaskClient) EnqueueSubmitLogFileForProcessing(ctx context.Context, input models.SubmitLogFileInput) error {
+	log.Printf("Enqueuing log file for processing: LogFileID=%s, OrganizationID=%s, S3Key=%s", input.LogFileID, input.OrganizationID, input.S3Key)
+	payload, err := json.Marshal(input)
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(TypeSubmitLogFileForProcessing, payload)
 	_, err = c.client.Enqueue(task, asynq.MaxRetry(5), asynq.Queue("default"))
 	return err
 }

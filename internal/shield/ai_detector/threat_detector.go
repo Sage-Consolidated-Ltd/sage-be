@@ -1,12 +1,10 @@
 package ai_detector
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shield/models"
 	"sage-backend/internal/shield/repositories"
@@ -18,7 +16,7 @@ import (
 type ThreatDetectorInt interface {
 	SubmitLogFileForAnalysis(
 		ctx context.Context,
-		input models.SubmitLogFileInput,
+		input models.SubmitLogFileForAnalysis,
 	) (*models.SubmitLogFileResult, error)
 }
 
@@ -46,20 +44,16 @@ func NewThreatDetector(
 
 func (td *ThreatDetector) SubmitLogFileForAnalysis(
 	ctx context.Context,
-	input models.SubmitLogFileInput,
+	input models.SubmitLogFileForAnalysis,
 ) (*models.SubmitLogFileResult, error) {
 	fmt.Printf("Submitting log file for analysis: %s\n", input.LogFileID)
-	fmt.Printf("Input details: OrganizationID: %s, S3Key: %s, FileClass: %s, LogFileID: %s\n", input.OrganizationID, input.S3Key, input.FileClass, input.LogFileID)
+	fmt.Printf("Input details: OrganizationID: %s, Filename: %s, FileClass: %s, LogFileID: %s\n", input.OrganizationID, input.FileName, input.FileClass, input.LogFileID)
 	if input.LogFileID == uuid.Nil {
 		return nil, fmt.Errorf("log file id is required")
 	}
 
 	if input.OrganizationID == uuid.Nil {
 		return nil, fmt.Errorf("organization id is required")
-	}
-
-	if input.S3Key == "" {
-		return nil, fmt.Errorf("s3 key is required")
 	}
 
 	fmt.Printf("Checking for existing analysis for log file: %s\n", input.LogFileID)
@@ -84,18 +78,10 @@ func (td *ThreatDetector) SubmitLogFileForAnalysis(
 		return nil, fmt.Errorf("detector is not healthy: %s", health.Service)
 	}
 
-	fmt.Printf("AI detector service is healthy\n Downloading log file from S3: %s\n", input.S3Key)
-	fileBytes, err := td.s3Uploader.DownloadObject(ctx, input.S3Key)
-	if err != nil {
-		_ = td.logUploadRepo.MarkFailed(ctx, input.S3Key, "failed to download file from S3")
-		return nil, fmt.Errorf("download from s3: %w", err)
-	}
-
-	reader := bytes.NewReader(fileBytes)
-	filename := filepath.Base(input.S3Key)
+	fmt.Printf("AI detector service is healthy\n")
 	
-	fmt.Printf("Detecting threats in log file: %s\n", filename)
-	analysis, err := td.client.DetectFileThreats(ctx, reader, filename)
+	fmt.Printf("Detecting threats in log file: %s\n", input.FileName)
+	analysis, err := td.client.DetectFileThreats(ctx, input.FileReader, input.FileName)
 	if err != nil {
 		_ = td.logUploadRepo.MarkFailed(ctx, input.S3Key, "threat detection failed")
 		return nil, fmt.Errorf("detect threats: %w", err)
@@ -116,6 +102,7 @@ func (td *ThreatDetector) SubmitLogFileForAnalysis(
 	fmt.Printf("Recording analysis for log file: %s\n", input.LogFileID)
 	result, err := td.analysisRepo.RecordAnalysis(ctx, &payload)
 	if err != nil {
+		fmt.Printf("An error occured persisting analysis: %v\n", err)
 		_ = td.logUploadRepo.MarkFailed(ctx, input.S3Key, "failed to persist analysis result")
 		return nil, fmt.Errorf("record analysis: %w", err)
 	}

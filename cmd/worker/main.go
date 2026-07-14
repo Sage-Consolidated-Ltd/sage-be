@@ -85,9 +85,10 @@ func main() {
 	logUploadRepo := repositories.NewLogUploadRepository(db)
 	analysisRepo := repositories.NewAnalysisRepository(db)
 	threatDetector := ai_detector.NewThreatDetector(aiDetectorClient, uploader, logUploadRepo, analysisRepo)
+	parsedLogRepo := repositories.NewParsedLogRepository(db)
 
 	// Initialize task handler
-	taskHandler := tasks.NewTaskHandler(jobRepo, dataSourceRepo, eventRepo, integrationRepo, parserRepo, taskClient, restyClient, encryptor, threatDetector)
+	taskHandler := tasks.NewTaskHandler(jobRepo, dataSourceRepo, eventRepo, integrationRepo, parserRepo, taskClient, restyClient, encryptor, threatDetector, uploader, parsedLogRepo)
 
 	srv := asynq.NewServer(
 		serverOpt,
@@ -109,7 +110,7 @@ func main() {
 	mux.HandleFunc(tasks.TypeValidationJob, taskHandler.HandleValidationJob)
 	mux.HandleFunc(tasks.TypeProviderEventBatch, taskHandler.HandleProviderEventBatch)
 	mux.HandleFunc(tasks.TypeProviderSync, taskHandler.HandleProviderSync)
-	mux.HandleFunc(tasks.TypeSubmitLogFileForAnalysis, taskHandler.HandleSubmitLogFileForAnalysis)
+	mux.HandleFunc(tasks.TypeSubmitLogFileForProcessing, taskHandler.HandleProcessLogFile)
 
 	// Handle graceful shutdown
 	go func() {

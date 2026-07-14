@@ -7,7 +7,7 @@ import (
 
 // @Summary Get Data Quality Summary
 // @Description Returns overall data quality metrics including score, parsing errors, missing fields, unmapped logs, and duplicate events.
-// @Tags Logs & Data
+// @Tags NON-FUNCTIONAL - Logs & Data
 // @Accept json
 // @Produce json
 // @Security SessionAuth
@@ -17,7 +17,7 @@ func _GetDataQualitySummary() {}
 
 // @Summary Run Data Quality Scan
 // @Description Queues a data quality scan to detect parsing errors, missing fields, duplicates, and unmapped logs.
-// @Tags Logs & Data
+// @Tags NON-FUNCTIONAL - Logs & Data
 // @Accept json
 // @Produce json
 // @Security SessionAuth
@@ -27,7 +27,7 @@ func _RunDataQualityScan() {}
 
 // @Summary Get Data Quality Breakdown
 // @Description Returns data quality metrics per data source.
-// @Tags Logs & Data
+// @Tags NON-FUNCTIONAL - Logs & Data
 // @Accept json
 // @Produce json
 // @Security SessionAuth
@@ -41,7 +41,7 @@ func _GetDataQualityBreakdown() {}
 
 // @Summary Get Data Quality AI Analysis
 // @Description Returns AI-generated analysis and suggested fixes for data quality issues.
-// @Tags Logs & Data
+// @Tags NON-FUNCTIONAL - Logs & Data
 // @Accept json
 // @Produce json
 // @Security SessionAuth
@@ -51,7 +51,7 @@ func _GetAIAnalysis() {}
 
 // @Summary Apply Suggested Data Quality Fix
 // @Description Applies an AI-suggested parser or field mapping fix to improve data quality.
-// @Tags Logs & Data
+// @Tags NON-FUNCTIONAL - Logs & Data
 // @Accept json
 // @Produce json
 // @Security SessionAuth
@@ -62,7 +62,7 @@ func _ApplySuggestedFix() {}
 
 // @Summary Preview Suggested Fix Diff
 // @Description Returns before and after diff for an AI-suggested parser or mapping fix.
-// @Tags Logs & Data
+// @Tags NON-FUNCTIONAL - Logs & Data
 // @Accept json
 // @Produce json
 // @Security SessionAuth
@@ -74,7 +74,7 @@ func _GetSuggestedFixDiff() {}
 
 // @Summary Download Data Quality Report
 // @Description Downloads data quality report in csv, pdf, or json format.
-// @Tags Logs & Data
+// @Tags NON-FUNCTIONAL - Logs & Data
 // @Accept json
 // @Produce application/octet-stream
 // @Security SessionAuth

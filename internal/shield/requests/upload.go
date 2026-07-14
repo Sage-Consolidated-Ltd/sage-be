@@ -30,4 +30,6 @@ type LogUploadMetadata struct {
 	Description  string     `json:"description"                       example:"Windows security event logs"`
 	Category     string     `json:"category"                          example:"windows"`
 	AppOrContext string     `json:"app_or_context"                    example:"windows"`
+	Host 	  string     `json:"host"                              example:"DESKTOP-1234567"`
+	IndexName    string     `json:"index_name"                        example:"windows_security"`
 }

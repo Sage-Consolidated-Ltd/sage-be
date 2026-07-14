@@ -1,6 +1,8 @@
 package models
 
 import (
+	"bytes"
+	"sage-backend/internal/shared/db"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,11 +19,11 @@ type CreateAnalysisParams struct {
 	LogFileID      *uuid.UUID
 	JsonInputID    *uuid.UUID
 	RequestType    AnalysisRequestType // "file" | "json"
-	LogType        string
+	LogType        FileClass
 	Approach       string
 	Overall        string
-	Summary        AnalysisSummary
-	Outcome        AnalysisOutcome
+	Summary        db.GenericJSON[AnalysisSummary]
+	Outcome        db.GenericJSON[AnalysisOutcome]
 	Threats        []Threat
 	OrganizationID uuid.UUID
 }
@@ -29,10 +31,21 @@ type CreateAnalysisParams struct {
 type SubmitLogFileInput struct {
 	LogFileID      uuid.UUID
 	S3Key          string
-	FileClass      string
+	FileClass      FileClass
 	SourceType     string
+	SourceID	   *uuid.UUID
 	OrganizationID uuid.UUID
 	UserID         uuid.UUID
+}
+
+type SubmitLogFileForAnalysis struct {
+	LogFileID uuid.UUID
+	FileClass FileClass 
+	OrganizationID uuid.UUID
+	UserID uuid.UUID
+	FileReader *bytes.Reader
+	FileName string
+	S3Key string
 }
 
 type SubmitLogFileResult struct {
@@ -48,8 +61,8 @@ type AnalysisResult struct {
 	RequestType AnalysisRequestType `db:"request_type" json:"request_type"`
 	Approach  string          `db:"approach"    json:"approach"`
 	Overall   string          `db:"overall"     json:"overall"`
-	Summary   AnalysisSummary `db:"summary"     json:"summary"`
-	Outcome   AnalysisOutcome `db:"outcome"     json:"outcome"`
+	Summary   db.GenericJSON[AnalysisSummary] `db:"summary"     json:"summary"`
+	Outcome   db.GenericJSON[AnalysisOutcome] `db:"outcome"     json:"outcome"`
 	Threats   []Threat        `db:"-"           json:"threats"`
 	CreatedAt time.Time       `db:"created_at"  json:"created_at"`
 }
