@@ -22,10 +22,10 @@ var Store *session.Store
 
 func InitSessionStore(cfg *BaseConfig) {
 	storage := redis.New(redis.Config{
-		Host:     "localhost",
-		Port:     6379,
-		Password: "",
-		Database: 0,
+		Host:     cfg.RedisHost,
+		Port:     cfg.RedisPort,
+		Password: cfg.RedisPassword,
+		Database: cfg.RedisDB,
 	})
 	var sameSite string
 	if cfg.APP_ENV == "production" {

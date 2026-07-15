@@ -18,6 +18,10 @@ type BaseConfig struct {
 	DBConnMAXLife    int
 	AppEncryptionKey string
 	RedisDbUrl       string
+	RedisHost string
+	RedisPort int
+	RedisPassword    string
+	RedisDB int
 	LogLevel         Level
 	ResendApiKey     string
 	ResendFromEmail  string
@@ -122,6 +126,10 @@ func loadBase() BaseConfig {
 		DBConnMAXLife:    getEnvInt("DB_CONN_MAX_LIFE", 300),
 		AppEncryptionKey: requireEnv("APP_ENCRYPTION_KEY"),
 		RedisDbUrl:       requireEnv("REDIS_DB_URL"),
+		RedisHost:       requireEnv("REDIS_HOST"),
+		RedisPort:       getEnvInt("REDIS_PORT", 6379),
+		RedisPassword:   requireEnv("REDIS_PASSWORD"),
+		RedisDB:         getEnvInt("REDIS_DB", 0),
 		LogLevel:         levelFromEnv(),
 		ResendApiKey:     requireEnv("RESEND_API_KEY"),
 		ResendFromEmail:  requireEnv("RESEND_FROM_EMAIL"),
