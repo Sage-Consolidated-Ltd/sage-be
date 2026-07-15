@@ -1,6 +1,5 @@
 package offensive
 
-
 import "log"
 
 func main() {

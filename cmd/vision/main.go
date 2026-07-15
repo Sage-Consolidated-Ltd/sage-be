@@ -1,6 +1,5 @@
 package vision
 
-
 import "log"
 
 func main() {
