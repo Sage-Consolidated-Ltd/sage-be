@@ -72,3 +72,31 @@ func (j *JSONMapSlice) Scan(value interface{}) error {
 func (j JSONMapSlice) Value() (driver.Value, error) {
 	return json.Marshal(j)
 }
+
+type GenericJSON[T any] struct {
+	Data T
+}
+
+func (j *GenericJSON[T]) Scan(value any) error {
+	if value == nil {
+		j.Data = *new(T)
+		return nil
+	}
+
+	var data []byte
+
+	switch v := value.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	default:
+		return fmt.Errorf("cannot scan %T into JSON", value)
+	}
+
+	return json.Unmarshal(data, &j.Data)
+}
+
+func (j GenericJSON[T]) Value() (driver.Value, error) {
+	return json.Marshal(j.Data)
+}

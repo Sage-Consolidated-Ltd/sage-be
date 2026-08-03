@@ -13,12 +13,13 @@ import (
 )
 
 const (
-	TypeProviderSync       = "provider:sync"
-	TypeProviderEventBatch = "provider:event-batch"
-	TypeIngestJob          = "ingest:job"
-	TypeSyncJob            = "sync:job"
-	TypeQualityScanJob     = "quality:scan:job"
-	TypeValidationJob      = "validation:job"
+	TypeProviderSync                 = "provider:sync"
+	TypeProviderEventBatch           = "provider:event-batch"
+	TypeIngestJob                    = "ingest:job"
+	TypeSyncJob                      = "sync:job"
+	TypeQualityScanJob               = "quality:scan:job"
+	TypeValidationJob                = "validation:job"
+	TypeSubmitLogFileForProcessing   = "log_file:process"
 )
 
 type TaskClient struct {
@@ -162,6 +163,17 @@ func (c *TaskClient) EnqueueValidationJob(ctx context.Context, jobID, orgID, par
 
 	task := asynq.NewTask(TypeValidationJob, payload)
 	_, err = c.client.Enqueue(task)
+	return err
+}
+
+func (c *TaskClient) EnqueueSubmitLogFileForProcessing(ctx context.Context, payload domain.SubmitLogFileInput) error {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	task := asynq.NewTask(TypeSubmitLogFileForProcessing, data)
+	_, err = c.client.Enqueue(task, asynq.Queue("default"), asynq.MaxRetry(5))
 	return err
 }
 

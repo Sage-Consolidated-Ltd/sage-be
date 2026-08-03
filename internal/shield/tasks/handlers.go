@@ -1,44 +1,45 @@
 package tasks
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"sage-backend/internal/shared/logger"
+	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shared/types"
-	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/adapters/outbound/providers"
+	"sage-backend/internal/shield/ai_detector"
+	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
+	"sage-backend/internal/shield/upload_parser"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"sage-backend/pkg/crypto"
 
 	"github.com/go-resty/resty/v2"
 )
 
-// Task type constants are now defined in client.go
-// const (
-// 	TypeIngestJob          = "ingest:job"
-// 	TypeSyncJob            = "sync:job"
-// 	TypeQualityScanJob     = "quality:scan:job"
-// 	TypeValidationJob      = "validation:job"
-// 	TypeProviderEventBatch = "provider:event-batch"
-// 	TypeProviderSync       = "provider:sync"
-// )
-
 type TaskHandler struct {
-	jobRepo         outbound.IngestionJobRepository
-	dataSourceRepo  outbound.DataSourceRepository
-	eventRepo       outbound.SecurityEventRepository
-	integrationRepo outbound.IntegrationRepository
-	taskClient      *TaskClient
-	client          *resty.Client
-	encryptor       crypto.Encryptor
+	jobRepo             outbound.IngestionJobRepository
+	dataSourceRepo      outbound.DataSourceRepository
+	eventRepo           outbound.SecurityEventRepository
+	integrationRepo     outbound.IntegrationRepository
+	taskClient          *TaskClient
+	client              *resty.Client
+	encryptor           crypto.Encryptor
+	threatDetector      ai_detector.ThreatDetectorInt
+	s3Uploader          *s3.Uploader
+	parsedLogRepository outbound.ParsedLogRepository
 }
 
 func NewTaskHandler(
@@ -49,16 +50,96 @@ func NewTaskHandler(
 	taskClient *TaskClient,
 	client *resty.Client,
 	encryptor crypto.Encryptor,
+	threatDetector ai_detector.ThreatDetectorInt,
+	s3Uploader *s3.Uploader,
+	parsedLogRepository outbound.ParsedLogRepository,
 ) *TaskHandler {
 	return &TaskHandler{
-		jobRepo:         jobRepo,
-		dataSourceRepo:  dataSourceRepo,
-		eventRepo:       eventRepo,
-		integrationRepo: integrationRepo,
-		taskClient:      taskClient,
-		client:          client,
-		encryptor:       encryptor,
+		jobRepo:             jobRepo,
+		dataSourceRepo:      dataSourceRepo,
+		eventRepo:           eventRepo,
+		integrationRepo:     integrationRepo,
+		taskClient:          taskClient,
+		client:              client,
+		encryptor:           encryptor,
+		threatDetector:      threatDetector,
+		s3Uploader:          s3Uploader,
+		parsedLogRepository: parsedLogRepository,
 	}
+}
+
+func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) error {
+	if h.threatDetector == nil {
+		return fmt.Errorf("threat detector is not configured")
+	}
+
+	var payload domain.SubmitLogFileInput
+	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		return fmt.Errorf("failed to unmarshal submit log file payload: %w", err)
+	}
+
+	if h.s3Uploader == nil {
+		return fmt.Errorf("s3 uploader is not configured")
+	}
+
+	fileBytes, err := h.s3Uploader.DownloadObject(ctx, payload.S3Key)
+	if err != nil {
+		return fmt.Errorf("download from s3: %w", err)
+	}
+
+	filename := filepath.Base(payload.S3Key)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		if payload.SourceID == nil {
+			logger.Error("Source ID is nil for log file", zap.Any("log_file_id", payload.LogFileID))
+			return fmt.Errorf("source ID is nil for log file %s", payload.LogFileID)
+		}
+		parsedLogs, err := h.parseFile(payload, filename, fileBytes)
+		if err != nil {
+			logger.Error("Error parsing file in HandleProcessLogFile", zap.Error(err))
+			return fmt.Errorf("parse file: %w", err)
+		}
+
+		if h.parsedLogRepository != nil {
+			if err := h.parsedLogRepository.StoreParsedLogs(ctx, parsedLogs); err != nil {
+				logger.Error("Error storing parsed logs in HandleProcessLogFile", zap.Error(err))
+				return fmt.Errorf("store parsed logs: %w", err)
+			}
+		}
+
+		log.Printf("Stored %d parsed logs for file %s", len(parsedLogs), filename)
+		return nil
+	})
+
+	g.Go(func() error {
+		input := domain.SubmitLogFileForAnalysis{
+			OrganizationID: payload.OrganizationID,
+			FileName:       filename,
+			FileClass:      payload.FileClass,
+			LogFileID:      payload.LogFileID,
+			FileReader:     bytes.NewReader(fileBytes),
+			S3Key:          payload.S3Key,
+			UserID:         payload.UserID,
+		}
+
+		result, err := h.threatDetector.SubmitLogFileForAnalysis(ctx, input)
+		if err != nil {
+			return fmt.Errorf("submit log file for analysis failed: %w", err)
+		}
+
+		log.Printf("Completed analysis submission for log_file_id=%s job_id=%s",
+			payload.LogFileID, result.JobID)
+
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // HandleIngestJob processes log ingestion from a data source
@@ -73,7 +154,6 @@ func (h *TaskHandler) HandleIngestJob(ctx context.Context, t *asynq.Task) error 
 		return err
 	}
 
-	// Update job status to running
 	job, err := h.jobRepo.GetJobByID(ctx, payload.JobID, payload.OrganizationID)
 	if err != nil {
 		return err
@@ -86,14 +166,12 @@ func (h *TaskHandler) HandleIngestJob(ctx context.Context, t *asynq.Task) error 
 		return err
 	}
 
-	// Process ingestion
 	if job.SourceID != nil {
 		source, err := h.dataSourceRepo.GetDataSourceByID(ctx, *job.SourceID, job.OrganizationID)
 		if err != nil {
 			return err
 		}
 
-		// Simulate ingestion
 		job.EventsProcessed = 100
 		lastSync := time.Now()
 		source.LastSyncAt = &lastSync
@@ -105,7 +183,6 @@ func (h *TaskHandler) HandleIngestJob(ctx context.Context, t *asynq.Task) error 
 		}
 	}
 
-	// Update job status to completed
 	completedAt := time.Now()
 	job.CompletedAt = &completedAt
 	job.Status = domain.JobStatusCompleted
@@ -134,7 +211,6 @@ func (h *TaskHandler) HandleQualityScanJob(ctx context.Context, t *asynq.Task) e
 		return err
 	}
 
-	// Update job status
 	job, err := h.jobRepo.GetJobByID(ctx, payload.JobID, payload.OrganizationID)
 	if err != nil {
 		return err
@@ -147,7 +223,6 @@ func (h *TaskHandler) HandleQualityScanJob(ctx context.Context, t *asynq.Task) e
 		return err
 	}
 
-	// Simulate scan completion
 	job.EventsProcessed = 1
 	job.Status = domain.JobStatusCompleted
 	completedAt := time.Now()
@@ -172,7 +247,6 @@ func (h *TaskHandler) HandleValidationJob(ctx context.Context, t *asynq.Task) er
 		return fmt.Errorf("failed to unmarshal payload: %w", err)
 	}
 
-	// Update job status
 	job, err := h.jobRepo.GetJobByID(ctx, payload.JobID, payload.OrganizationID)
 	if err != nil {
 		return err
@@ -185,7 +259,6 @@ func (h *TaskHandler) HandleValidationJob(ctx context.Context, t *asynq.Task) er
 		return err
 	}
 
-	// Simulate validation
 	job.EventsProcessed = 1
 	job.Status = domain.JobStatusCompleted
 	completedAt := time.Now()
@@ -258,10 +331,10 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 	}
 
 	log.Printf("Persisted checkpoint %s for source %s", lastCheckpoint, payload.SourceID)
-
 	log.Printf("Persisted %d events for source %s", len(security_events), payload.SourceID)
 	return nil
 }
+
 func (h *TaskHandler) HandleProviderSync(
 	ctx context.Context,
 	task *asynq.Task,
@@ -277,13 +350,11 @@ func (h *TaskHandler) HandleProviderSync(
 
 	log.Printf("Starting provider sync task for org=%s source=%s", payload.OrganizationID, payload.SourceID)
 
-	// get datasource
 	source, err := h.dataSourceRepo.GetDataSourceByID(
 		ctx,
 		payload.SourceID,
 		payload.OrganizationID,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -294,57 +365,43 @@ func (h *TaskHandler) HandleProviderSync(
 
 	providerName := strings.ToLower(strings.TrimSpace(*source.Provider))
 
-	// get encrypted credentials
 	creds, err := h.integrationRepo.GetCredentialsByIntegration(
 		ctx,
 		source.ID.String(),
 	)
-
 	if err != nil {
 		return err
 	}
 
 	if len(creds) == 0 {
-		return fmt.Errorf("no credentials found for source %s (provider=%s); verify integration_credentials links to data_sources.id and migration 000034 has been applied", source.ID, providerName)
+		return fmt.Errorf("no credentials found for source %s (provider=%s)", source.ID, providerName)
 	}
 
-	// decrypt credentials
 	decryptedCreds := make(map[string]string)
-
 	for _, cred := range creds {
-		value, err :=
-			h.encryptor.Decrypt(
-				cred.EncryptedValue,
-			)
-
+		value, err := h.encryptor.Decrypt(cred.EncryptedValue)
 		if err != nil {
 			return err
 		}
-
 		decryptedCreds[cred.Key] = value
 	}
-	fmt.Printf("decrypted credentials: %v\n", decryptedCreds)
 
 	checkpoint := &domain.Checkpoint{
 		LastCheckpoint:   source.LastCheckpoint,
 		LastCheckpointAt: source.LastCheckpointAt,
 	}
 
-	// build provider
-	provider, err :=
-		providers.LaunchProviderSync(
-			providerName,
-			decryptedCreds,
-			checkpoint,
-			h.client,
-		)
-
+	provider, err := providers.LaunchProviderSync(
+		providerName,
+		decryptedCreds,
+		checkpoint,
+		h.client,
+	)
 	if err != nil {
 		log.Printf("Provider sync failed for source %s provider=%s: %v", source.ID, providerName, err)
 		return err
 	}
 
-	// collect events
 	events, err := provider.Collect(ctx, 500)
 	if err != nil {
 		log.Printf("Error collecting logs: %v", err)
@@ -371,6 +428,7 @@ func (h *TaskHandler) HandleProviderSync(
 
 	return nil
 }
+
 func (h *TaskHandler) persistNormalizedEvents(
 	ctx context.Context,
 	events []domain.NormalizedEvent,
@@ -402,34 +460,34 @@ func (h *TaskHandler) persistNormalizedEvents(
 
 	return allResults, &latest, nil
 }
-func latestEventCheckpoint(events []domain.RawEvent) string {
-	var latest time.Time
-	for _, event := range events {
-		if event.EventTimeStamp.After(latest) {
-			latest = event.EventTimeStamp
+
+func (h *TaskHandler) parseFile(payload domain.SubmitLogFileInput, filename string, fileBytes []byte) ([]domain.ParsedLog, error) {
+	sampleLen := len(fileBytes)
+	if sampleLen > 4096 {
+		sampleLen = 4096
+	}
+
+	detected := upload_parser.DetectType(filename, fileBytes[:sampleLen])
+	if detected == domain.DetectedUnknown {
+		return nil, fmt.Errorf("unable to detect log type for %q", filename)
+	}
+
+	parser, err := upload_parser.ParserFor(detected)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedLogs, err := parser.Parse(fileBytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse %q as %s: %w", filename, detected, err)
+	}
+
+	for i := range parsedLogs {
+		parsedLogs[i].FileID = payload.LogFileID
+		if payload.SourceID != nil {
+			parsedLogs[i].DataSourceID = *payload.SourceID
 		}
 	}
 
-	if latest.IsZero() {
-		latest = time.Now().UTC()
-	}
-
-	return latest.UTC().Format(time.RFC3339)
-}
-func intPtr(i int) *int {
-	return &i
-}
-
-func int64Ptr(i int64) *int64 {
-	return &i
-}
-
-func float64Ptr(f float64) *float64 {
-	return &f
-}
-func ptrStringValue(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
+	return parsedLogs, nil
 }

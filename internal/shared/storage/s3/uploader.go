@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"sage-backend/internal/shared/middlewares"
@@ -98,6 +99,19 @@ func (u *Uploader) GenerateSignedURL(ctx context.Context, key string) (string, e
 	}
 
 	return presignRequest.URL, nil
+}
+
+func (u *Uploader) DownloadObject(ctx context.Context, key string) ([]byte, error) {
+	result, err := u.client.S3.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(u.client.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get object: %w", err)
+	}
+	defer result.Body.Close()
+
+	return io.ReadAll(result.Body)
 }
 
 func determineImageExtension(mimeType string) (string, error) {

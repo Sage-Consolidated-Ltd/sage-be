@@ -1,12 +1,16 @@
 package worker
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/logger"
+	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shield/adapters/outbound/postgres"
+	"sage-backend/internal/shield/ai_detector"
 	"sage-backend/internal/shield/tasks"
 	"sage-backend/pkg/crypto"
 
@@ -44,10 +48,25 @@ func New() (*Worker, error) {
 	restyClient := resty.New()
 	taskClient := tasks.NewTaskClient(cfg.RedisDbUrl)
 
+	var s3Uploader *s3.Uploader
+	s3Client, err := s3.NewClient(context.Background(), cfg.S3Bucket, cfg.S3Region)
+	if err == nil && s3Client != nil {
+		s3Uploader = s3.NewUploader(s3Client)
+	}
+
 	eventRepo := postgres.NewSecurityEventRepository(database)
 	dataSourceRepo := postgres.NewDataSourceRepository(database)
 	jobRepo := postgres.NewIngestionJobRepository(database)
 	integrationRepo := postgres.NewIntegrationRepository(database)
+	logUploadRepo := postgres.NewLogUploadRepository(database)
+	parsedLogRepo := postgres.NewParsedLogRepository(database)
+	analysisRepo := postgres.NewAnalysisRepository(database)
+
+	aiDetectorBaseURL := os.Getenv("DETECTOR_AI_BASE_URL")
+	aiDetectorToken := os.Getenv("DETECTOR_AI_AUTH_TOKEN")
+	aiDetectorHTTPClient := resty.New()
+	aiDetectorClient := ai_detector.NewAIDetectorClient(aiDetectorBaseURL, aiDetectorToken, aiDetectorHTTPClient)
+	threatDetector := ai_detector.NewThreatDetector(aiDetectorClient, s3Uploader, logUploadRepo, analysisRepo)
 
 	taskHandler := tasks.NewTaskHandler(
 		jobRepo,
@@ -57,6 +76,9 @@ func New() (*Worker, error) {
 		taskClient,
 		restyClient,
 		encryptor,
+		threatDetector,
+		s3Uploader,
+		parsedLogRepo,
 	)
 
 	server := asynq.NewServer(
@@ -78,6 +100,7 @@ func New() (*Worker, error) {
 	mux.HandleFunc(tasks.TypeValidationJob, taskHandler.HandleValidationJob)
 	mux.HandleFunc(tasks.TypeProviderEventBatch, taskHandler.HandleProviderEventBatch)
 	mux.HandleFunc(tasks.TypeProviderSync, taskHandler.HandleProviderSync)
+	mux.HandleFunc(tasks.TypeSubmitLogFileForProcessing, taskHandler.HandleProcessLogFile)
 
 	return &Worker{
 		config: cfg,

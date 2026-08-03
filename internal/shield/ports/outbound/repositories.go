@@ -80,3 +80,25 @@ type IngestionJobRepository interface {
 	UpdateJobStatus(ctx context.Context, id uuid.UUID, orgID uuid.UUID, status domain.JobStatus, eventsProcessed, eventsFailed int64, errMsg *string) error
 	ListJobs(ctx context.Context, orgID uuid.UUID, jobType domain.JobType, status domain.JobStatus, page, pageSize int) ([]*domain.IngestionJob, int, error)
 }
+
+type LogUploadRepository interface {
+	CreatePending(ctx context.Context, params domain.CreateLogFileParams) (*domain.LogFile, error)
+	Confirm(ctx context.Context, params domain.ConfirmLogFileParams) (*domain.LogFile, error)
+	GetByS3Key(ctx context.Context, s3Key string) (*domain.LogFile, error)
+	MarkSubmitted(ctx context.Context, s3Key string) error
+	MarkFailed(ctx context.Context, s3Key string, reason string) error
+}
+
+type ParsedLogRepository interface {
+	StoreParsedLogs(ctx context.Context, logs []domain.ParsedLog) error
+	DeleteByFileID(ctx context.Context, fileID uuid.UUID) error
+	ReplaceParsedLogs(ctx context.Context, fileID uuid.UUID, logs []domain.ParsedLog) error
+	Search(ctx context.Context, params domain.SearchParams) (domain.SearchResult, error)
+}
+
+type AnalysisRepository interface {
+	RecordAnalysis(ctx context.Context, params *domain.CreateAnalysisParams) (*domain.AnalysisResult, error)
+	GetByLogFileID(ctx context.Context, logFileID uuid.UUID) (*domain.AnalysisResult, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.AnalysisResult, error)
+	GetThreatsByAnalysisID(ctx context.Context, analysisID uuid.UUID) ([]domain.Threat, error)
+}
