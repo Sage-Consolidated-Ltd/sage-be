@@ -75,7 +75,7 @@ const (
 			AND ($8::varchar IS NULL OR ip_address ILIKE '%' || $8 || '%')
 			AND ($9::timestamptz IS NULL OR occurred_at >= $9)
 			AND ($10::timestamptz IS NULL OR occurred_at <= $10)
-			AND ($11::varchar IS NULL OR (event_type ILIKE '%' || $11 || '%' OR source ILIKE '%' || $11 || '%'))
+			AND ($11::varchar IS NULL OR $11 = '' OR search_vector @@ plainto_tsquery('english', $11))
 		ORDER BY occurred_at DESC
 		LIMIT $12 OFFSET $13
 	`
@@ -91,7 +91,7 @@ const (
 			AND ($8::varchar IS NULL OR ip_address ILIKE '%' || $8 || '%')
 			AND ($9::timestamptz IS NULL OR occurred_at >= $9)
 			AND ($10::timestamptz IS NULL OR occurred_at <= $10)
-			AND ($11::varchar IS NULL OR (event_type ILIKE '%' || $11 || '%' OR source ILIKE '%' || $11 || '%'))
+			AND ($11::varchar IS NULL OR $11 = '' OR search_vector @@ plainto_tsquery('english', $11))
 	`
 	GET_EVENTS_BY_SOURCE = `
 		SELECT * FROM security_events

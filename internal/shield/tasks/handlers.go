@@ -109,7 +109,36 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 			}
 		}
 
-		log.Printf("Stored %d parsed logs for file %s", len(parsedLogs), filename)
+		var securityEvents []*domain.SecurityEvent
+		for _, pl := range parsedLogs {
+			occurredAt := time.Now()
+			if pl.Timestamp.Valid {
+				occurredAt = pl.Timestamp.Time
+			}
+			srcID := pl.DataSourceID
+			fileIDStr := pl.FileID.String()
+			sev := types.Severity(pl.Level)
+			securityEvents = append(securityEvents, &domain.SecurityEvent{
+				OrganizationID:    payload.OrganizationID,
+				SourceID:          srcID,
+				SourceEventID:     &fileIDStr,
+				Source:            string(payload.FileClass),
+				EventType:         "log_upload",
+				Severity:          &sev,
+				RawPayload:        pl.RawJSON,
+				NormalizedPayload: map[string]interface{}{"message": pl.Message},
+				ParseStatus:       types.ParseStatusSuccess,
+				OccurredAt:        occurredAt,
+			})
+		}
+
+		if len(securityEvents) > 0 {
+			if err := h.eventRepo.BulkCreateEvents(ctx, securityEvents); err != nil {
+				logger.Error("Error creating security events for log file", zap.Error(err))
+			}
+		}
+
+		log.Printf("Stored %d parsed logs and security events for file %s", len(parsedLogs), filename)
 		return nil
 	})
 
