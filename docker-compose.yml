@@ -37,6 +37,35 @@ services:
     networks:
       - sage-network
 
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sage-api
+    restart: unless-stopped
+    command: ["go", "run", "cmd/api/main.go"]
+    ports:
+      - "4000:4000"
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgres://sage_user:sage_dev_password@postgres:5432/sage_db?sslmode=disable
+      REDIS_ADDR: redis:6379
+      APP_ENCRYPTION_KEY: dev-encryption-key-32-bytes-long
+      REDIS_DB_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-key-32-bytes-long
+      GOMNI_SECURITY_KEY: dev-security-key
+      PORT: "4000"
+      RESEND_API_KEY: test
+      RESEND_FROM_EMAIL: test@example.com
+      FRONTEND_BASE_URL: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sage-network
+
   worker:
     build:
       context: .

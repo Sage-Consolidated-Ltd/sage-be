@@ -53,7 +53,7 @@ migrate-down:
 
 # Build and run the application locally (outside Docker)
 run-local:
-  go run ./cmd/server/main.go
+  go run ./cmd/api/main.go
 
 # Test suite
 test:

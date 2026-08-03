@@ -62,6 +62,11 @@ type VisionConfig struct {
 	GomniSecurityKey string
 }
 
+type WorkerConfig struct {
+	BaseConfig
+	Concurrency int
+}
+
 type Level = zapcore.Level
 
 const (
@@ -171,5 +176,13 @@ func SetupVision() *VisionConfig {
 	return &VisionConfig{
 		BaseConfig: loadBase(),
 		PORT:       getEnv("VISION_PORT", "3336"),
+	}
+}
+
+func SetupWorker() *WorkerConfig {
+	_ = godotenv.Load(".env")
+	return &WorkerConfig{
+		BaseConfig:  loadBase(),
+		Concurrency: getEnvInt("WORKER_CONCURRENCY", 10),
 	}
 }
