@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"sage-backend/internal/shield/models"
+	"sage-backend/internal/shield/domain"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -72,7 +72,7 @@ func (c *TaskClient) EnqueueProviderEventBatch(
 	ctx context.Context,
 	orgID uuid.UUID,
 	sourceID uuid.UUID,
-	events []models.CreateRawEventResponse,
+	events []domain.CreateRawEventResponse,
 ) error {
 	batchSize := 100
 	for i := 0; i < len(events); i += batchSize {

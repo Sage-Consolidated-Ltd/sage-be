@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"sage-backend/internal/shared/types"
-	"sage-backend/internal/shield/models"
-	"sage-backend/internal/shield/providers"
-	"sage-backend/internal/shield/repositories"
+	"sage-backend/internal/shield/domain"
+	"sage-backend/internal/shield/adapters/outbound/providers"
+	"sage-backend/internal/shield/ports/outbound"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -32,20 +32,20 @@ import (
 // )
 
 type TaskHandler struct {
-	jobRepo         repositories.IngestionJobRepositoryInt
-	dataSourceRepo  repositories.DataSourceRepositoryInt
-	eventRepo       repositories.SecurityEventRepositoryInt
-	integrationRepo repositories.IntegrationRepositoryInt
+	jobRepo         outbound.IngestionJobRepository
+	dataSourceRepo  outbound.DataSourceRepository
+	eventRepo       outbound.SecurityEventRepository
+	integrationRepo outbound.IntegrationRepository
 	taskClient      *TaskClient
 	client          *resty.Client
 	encryptor       crypto.Encryptor
 }
 
 func NewTaskHandler(
-	jobRepo repositories.IngestionJobRepositoryInt,
-	dataSourceRepo repositories.DataSourceRepositoryInt,
-	eventRepo repositories.SecurityEventRepositoryInt,
-	integrationRepo repositories.IntegrationRepositoryInt,
+	jobRepo outbound.IngestionJobRepository,
+	dataSourceRepo outbound.DataSourceRepository,
+	eventRepo outbound.SecurityEventRepository,
+	integrationRepo outbound.IntegrationRepository,
 	taskClient *TaskClient,
 	client *resty.Client,
 	encryptor crypto.Encryptor,
@@ -80,7 +80,7 @@ func (h *TaskHandler) HandleIngestJob(ctx context.Context, t *asynq.Task) error 
 	}
 
 	now := time.Now()
-	job.Status = models.JobStatusRunning
+	job.Status = domain.JobStatusRunning
 	job.StartedAt = &now
 	if err := h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage); err != nil {
 		return err
@@ -108,7 +108,7 @@ func (h *TaskHandler) HandleIngestJob(ctx context.Context, t *asynq.Task) error 
 	// Update job status to completed
 	completedAt := time.Now()
 	job.CompletedAt = &completedAt
-	job.Status = models.JobStatusCompleted
+	job.Status = domain.JobStatusCompleted
 	if err := h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage); err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (h *TaskHandler) HandleQualityScanJob(ctx context.Context, t *asynq.Task) e
 	}
 
 	now := time.Now()
-	job.Status = models.JobStatusRunning
+	job.Status = domain.JobStatusRunning
 	job.StartedAt = &now
 	if err := h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage); err != nil {
 		return err
@@ -149,7 +149,7 @@ func (h *TaskHandler) HandleQualityScanJob(ctx context.Context, t *asynq.Task) e
 
 	// Simulate scan completion
 	job.EventsProcessed = 1
-	job.Status = models.JobStatusCompleted
+	job.Status = domain.JobStatusCompleted
 	completedAt := time.Now()
 	job.CompletedAt = &completedAt
 	if err := h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage); err != nil {
@@ -179,7 +179,7 @@ func (h *TaskHandler) HandleValidationJob(ctx context.Context, t *asynq.Task) er
 	}
 
 	now := time.Now()
-	job.Status = models.JobStatusRunning
+	job.Status = domain.JobStatusRunning
 	job.StartedAt = &now
 	if err := h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage); err != nil {
 		return err
@@ -187,7 +187,7 @@ func (h *TaskHandler) HandleValidationJob(ctx context.Context, t *asynq.Task) er
 
 	// Simulate validation
 	job.EventsProcessed = 1
-	job.Status = models.JobStatusCompleted
+	job.Status = domain.JobStatusCompleted
 	completedAt := time.Now()
 	job.CompletedAt = &completedAt
 	if err := h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage); err != nil {
@@ -202,7 +202,7 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 	var payload struct {
 		OrganizationID uuid.UUID                       `json:"organization_id"`
 		SourceID       uuid.UUID                       `json:"source_id"`
-		Events         []models.CreateRawEventResponse `json:"events"`
+		Events         []domain.CreateRawEventResponse `json:"events"`
 	}
 
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
@@ -213,7 +213,7 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 		return nil
 	}
 
-	var security_events []*models.SecurityEvent
+	var security_events []*domain.SecurityEvent
 	var latest time.Time
 	for _, ev := range payload.Events {
 		re, err := h.eventRepo.GetRawEventByID(ctx, ev.ID, payload.OrganizationID)
@@ -228,7 +228,7 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 		idCopy := re.ID.String()
 		ipCopy := re.IPAddress
 		userCopy := re.UserName
-		security_events = append(security_events, &models.SecurityEvent{
+		security_events = append(security_events, &domain.SecurityEvent{
 			OrganizationID:    payload.OrganizationID,
 			SourceID:          payload.SourceID,
 			SourceEventID:     &idCopy,
@@ -325,7 +325,7 @@ func (h *TaskHandler) HandleProviderSync(
 	}
 	fmt.Printf("decrypted credentials: %v\n", decryptedCreds)
 
-	checkpoint := &models.Checkpoint{
+	checkpoint := &domain.Checkpoint{
 		LastCheckpoint:   source.LastCheckpoint,
 		LastCheckpointAt: source.LastCheckpointAt,
 	}
@@ -359,7 +359,7 @@ func (h *TaskHandler) HandleProviderSync(
 
 	rawEvents, _, err := h.persistNormalizedEvents(ctx, events, source.OrganizationID, source.ID)
 	if err != nil {
-		log.Printf("failed to persist events for source %s: %w", source.ID, err)
+		log.Printf("failed to persist events for source %s: %v", source.ID, err)
 		return fmt.Errorf("failed to persist events for source %s: %w", source.ID, err)
 	}
 
@@ -373,10 +373,10 @@ func (h *TaskHandler) HandleProviderSync(
 }
 func (h *TaskHandler) persistNormalizedEvents(
 	ctx context.Context,
-	events []models.NormalizedEvent,
+	events []domain.NormalizedEvent,
 	orgID uuid.UUID,
 	sourceID uuid.UUID,
-) ([]models.CreateRawEventResponse, *time.Time, error) {
+) ([]domain.CreateRawEventResponse, *time.Time, error) {
 	var latest time.Time
 
 	for _, ev := range events {
@@ -386,7 +386,7 @@ func (h *TaskHandler) persistNormalizedEvents(
 	}
 
 	chunk := 100
-	var allResults []models.CreateRawEventResponse
+	var allResults []domain.CreateRawEventResponse
 	for i := 0; i < len(events); i += chunk {
 		end := i + chunk
 		if end > len(events) {
@@ -402,7 +402,7 @@ func (h *TaskHandler) persistNormalizedEvents(
 
 	return allResults, &latest, nil
 }
-func latestEventCheckpoint(events []models.RawEvent) string {
+func latestEventCheckpoint(events []domain.RawEvent) string {
 	var latest time.Time
 	for _, event := range events {
 		if event.EventTimeStamp.After(latest) {

@@ -3,7 +3,7 @@ package mocks
 import (
 	"encoding/json"
 	"sage-backend/internal/shared/types"
-	"sage-backend/internal/shield/models"
+	"sage-backend/internal/shield/domain"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,7 +20,7 @@ func timePtr(t time.Time) *time.Time {
 }
 
 // GenerateMockSecurityEvent creates a mock security event for testing
-func GenerateMockSecurityEvent(orgID uuid.UUID) *models.SecurityEvent {
+func GenerateMockSecurityEvent(orgID uuid.UUID) *domain.SecurityEvent {
 	id := uuid.New()
 	sourceID := uuid.New()
 	eventID := "EVT-" + id.String()[:8]
@@ -29,7 +29,7 @@ func GenerateMockSecurityEvent(orgID uuid.UUID) *models.SecurityEvent {
 	ipAddress := "192.168.1.1"
 	severity := types.SeverityMedium
 
-	return &models.SecurityEvent{
+	return &domain.SecurityEvent{
 		ID:                id,
 		OrganizationID:    orgID,
 		SourceID:          sourceID,
@@ -51,8 +51,8 @@ func GenerateMockSecurityEvent(orgID uuid.UUID) *models.SecurityEvent {
 }
 
 // GenerateMockSecurityEvents creates multiple mock security events
-func GenerateMockSecurityEvents(orgID uuid.UUID, count int) []models.SecurityEvent {
-	events := make([]models.SecurityEvent, count)
+func GenerateMockSecurityEvents(orgID uuid.UUID, count int) []domain.SecurityEvent {
+	events := make([]domain.SecurityEvent, count)
 	eventTypes := []string{"user_login", "file_access", "email_sent", "permission_change"}
 	categories := []types.EventCategory{
 		types.EventCategoryAuthentication,
@@ -73,18 +73,18 @@ func GenerateMockSecurityEvents(orgID uuid.UUID, count int) []models.SecurityEve
 }
 
 // GenerateMockDataSource creates a mock data source for testing
-func GenerateMockDataSource(orgID uuid.UUID) *models.DataSource {
+func GenerateMockDataSource(orgID uuid.UUID) *domain.DataSource {
 	id := uuid.New()
 	lastSyncAt := time.Now().Add(-5 * time.Minute)
 	lastEventAt := time.Now().Add(-10 * time.Minute)
 
-	return &models.DataSource{
+	return &domain.DataSource{
 		ID:               id,
 		OrganizationID:   orgID,
 		Name:             "Microsoft 365",
 		Type:             "microsoft_365",
 		Provider:         strPtr("microsoft"),
-		Status:           models.DataSourceStatusActive,
+		Status:           domain.DataSourceStatusActive,
 		EventsToday:      1250,
 		TotalEvents:      50000,
 		LastEventAt:      &lastEventAt,
@@ -98,8 +98,8 @@ func GenerateMockDataSource(orgID uuid.UUID) *models.DataSource {
 }
 
 // GenerateMockDataSources creates multiple mock data sources
-func GenerateMockDataSources(orgID uuid.UUID, count int) []models.DataSource {
-	sources := make([]models.DataSource, count)
+func GenerateMockDataSources(orgID uuid.UUID, count int) []domain.DataSource {
+	sources := make([]domain.DataSource, count)
 	sourceTypes := []struct {
 		Type     string
 		Name     string
@@ -123,11 +123,11 @@ func GenerateMockDataSources(orgID uuid.UUID, count int) []models.DataSource {
 }
 
 // GenerateMockParser creates a mock parser for testing
-func GenerateMockParser(orgID uuid.UUID) *models.Parser {
+func GenerateMockParser(orgID uuid.UUID) *domain.Parser {
 	id := uuid.New()
 	sourceID := uuid.New()
 
-	return &models.Parser{
+	return &domain.Parser{
 		ID:              id,
 		OrganizationID:  orgID,
 		SourceID:        &sourceID,
@@ -146,8 +146,8 @@ func GenerateMockParser(orgID uuid.UUID) *models.Parser {
 }
 
 // GenerateMockParsers creates multiple mock parsers
-func GenerateMockParsers(orgID uuid.UUID, count int) []models.Parser {
-	parsers := make([]models.Parser, count)
+func GenerateMockParsers(orgID uuid.UUID, count int) []domain.Parser {
+	parsers := make([]domain.Parser, count)
 	parserTypes := []types.ParserType{types.ParserTypeJSON, types.ParserTypeRegex, types.ParserTypeCSV}
 
 	for i := 0; i < count; i++ {
