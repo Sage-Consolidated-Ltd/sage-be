@@ -43,13 +43,12 @@ psql *args:
 pg_dump *args:
   docker-compose exec postgres pg_dump -U sage_user -d sage_db {{args}}
 
-# Manual migrations (requires migrate CLI)
-# Install: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-migrate *args='up':
-  {{GOBIN}}/migrate -path ./migrations -database "postgres://sage_user:sage_dev_password@localhost:5432/sage_db?sslmode=disable" {{args}}
+# Database migrations and seed runner
+migrate args='up':
+  go run migrations/main.go --{{args}}
 
-migrate-down:
-  {{GOBIN}}/migrate -path ./migrations -database "postgres://sage_user:sage_dev_password@localhost:5432/sage_db?sslmode=disable" down
+migrate-seed:
+  go run migrations/main.go --seed
 
 # Build and run the application locally (outside Docker)
 run-local:
