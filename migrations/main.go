@@ -26,7 +26,7 @@ func main() {
 	seedFile := flag.String("seed-file", "", "Run a specific seed file")
 	flag.Parse()
 
-	cfg := config.SetupAPI()
+	cfg := config.SetupWorker()
 
 	// Handle seed actions (no migrator needed)
 	if *seed || *seedFile != "" {
