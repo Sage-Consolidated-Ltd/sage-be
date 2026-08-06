@@ -19,12 +19,14 @@ type SessionParam struct {
 var Store *session.Store
 
 func InitSessionStore(cfg *BaseConfig) {
-	storage := redis.New(redis.Config{
-		Host:     "localhost",
-		Port:     6379,
-		Password: "",
-		Database: 0,
-	})
+	storageConfig := redis.Config{}
+	if cfg.RedisDbUrl != "" {
+		storageConfig.URL = cfg.RedisDbUrl
+	} else {
+		storageConfig.Host = "localhost"
+		storageConfig.Port = 6379
+	}
+	storage := redis.New(storageConfig)
 	var sameSite string
 	if cfg.APP_ENV == "production" {
 		sameSite = "Lax"
@@ -52,6 +54,9 @@ func SetSession(c *fiber.Ctx, param SessionParam) (*session.Session, error) {
 	sess.Set("role", param.Role)
 	sess.Set("email", param.Email)
 	sess.Set("organizationID", param.OrganizationId)
+	sess.Set("authenticated", true)
+	sess.Delete("pending_email_verification")
+	sess.Delete("pending_2fa")
 
 	if err := sess.Save(); err != nil {
 		return nil, fmt.Errorf("could not save session: %w", err)

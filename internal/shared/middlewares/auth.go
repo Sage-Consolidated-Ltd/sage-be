@@ -19,14 +19,24 @@ func (am *AuthMiddleware) RequireAuth(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusUnauthorized, "Unauthorized", nil)
 	}
 
-	isVerifying := c.Path() == "/api/v1/auth/verify-2fa"
-
-	if sess.Get("pending_2fa") != nil && !isVerifying {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "2FA verification required"})
+	userID := sess.Get("userID")
+	if userID == nil || userID == "" {
+		return response.Error(c, fiber.StatusUnauthorized, "Unauthorized", nil)
 	}
 
-	if sess.Get("pending_email_verification") != nil {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Email verification required"})
+	authenticated, _ := sess.Get("authenticated").(bool)
+	if !authenticated {
+		return response.Error(c, fiber.StatusUnauthorized, "Unauthorized", nil)
+	}
+
+	isVerifying2FA := c.Path() == "/api/v1/auth/verify-2fa"
+	if sess.Get("pending_2fa") != nil && !isVerifying2FA {
+		return response.Error(c, fiber.StatusForbidden, "2FA verification required", nil)
+	}
+
+	isVerifyingEmail := c.Path() == "/api/v1/auth/verify-email" || c.Path() == "/api/v1/auth/resend-verification"
+	if sess.Get("pending_email_verification") != nil && !isVerifyingEmail {
+		return response.Error(c, fiber.StatusForbidden, "Email verification required", nil)
 	}
 
 	c.Locals("session", sess)

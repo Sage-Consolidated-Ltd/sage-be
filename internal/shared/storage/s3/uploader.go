@@ -81,6 +81,57 @@ func (u *Uploader) UploadAvatar(ctx context.Context, file multipart.File, userID
 	return presignedRequest.URL, key, nil
 }
 
+func (u *Uploader) UploadLogo(ctx context.Context, file multipart.File, orgID string, logoType string, mimeType string) (string, string, error) {
+	magicBytes := make([]byte, 512)
+	n, _ := file.Read(magicBytes)
+	if n == 0 {
+		return "", "", errors.New("empty file")
+	}
+	file.Seek(0, 0)
+
+	detectedType := http.DetectContentType(magicBytes[:n])
+	if detectedType != mimeType || !middlewares.AvatarMimeTypes[detectedType] {
+		return "", "", fmt.Errorf("file content mismatch or invalid type")
+	}
+
+	ext, err := determineImageExtension(mimeType)
+	if err != nil {
+		return "", "", err
+	}
+
+	key := fmt.Sprintf("branding/logos/%s_%s%s", orgID, logoType, ext)
+
+	_, err = u.manager.UploadObject(ctx, &transfermanager.UploadObjectInput{
+		Bucket: &u.client.Bucket,
+		Key:    &key,
+		Body:   file,
+		Metadata: map[string]string{
+			"Content-Disposition": "inline",
+		},
+	})
+
+	if err != nil {
+		return "", "", err
+	}
+
+	presignerClient := s3.NewPresignClient(u.client.S3)
+
+	presignedRequest, err := presignerClient.PresignGetObject(ctx,
+		&s3.GetObjectInput{
+			Bucket: aws.String(u.client.Bucket),
+			Key:    aws.String(key),
+		},
+		func(opts *s3.PresignOptions) {
+			opts.Expires = time.Duration(24 * time.Hour)
+		},
+	)
+	if err != nil {
+		return "", "", err
+	}
+
+	return presignedRequest.URL, key, nil
+}
+
 func (u *Uploader) GenerateSignedURL(ctx context.Context, key string) (string, error) {
 	presignerClient := s3.NewPresignClient(u.client.S3)
 

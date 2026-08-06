@@ -77,6 +77,10 @@ tidy:
 generate:
   go generate ./...
 
+swagger:
+	swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared -o ./docs/users
+	swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared -o ./docs/shield
+
 # Health check
 health:
   docker-compose exec -T postgres pg_isready -U sage_user -d sage_db
