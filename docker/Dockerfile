@@ -20,8 +20,8 @@ RUN go install github.com/swaggo/swag/cmd/swag@latest
 COPY . .
 
 # Regenerate Swagger specs directly in source tree before compilation
-RUN swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
-RUN swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+RUN swag init -g cmd/api/main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
+RUN swag init -g cmd/shield/main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
 
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
