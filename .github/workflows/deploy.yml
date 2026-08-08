@@ -170,5 +170,5 @@ jobs:
             export GHCR_IMAGE_PREFIX="ghcr.io/${{ env.REPO_LOWER }}"
             export TAG="latest"
             docker compose pull
-            docker compose up -d --remove-orphans
+            docker compose up -d --force-recreate --remove-orphans
             docker ps

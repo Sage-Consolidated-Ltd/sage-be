@@ -68,7 +68,7 @@ func New() (*app.App, error) {
 	swaggerConfig := swagger.Config{
 		BasePath: "/api/v1",
 		FilePath: "./docs/users/swagger.json",
-		Path:     "docs/api-docs",
+		Path:     "/docs/api-docs",
 		Title:    "Sage Identity & Organization API Documentation",
 		CacheAge: 0,
 	}
