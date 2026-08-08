@@ -80,8 +80,8 @@ generate:
 swagger:
 	@echo "Generating Swagger documentation..."
 	@go install github.com/swaggo/swag/cmd/swag@latest
-	swag init -g cmd/api/main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
-	swag init -g cmd/shield/main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+	swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
+	swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
 	@echo "Swagger docs updated successfully."
 
 # Health check
