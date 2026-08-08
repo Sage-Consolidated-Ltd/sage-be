@@ -1,5 +1,7 @@
 package main
 
+//go:generate swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
+
 import (
 	"log"
 	apiApp "sage-backend/internal/app/api"

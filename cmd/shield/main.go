@@ -1,5 +1,7 @@
 package main
 
+//go:generate swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+
 import (
 	"log"
 	shieldApp "sage-backend/internal/app/shield"

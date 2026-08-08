@@ -78,8 +78,8 @@ generate:
   go generate ./...
 
 swagger:
-	swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared -o ./docs/users
-	swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared -o ./docs/shield
+	swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
+	swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
 
 # Health check
 health:
