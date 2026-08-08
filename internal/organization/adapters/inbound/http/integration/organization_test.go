@@ -43,13 +43,8 @@ func TestOrganizationProtectedRoutes_Integration(t *testing.T) {
 	harness := setUpOrgApp(t)
 
 	var industryID string
-	err := harness.Database.QueryRow("SELECT id FROM industries LIMIT 1").Scan(&industryID)
-	if err != nil || industryID == "" {
-		_ = harness.Database.QueryRow("INSERT INTO industries (name, code) VALUES ('Software', 'SOFTWARE') ON CONFLICT DO NOTHING RETURNING id").Scan(&industryID)
-		if industryID == "" {
-			_ = harness.Database.QueryRow("SELECT id FROM industries LIMIT 1").Scan(&industryID)
-		}
-	}
+	err := harness.Database.QueryRow("SELECT id::text FROM industries LIMIT 1").Scan(&industryID)
+	require.NoError(t, err)
 	require.NotEmpty(t, industryID)
 
 	// 1. Onboard owner user
