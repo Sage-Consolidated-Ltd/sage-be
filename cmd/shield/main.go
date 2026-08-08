@@ -42,7 +42,7 @@ import (
 // @in cookie
 // @name session_id
 
-// @host      backend.sageconsolidated.com
+// @host      shield.sageconsolidated.com
 // @BasePath  /api/v1
 func main() {
 	application, err := shieldApp.New()
