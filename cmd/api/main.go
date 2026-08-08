@@ -20,7 +20,7 @@ import (
 // @in cookie
 // @name session_id
 
-// @host      localhost:4000
+// @host      backend.sageconsolidated.com
 // @BasePath  /api/v1
 func main() {
 	application, err := apiApp.New()
