@@ -7,24 +7,23 @@ RUN apk add --no-cache git ca-certificates
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-COPY . .
-
-# ---- regenerate swagger docs on every image build -----------------------
-# Only reruns when source actually changes, since docker/buildkit caches
-# this stage's layers and every service (api/shield/offensive/vision/
-# worker/migrate) shares it.
-FROM deps AS docsgen
-RUN go install github.com/swaggo/swag/cmd/swag@latest
-RUN swag init -g main.go -d ./cmd/api,./internal/identity,./internal/shared \
-    --parseInternal -o ./docs/users
-RUN swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared \
-    --parseInternal -o ./docs/shield
 
 # ---- build whichever binary was asked for --------------------------------
 FROM deps AS builder
 ARG BUILD_PATH
 RUN test -n "$BUILD_PATH" || (echo "BUILD_PATH build-arg is required" && exit 1)
-COPY --from=docsgen /src/docs ./docs
+
+# Install swag CLI
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+
+# Copy full source
+COPY . .
+
+# Regenerate Swagger specs directly in source tree before compilation
+RUN swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
+RUN swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+
+# Build binary
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
     -o /out/service ./${BUILD_PATH}
 
