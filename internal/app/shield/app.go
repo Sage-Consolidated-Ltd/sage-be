@@ -56,7 +56,7 @@ func New() (*app.App, error) {
 	swaggerConfig := swagger.Config{
 		BasePath: "/api/v1",
 		FilePath: "./docs/shield/swagger.json",
-		Path:     "docs/shield-docs",
+		Path:     "/docs/shield-docs",
 		Title:    "Sage Shield API Documentation",
 		CacheAge: 0,
 	}
