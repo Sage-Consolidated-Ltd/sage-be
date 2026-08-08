@@ -56,6 +56,14 @@ jobs:
       - name: Install Dependencies
         run: go mod download
 
+      - name: Install Swag CLI
+        run: go install github.com/swaggo/swag/cmd/swag@latest
+
+      - name: Generate Swagger Specs
+        run: |
+          swag init -g main.go -d ./cmd/api,./internal/identity,./internal/shared --parseInternal -o ./docs/users
+          swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+
       - name: Execute Tests
         env:
           DATABASE_URL: "postgres://peterpaul:sage_dev_password@localhost:5432/sage_db_test?sslmode=disable"
