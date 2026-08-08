@@ -17,6 +17,10 @@ func TestGetCurrentUser_Integration(t *testing.T) {
 
 		var industryID string
 		_ = harness.Database.QueryRow("SELECT id FROM industries LIMIT 1").Scan(&industryID)
+		if industryID == "" {
+			_ = harness.Database.QueryRow("INSERT INTO industries (name, code) VALUES ('Software', 'SOFTWARE') RETURNING id").Scan(&industryID)
+		}
+		require.NotEmpty(t, industryID)
 
 		// 1. Register
 		regPayload := dto.OnboardingRequest{
