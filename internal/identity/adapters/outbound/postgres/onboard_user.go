@@ -14,7 +14,7 @@ func (r *UserRepository) CreateUserWithOrganization(ctx context.Context, req *dt
 	}
 
 	var orgId string
-	err = r.Executor(ctx).QueryRowxContext(ctx, CREATE_ORGANIZATION, req.FirstName+" 's Org", userId).Scan(&orgId)
+	err = r.Executor(ctx).QueryRowxContext(ctx, CREATE_ORGANIZATION, req.FirstName+" 's Org", userId, nil).Scan(&orgId)
 	if err != nil {
 		return err
 	}
@@ -35,8 +35,13 @@ func (r *UserRepository) OnboardUserWithTransaction(ctx context.Context, req *dt
 		return nil, err
 	}
 
+	var industryID interface{}
+	if req.IndustryId != "" {
+		industryID = req.IndustryId
+	}
+
 	var orgId string
-	err := r.Executor(ctx).QueryRowxContext(ctx, CREATE_ORGANIZATION, req.CompanyName, model.ID, req.IndustryId).Scan(&orgId)
+	err := r.Executor(ctx).QueryRowxContext(ctx, CREATE_ORGANIZATION, req.CompanyName, model.ID, industryID).Scan(&orgId)
 	if err != nil {
 		return nil, err
 	}
