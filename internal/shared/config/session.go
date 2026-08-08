@@ -28,7 +28,7 @@ func InitSessionStore(cfg *BaseConfig) {
 	}
 	storage := redis.New(storageConfig)
 	var sameSite string
-	if cfg.APP_ENV == "production" {
+	if cfg.APP_ENV == "production" || cfg.APP_ENV == "test" || cfg.APP_ENV == "testing" {
 		sameSite = "Lax"
 	} else {
 		sameSite = "None"
