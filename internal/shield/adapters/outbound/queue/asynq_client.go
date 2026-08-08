@@ -1,4 +1,4 @@
-package tasks
+package queue
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"sage-backend/internal/shield/domain"
+	"sage-backend/internal/shield/ports/dto"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -166,8 +167,8 @@ func (c *TaskClient) EnqueueValidationJob(ctx context.Context, jobID, orgID, par
 	return err
 }
 
-func (c *TaskClient) EnqueueSubmitLogFileForProcessing(ctx context.Context, payload domain.SubmitLogFileInput) error {
-	data, err := json.Marshal(payload)
+func (c *TaskClient) EnqueueSubmitLogFile(ctx context.Context, input dto.SubmitLogFileInput) error {
+	data, err := json.Marshal(input)
 	if err != nil {
 		return err
 	}

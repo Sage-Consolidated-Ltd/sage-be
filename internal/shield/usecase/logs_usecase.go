@@ -8,35 +8,43 @@ import (
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/domain"
+	"sage-backend/internal/shield/ports/dto"
+	"sage-backend/internal/shield/ports/inbound"
 	"sage-backend/internal/shield/ports/outbound"
-	"sage-backend/internal/shield/usecase/dto"
 
 	"github.com/google/uuid"
 )
-
-type LogsUseCase interface {
-	IngestLog(ctx context.Context, orgID uuid.UUID, req *dto.IngestLogRequest) (*domain.SecurityEvent, error)
-	BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *dto.BulkIngestLogsRequest) (map[string]interface{}, error)
-	SearchLogs(ctx context.Context, orgID uuid.UUID, filters map[string]interface{}, page, pageSize int) ([]*domain.SecurityEvent, int, error)
-	GetLogByID(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*domain.SecurityEvent, error)
-}
 
 type LogsService struct {
 	eventRepo      outbound.SecurityEventRepository
 	dataSourceRepo outbound.DataSourceRepository
 	jobRepo        outbound.IngestionJobRepository
+	astSearcher    *ASTSearchService
 }
 
 func NewLogsService(
 	eventRepo outbound.SecurityEventRepository,
 	dataSourceRepo outbound.DataSourceRepository,
 	jobRepo outbound.IngestionJobRepository,
-) LogsUseCase {
+	parsedLogRepo outbound.ParsedLogRepository,
+) inbound.LogsUseCase {
+	var astSearcher *ASTSearchService
+	if parsedLogRepo != nil {
+		astSearcher = NewASTSearchService(parsedLogRepo)
+	}
 	return &LogsService{
 		eventRepo:      eventRepo,
 		dataSourceRepo: dataSourceRepo,
 		jobRepo:        jobRepo,
+		astSearcher:    astSearcher,
 	}
+}
+
+func (s *LogsService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.SearchResult, error) {
+	if s.astSearcher == nil {
+		return domain.SearchResult{}, nil
+	}
+	return s.astSearcher.SearchLogsAST(ctx, orgID, queryString, limit)
 }
 
 func (s *LogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *dto.IngestLogRequest) (*domain.SecurityEvent, error) {

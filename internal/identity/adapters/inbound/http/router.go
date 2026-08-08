@@ -59,4 +59,9 @@ func RegisterProfileRoutes(router fiber.Router, ph *ProfileHandler, m *middlewar
 	profile.Delete("/sessions/:id", ph.RevokeSession)
 
 	profile.Get("/activity", ph.GetActivity)
+
+	profile.Post("/change-password", ph.ChangePassword)
+	profile.Post("/backup-email", ph.ConfigureBackupEmail)
+	profile.Delete("/me", ph.DeleteAccount)
+	profile.Delete("/account", ph.DeleteAccount)
 }

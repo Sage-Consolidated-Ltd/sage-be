@@ -1,4 +1,4 @@
-package tasks
+package worker
 
 import (
 	"bytes"
@@ -13,11 +13,13 @@ import (
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shared/types"
+	"sage-backend/internal/shield/adapters/outbound/ai_detector"
 	"sage-backend/internal/shield/adapters/outbound/providers"
-	"sage-backend/internal/shield/ai_detector"
+	"sage-backend/internal/shield/adapters/outbound/queue"
+	"sage-backend/internal/shield/adapters/outbound/upload_parser"
 	"sage-backend/internal/shield/domain"
+	"sage-backend/internal/shield/ports/dto"
 	"sage-backend/internal/shield/ports/outbound"
-	"sage-backend/internal/shield/upload_parser"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -34,7 +36,7 @@ type TaskHandler struct {
 	dataSourceRepo      outbound.DataSourceRepository
 	eventRepo           outbound.SecurityEventRepository
 	integrationRepo     outbound.IntegrationRepository
-	taskClient          *TaskClient
+	taskClient          *queue.TaskClient
 	client              *resty.Client
 	encryptor           crypto.Encryptor
 	threatDetector      ai_detector.ThreatDetectorInt
@@ -47,7 +49,7 @@ func NewTaskHandler(
 	dataSourceRepo outbound.DataSourceRepository,
 	eventRepo outbound.SecurityEventRepository,
 	integrationRepo outbound.IntegrationRepository,
-	taskClient *TaskClient,
+	taskClient *queue.TaskClient,
 	client *resty.Client,
 	encryptor crypto.Encryptor,
 	threatDetector ai_detector.ThreatDetectorInt,
@@ -73,7 +75,7 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 		return fmt.Errorf("threat detector is not configured")
 	}
 
-	var payload domain.SubmitLogFileInput
+	var payload dto.SubmitLogFileInput
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
 		return fmt.Errorf("failed to unmarshal submit log file payload: %w", err)
 	}
@@ -490,7 +492,7 @@ func (h *TaskHandler) persistNormalizedEvents(
 	return allResults, &latest, nil
 }
 
-func (h *TaskHandler) parseFile(payload domain.SubmitLogFileInput, filename string, fileBytes []byte) ([]domain.ParsedLog, error) {
+func (h *TaskHandler) parseFile(payload dto.SubmitLogFileInput, filename string, fileBytes []byte) ([]domain.ParsedLog, error) {
 	sampleLen := len(fileBytes)
 	if sampleLen > 4096 {
 		sampleLen = 4096

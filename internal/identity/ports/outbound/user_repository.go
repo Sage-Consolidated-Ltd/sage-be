@@ -20,4 +20,6 @@ type UserRepository interface {
 	GetTOTPSecret(ctx context.Context, userID string) (string, error)
 	UpdateUserPassword(ctx context.Context, email string, hash string) error
 	UpdateUserContactInfo(ctx context.Context, id string, phoneNumber, backupEmail string) error
+	UpdatePasswordHashByID(ctx context.Context, id string, hash string) error
+	SoftDeleteUser(ctx context.Context, id string) error
 }

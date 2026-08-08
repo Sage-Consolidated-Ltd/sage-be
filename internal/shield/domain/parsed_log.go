@@ -9,14 +9,14 @@ import (
 )
 
 type ParsedLog struct {
-	ID           uuid.UUID    `db:"id"`
-	LogFileID    uuid.UUID    `db:"log_file_id"`
-	DataSourceID uuid.UUID    `db:"data_source_id"`
-	FileID       uuid.UUID    `db:"file_id"`
-	Timestamp    sql.NullTime `db:"timestamp"`
-	Level        string       `db:"level"`
-	Message      string       `db:"message"`
-	RawJSON      db.JSONMap   `db:"raw_json"`
+	ID           uuid.UUID
+	LogFileID    uuid.UUID
+	DataSourceID uuid.UUID
+	FileID       uuid.UUID
+	Timestamp    sql.NullTime
+	Level        string
+	Message      string
+	RawJSON      db.JSONMap
 }
 
 type SearchParams struct {

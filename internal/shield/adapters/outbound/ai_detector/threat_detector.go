@@ -8,6 +8,7 @@ import (
 	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
+	"sage-backend/internal/shield/ports/dto"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ type ThreatDetectorInt interface {
 	SubmitLogFileForAnalysis(
 		ctx context.Context,
 		input domain.SubmitLogFileForAnalysis,
-	) (*domain.SubmitLogFileResult, error)
+	) (*dto.SubmitLogFileResult, error)
 }
 
 type ThreatDetector struct {
@@ -44,7 +45,7 @@ func NewThreatDetector(
 func (td *ThreatDetector) SubmitLogFileForAnalysis(
 	ctx context.Context,
 	input domain.SubmitLogFileForAnalysis,
-) (*domain.SubmitLogFileResult, error) {
+) (*dto.SubmitLogFileResult, error) {
 	if input.LogFileID == uuid.Nil {
 		return nil, fmt.Errorf("log file id is required")
 	}
@@ -54,7 +55,7 @@ func (td *ThreatDetector) SubmitLogFileForAnalysis(
 	}
 
 	if existing, err := td.analysisRepo.GetByLogFileID(ctx, input.LogFileID); err == nil && existing != nil {
-		return &domain.SubmitLogFileResult{
+		return &dto.SubmitLogFileResult{
 			JobID:       existing.ID.String(),
 			SubmittedAt: existing.CreatedAt,
 		}, nil
@@ -100,7 +101,7 @@ func (td *ThreatDetector) SubmitLogFileForAnalysis(
 		return nil, fmt.Errorf("mark submitted: %w", err)
 	}
 
-	return &domain.SubmitLogFileResult{
+	return &dto.SubmitLogFileResult{
 		JobID:       result.ID.String(),
 		SubmittedAt: time.Now().UTC(),
 	}, nil

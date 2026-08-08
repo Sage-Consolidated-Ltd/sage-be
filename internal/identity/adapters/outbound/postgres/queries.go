@@ -96,6 +96,21 @@ const (
 	WHERE id = $3
 	`
 
+	UPDATE_USER_PASSWORD_BY_ID = `
+	UPDATE users SET 
+		password_hash = $1,
+		password_changed_at = NOW(),
+		updated_at = NOW()
+	WHERE id = $2
+	`
+
+	SOFT_DELETE_USER = `
+	UPDATE users SET 
+		deleted_at = NOW(),
+		updated_at = NOW()
+	WHERE id = $1 AND deleted_at IS NULL
+	`
+
 	GET_ORGANIZATION_ROLE_ID = `
 	SELECT id FROM organization_roles WHERE name = $1
 	`

@@ -4,7 +4,7 @@ import (
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/shared/utils"
-	"sage-backend/internal/shield/usecase/dto"
+	"sage-backend/internal/shield/ports/dto"
 	"sage-backend/internal/shield/ports/inbound"
 
 	"github.com/gofiber/fiber/v2"

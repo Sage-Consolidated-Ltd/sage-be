@@ -9,9 +9,10 @@ import (
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/storage/s3"
+	shield_worker "sage-backend/internal/shield/adapters/inbound/worker"
+	"sage-backend/internal/shield/adapters/outbound/ai_detector"
 	"sage-backend/internal/shield/adapters/outbound/postgres"
-	"sage-backend/internal/shield/ai_detector"
-	"sage-backend/internal/shield/tasks"
+	"sage-backend/internal/shield/adapters/outbound/queue"
 	"sage-backend/pkg/crypto"
 
 	"github.com/go-resty/resty/v2"
@@ -46,7 +47,7 @@ func New() (*Worker, error) {
 	}
 
 	restyClient := resty.New()
-	taskClient := tasks.NewTaskClient(cfg.RedisDbUrl)
+	taskClient := queue.NewTaskClient(cfg.RedisDbUrl)
 
 	var s3Uploader *s3.Uploader
 	s3Client, err := s3.NewClient(context.Background(), cfg.S3Bucket, cfg.S3Region)
@@ -68,7 +69,7 @@ func New() (*Worker, error) {
 	aiDetectorClient := ai_detector.NewAIDetectorClient(aiDetectorBaseURL, aiDetectorToken, aiDetectorHTTPClient)
 	threatDetector := ai_detector.NewThreatDetector(aiDetectorClient, s3Uploader, logUploadRepo, analysisRepo)
 
-	taskHandler := tasks.NewTaskHandler(
+	taskHandler := shield_worker.NewTaskHandler(
 		jobRepo,
 		dataSourceRepo,
 		eventRepo,
@@ -94,13 +95,13 @@ func New() (*Worker, error) {
 	)
 
 	mux := asynq.NewServeMux()
-	mux.HandleFunc(tasks.TypeIngestJob, taskHandler.HandleIngestJob)
-	mux.HandleFunc(tasks.TypeSyncJob, taskHandler.HandleSyncJob)
-	mux.HandleFunc(tasks.TypeQualityScanJob, taskHandler.HandleQualityScanJob)
-	mux.HandleFunc(tasks.TypeValidationJob, taskHandler.HandleValidationJob)
-	mux.HandleFunc(tasks.TypeProviderEventBatch, taskHandler.HandleProviderEventBatch)
-	mux.HandleFunc(tasks.TypeProviderSync, taskHandler.HandleProviderSync)
-	mux.HandleFunc(tasks.TypeSubmitLogFileForProcessing, taskHandler.HandleProcessLogFile)
+	mux.HandleFunc(queue.TypeIngestJob, taskHandler.HandleIngestJob)
+	mux.HandleFunc(queue.TypeSyncJob, taskHandler.HandleSyncJob)
+	mux.HandleFunc(queue.TypeQualityScanJob, taskHandler.HandleQualityScanJob)
+	mux.HandleFunc(queue.TypeValidationJob, taskHandler.HandleValidationJob)
+	mux.HandleFunc(queue.TypeProviderEventBatch, taskHandler.HandleProviderEventBatch)
+	mux.HandleFunc(queue.TypeProviderSync, taskHandler.HandleProviderSync)
+	mux.HandleFunc(queue.TypeSubmitLogFileForProcessing, taskHandler.HandleProcessLogFile)
 
 	return &Worker{
 		config: cfg,

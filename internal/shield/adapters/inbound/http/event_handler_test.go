@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"net/http/httptest"
 	"sage-backend/internal/shared/types"
-	"sage-backend/internal/shield/mocks"
+	"sage-backend/internal/shield/ports/mocks"
 	"sage-backend/internal/shield/domain"
-	"sage-backend/internal/shield/usecase/dto"
+	"sage-backend/internal/shield/ports/dto"
 	"strings"
 	"testing"
 	"time"
@@ -53,6 +53,14 @@ func (m *mockLogsService) GetLogByID(ctx context.Context, orgID uuid.UUID, id uu
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.SecurityEvent), args.Error(1)
+}
+
+func (m *mockLogsService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.SearchResult, error) {
+	args := m.Called(ctx, orgID, queryString, limit)
+	if args.Get(0) == nil {
+		return domain.SearchResult{}, args.Error(1)
+	}
+	return args.Get(0).(domain.SearchResult), args.Error(1)
 }
 
 func TestNewEventHandler(t *testing.T) {

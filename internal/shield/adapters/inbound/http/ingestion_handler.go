@@ -6,6 +6,7 @@ import (
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/shield/ports/inbound"
+	"sage-backend/internal/shield/ports/dto"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -87,7 +88,7 @@ func (h *LogsDataHandler) ListSources(c *fiber.Ctx) error {
 	}
 	items := make([]interface{}, len(sources))
 	for i, src := range sources {
-		items[i] = src.ToResponse()
+		items[i] = dto.DataSourceToResponse(src)
 	}
 	paginated := map[string]interface{}{
 		"items":     items,
@@ -110,7 +111,7 @@ func (h *LogsDataHandler) GetSource(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, fiber.StatusNotFound, "SOURCE_NOT_FOUND", err.Error())
 	}
-	return response.JSON(c, fiber.StatusOK, "Source retrieved", source.ToResponse())
+	return response.JSON(c, fiber.StatusOK, "Source retrieved", dto.DataSourceToResponse(source))
 }
 func (h *LogsDataHandler) SyncSource(c *fiber.Ctx) error {
 	orgID, _, _, ok := getSessionInfo(c)
@@ -164,7 +165,7 @@ func (h *LogsDataHandler) GetSourceLogs(c *fiber.Ctx) error {
 	}
 	items := make([]interface{}, len(logs))
 	for i, log := range logs {
-		items[i] = log.ToResponse()
+		items[i] = dto.SecurityEventToResponse(log)
 	}
 	paginated := map[string]interface{}{
 		"items":     items,

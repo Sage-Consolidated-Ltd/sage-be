@@ -35,4 +35,9 @@ type UserUseCase interface {
 
 	// Storage
 	UploadAvatar(ctx context.Context, userID string, file multipart.File, mimeType string) (string, string, error)
+
+	// Actions - /api/v1/profile
+	ChangePassword(ctx context.Context, userID string, req *dto.ChangePasswordRequest) error
+	ConfigureBackupEmail(ctx context.Context, userID string, req *dto.ConfigureBackupEmailRequest) error
+	DeleteAccount(ctx context.Context, userID string, req *dto.DeleteAccountRequest) error
 }

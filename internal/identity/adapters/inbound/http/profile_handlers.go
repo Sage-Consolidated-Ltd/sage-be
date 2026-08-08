@@ -311,3 +311,94 @@ func (h *ProfileHandler) UploadAvatar(c *fiber.Ctx) error {
 
 	return response.JSON(c, fiber.StatusOK, "Avatar uploaded successfully", fiber.Map{"avatar_url": url})
 }
+
+// ChangePassword changes user password
+func (h *ProfileHandler) ChangePassword(c *fiber.Ctx) error {
+	userID, _, ok := getSessionUser(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	var req dto.ChangePasswordRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	if err := h.userServ.ChangePassword(c.Context(), userID, &req); err != nil {
+		logger.Error("Error with ProfileHandler.ChangePassword: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Password changed successfully", nil)
+}
+
+// ConfigureBackupEmail configures recovery backup email
+func (h *ProfileHandler) ConfigureBackupEmail(c *fiber.Ctx) error {
+	userID, _, ok := getSessionUser(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	var req dto.ConfigureBackupEmailRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	if err := h.userServ.ConfigureBackupEmail(c.Context(), userID, &req); err != nil {
+		logger.Error("Error with ProfileHandler.ConfigureBackupEmail: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Backup email configured successfully", nil)
+}
+
+// DeleteAccount soft-deletes user account upon confirmation
+func (h *ProfileHandler) DeleteAccount(c *fiber.Ctx) error {
+	userID, _, ok := getSessionUser(c)
+	if !ok {
+		return response.Error(c, fiber.StatusUnauthorized, "unauthorized", nil)
+	}
+
+	var req dto.DeleteAccountRequest
+	if err := c.BodyParser(&req); err != nil {
+		return response.Error(c, fiber.StatusBadRequest, err.Error(), nil)
+	}
+
+	if err := utils.Validate.Struct(req); err != nil {
+		errs := utils.ValidationErrors(err)
+		return response.Error(c, fiber.StatusUnprocessableEntity, err.Error(), errs)
+	}
+
+	if err := h.userServ.DeleteAccount(c.Context(), userID, &req); err != nil {
+		logger.Error("Error with ProfileHandler.DeleteAccount: ", zap.Error(err))
+		if appErr, ok := err.(*apperrors.ErrorResponse); ok {
+			return response.Error(c, appErr.StatusCode, appErr.Message, nil)
+		}
+		return response.Error(c, fiber.StatusInternalServerError, "internal server error", nil)
+	}
+
+	// Destroy session
+	sess, err := config.Store.Get(c)
+	if err == nil {
+		_ = sess.Destroy()
+	}
+
+	return response.JSON(c, fiber.StatusOK, "Account deleted successfully", nil)
+}
+

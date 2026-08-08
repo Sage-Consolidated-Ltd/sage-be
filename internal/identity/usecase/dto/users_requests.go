@@ -35,7 +35,17 @@ type UpdateNotificationsRequest struct {
 // ChangePasswordRequest updates user password
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password" validate:"required"`
-	NewPassword     string `json:"new_password" validate:"required,min=8"`
+	NewPassword     string `json:"new_password" validate:"required,min=12"`
+}
+
+// ConfigureBackupEmailRequest sets user backup email
+type ConfigureBackupEmailRequest struct {
+	BackupEmail string `json:"backup_email" validate:"required,email"`
+}
+
+// DeleteAccountRequest handles user account deletion confirmation
+type DeleteAccountRequest struct {
+	Confirmation string `json:"confirmation" validate:"required"`
 }
 
 // UpdateProfileRequest is kept for backwards compatibility - updates basic profile fields

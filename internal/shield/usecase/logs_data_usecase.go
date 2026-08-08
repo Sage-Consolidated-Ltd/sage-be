@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	"sage-backend/internal/shield/adapters/outbound/queue"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/inbound"
 	"sage-backend/internal/shield/ports/outbound"
-	"sage-backend/internal/shield/tasks"
 
 	"github.com/google/uuid"
 )
@@ -21,14 +21,14 @@ type LogsDataService struct {
 	dataSourceRepo outbound.DataSourceRepository
 	eventRepo      outbound.SecurityEventRepository
 	jobRepo        outbound.IngestionJobRepository
-	taskClient     *tasks.TaskClient
+	taskClient     *queue.TaskClient
 }
 
 func NewLogsDataService(
 	dsRepo outbound.DataSourceRepository,
 	eventRepo outbound.SecurityEventRepository,
 	jobRepo outbound.IngestionJobRepository,
-	taskClient *tasks.TaskClient,
+	taskClient *queue.TaskClient,
 ) inbound.LogsDataUseCase {
 	return &LogsDataService{
 		dataSourceRepo: dsRepo,

@@ -5,7 +5,7 @@ import (
 	"sage-backend/internal/shared/response"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/domain"
-	"sage-backend/internal/shield/usecase/dto"
+	"sage-backend/internal/shield/ports/dto"
 	"sage-backend/internal/shield/ports/inbound"
 
 	"github.com/gofiber/fiber/v2"
@@ -65,7 +65,7 @@ func (h *ParserHandler) ListParsers(c *fiber.Ctx) error {
 	items := make([]interface{}, len(parsers))
 	for i, p := range parsers {
 		// resolve owner name? skip for now.
-		items[i] = p.ToResponse(nil)
+		items[i] = dto.ParserToResponse(p)
 	}
 	paginated := map[string]interface{}{
 		"items":     items,
@@ -89,7 +89,7 @@ func (h *ParserHandler) GetParser(c *fiber.Ctx) error {
 		return response.Error(c, fiber.StatusNotFound, "PARSER_NOT_FOUND", err.Error())
 	}
 	// Fetch owner name if needed; omitted
-	return response.JSON(c, fiber.StatusOK, "Parser details", parser.ToResponse(nil))
+	return response.JSON(c, fiber.StatusOK, "Parser details", dto.ParserToResponse(parser))
 }
 func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
 	orgID, err := getOrgID(c)
@@ -114,7 +114,7 @@ func (h *ParserHandler) CreateParser(c *fiber.Ctx) error {
 	if err := h.service.CreateParser(c.Context(), parser); err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "CREATE_FAILED", err.Error())
 	}
-	return response.JSON(c, fiber.StatusCreated, "Parser created", parser.ToResponse(nil))
+	return response.JSON(c, fiber.StatusCreated, "Parser created", dto.ParserToResponse(parser))
 }
 func (h *ParserHandler) UpdateParser(c *fiber.Ctx) error {
 	orgID, err := getOrgID(c)
@@ -165,7 +165,7 @@ func (h *ParserHandler) UpdateParser(c *fiber.Ctx) error {
 	if err := h.service.UpdateParser(c.Context(), existing, changeNote, actorUserID); err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "UPDATE_FAILED", err.Error())
 	}
-	return response.JSON(c, fiber.StatusOK, "Parser updated", existing.ToResponse(nil))
+	return response.JSON(c, fiber.StatusOK, "Parser updated", dto.ParserToResponse(existing))
 }
 func (h *ParserHandler) TestParser(c *fiber.Ctx) error {
 	orgID, err := getOrgID(c)
@@ -274,7 +274,7 @@ func (h *ParserHandler) ImportParser(c *fiber.Ctx) error {
 	if err := h.service.ImportParser(c.Context(), parser); err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "IMPORT_FAILED", err.Error())
 	}
-	return response.JSON(c, fiber.StatusCreated, "Parser imported", parser.ToResponse(nil))
+	return response.JSON(c, fiber.StatusCreated, "Parser imported", dto.ParserToResponse(parser))
 }
 func (h *ParserHandler) ExportParser(c *fiber.Ctx) error {
 	orgID, err := getOrgID(c)
@@ -315,7 +315,7 @@ func (h *ParserHandler) ListSampleLogs(c *fiber.Ctx) error {
 	}
 	items := make([]interface{}, len(events))
 	for i, e := range events {
-		items[i] = e.ToResponse()
+		items[i] = dto.SecurityEventToResponse(e)
 	}
 	paginated := map[string]interface{}{
 		"items":     items,

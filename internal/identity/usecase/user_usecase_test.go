@@ -77,6 +77,16 @@ func (m *mockUserRepo) UpdateUserContactInfo(ctx context.Context, id string, pho
 	return args.Error(0)
 }
 
+func (m *mockUserRepo) UpdatePasswordHashByID(ctx context.Context, id string, hash string) error {
+	args := m.Called(ctx, id, hash)
+	return args.Error(0)
+}
+
+func (m *mockUserRepo) SoftDeleteUser(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
 type mockProfileRepo struct{}
 
 func (m *mockProfileRepo) GetUserPreferences(ctx context.Context, userID, orgID string) (*domain.UserPreferences, error) {

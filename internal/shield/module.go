@@ -38,11 +38,13 @@ func NewModule(
 	qualityRepo := postgres.NewDataQualityRepository(database)
 	parserRepo := postgres.NewParserRepository(database)
 	integrationRepo := postgres.NewIntegrationRepository(database)
+	parsedLogRepo := postgres.NewParsedLogRepository(database)
 
 	logsUseCase := usecase.NewLogsService(
 		eventRepo,
 		dataSourceRepo,
 		jobRepo,
+		parsedLogRepo,
 	)
 
 	logsDataUseCase := usecase.NewLogsDataService(

@@ -28,16 +28,6 @@ type CreateAnalysisParams struct {
 	OrganizationID uuid.UUID
 }
 
-type SubmitLogFileInput struct {
-	LogFileID      uuid.UUID  `json:"log_file_id"`
-	S3Key          string     `json:"s3_key"`
-	FileClass      FileClass  `json:"file_class"`
-	SourceType     string     `json:"source_type"`
-	SourceID       *uuid.UUID `json:"source_id"`
-	OrganizationID uuid.UUID  `json:"organization_id"`
-	UserID         uuid.UUID  `json:"user_id"`
-}
-
 type SubmitLogFileForAnalysis struct {
 	LogFileID      uuid.UUID
 	FileClass      FileClass
@@ -48,56 +38,45 @@ type SubmitLogFileForAnalysis struct {
 	S3Key          string
 }
 
-type SubmitLogFileResult struct {
-	JobID       string    `json:"job_id"`
-	SubmittedAt time.Time `json:"submitted_at"`
-}
-
 type AnalysisResult struct {
-	ID          uuid.UUID                       `db:"id" json:"id"`
-	LogFileID   uuid.UUID                       `db:"log_file_id" json:"log_file_id"`
-	LogType     string                          `db:"log_type"    json:"log_type"`
-	JsonInputID *uuid.UUID                      `db:"json_input_id" json:"json_input_id"`
-	RequestType AnalysisRequestType             `db:"request_type" json:"request_type"`
-	Approach    string                          `db:"approach"    json:"approach"`
-	Overall     string                          `db:"overall"     json:"overall"`
-	Summary     db.GenericJSON[AnalysisSummary] `db:"summary"     json:"summary"`
-	Outcome     db.GenericJSON[AnalysisOutcome] `db:"outcome"     json:"outcome"`
-	Threats     []Threat                        `db:"-"           json:"threats"`
-	CreatedAt   time.Time                       `db:"created_at"  json:"created_at"`
+	ID          uuid.UUID
+	LogFileID   uuid.UUID
+	LogType     string
+	JsonInputID *uuid.UUID
+	RequestType AnalysisRequestType
+	Approach    string
+	Overall     string
+	Summary     db.GenericJSON[AnalysisSummary]
+	Outcome     db.GenericJSON[AnalysisOutcome]
+	Threats     []Threat
+	CreatedAt   time.Time
 }
 
 type AnalysisSummary struct {
-	TotalEvents     int     `json:"total_events"`
-	ThreatsDetected int     `json:"threats_detected"`
-	ConfirmedBoth   int     `json:"confirmed_both"`
-	MLOnly          int     `json:"ml_only"`
-	RuleOnly        int     `json:"rule_only"`
-	ThreatRatePct   float64 `json:"threat_rate_pct"`
+	TotalEvents     int
+	ThreatsDetected int
+	ConfirmedBoth   int
+	MLOnly          int
+	RuleOnly        int
+	ThreatRatePct   float64
 }
 
 type AnalysisOutcome struct {
-	Status string `json:"status"`
-	Detail string `json:"detail"`
+	Status string
+	Detail string
 }
 
 type Threat struct {
-	ID             uuid.UUID `db:"id"              json:"id"`
-	AnalysisID     uuid.UUID `db:"analysis_id"     json:"analysis_id"`
-	Source         string    `db:"source"          json:"source"`
-	Title          string    `db:"title"           json:"title"`
-	Category       string    `db:"category"        json:"category"`
-	Severity       string    `db:"severity"        json:"severity"`
-	Mitre          string    `db:"mitre"           json:"mitre"`
-	EventCount     int       `db:"event_count"     json:"event_count"`
-	TimeRange      string    `db:"time_range"      json:"time_range"`
-	WhatHappened   string    `db:"what_happened"   json:"what_happened"`
-	Evidence       []string  `db:"evidence"        json:"evidence"`
-	Recommendation string    `db:"recommendation"  json:"recommendation"`
-}
-
-type CheckHealthResponse struct {
-	Status  string `json:"status"`
-	Service string `json:"service"`
-	Version string `json:"version"`
+	ID             uuid.UUID
+	AnalysisID     uuid.UUID
+	Source         string
+	Title          string
+	Category       string
+	Severity       string
+	Mitre          string
+	EventCount     int
+	TimeRange      string
+	WhatHappened   string
+	Evidence       []string
+	Recommendation string
 }

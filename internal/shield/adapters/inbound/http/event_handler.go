@@ -3,7 +3,7 @@ package http
 import (
 	"sage-backend/internal/shared/middlewares"
 	"sage-backend/internal/shared/response"
-	"sage-backend/internal/shield/usecase/dto"
+	"sage-backend/internal/shield/ports/dto"
 	"sage-backend/internal/shield/ports/inbound"
 
 	"github.com/gofiber/fiber/v2"
@@ -34,6 +34,15 @@ func (h *EventHandler) SearchLogs(c *fiber.Ctx) error {
 	}
 	page := c.QueryInt("page", 1)
 	pageSize := c.QueryInt("page_size", 25)
+
+	if q := c.Query("q"); q != "" {
+		res, err := h.service.SearchLogsAST(c.Context(), orgID, q, pageSize)
+		if err != nil {
+			return response.Error(c, fiber.StatusInternalServerError, "FAILED_TO_SEARCH_LOGS", err.Error())
+		}
+		return response.JSON(c, fiber.StatusOK, "Logs retrieved", res)
+	}
+
 	filters := map[string]interface{}{
 		"source_id":      c.Query("source_id"),
 		"source":         c.Query("source"),
@@ -52,7 +61,7 @@ func (h *EventHandler) SearchLogs(c *fiber.Ctx) error {
 	}
 	items := make([]interface{}, len(logs))
 	for i, log := range logs {
-		items[i] = log.ToResponse()
+		items[i] = dto.SecurityEventToResponse(log)
 	}
 	paginated := map[string]interface{}{
 		"items":     items,
@@ -75,7 +84,7 @@ func (h *EventHandler) GetLogDetail(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, fiber.StatusNotFound, "EVENT_NOT_FOUND", err.Error())
 	}
-	return response.JSON(c, fiber.StatusOK, "Event retrieved", event.ToResponse())
+	return response.JSON(c, fiber.StatusOK, "Event retrieved", dto.SecurityEventToResponse(event))
 }
 func (h *EventHandler) IngestLog(c *fiber.Ctx) error {
 	orgID, err := getOrgID(c)
@@ -90,7 +99,7 @@ func (h *EventHandler) IngestLog(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "INGESTION_FAILED", err.Error())
 	}
-	return response.JSON(c, fiber.StatusCreated, "Event ingested", event.ToResponse())
+	return response.JSON(c, fiber.StatusCreated, "Event ingested", dto.SecurityEventToResponse(event))
 }
 func (h *EventHandler) BulkIngestLogs(c *fiber.Ctx) error {
 	orgID, err := getOrgID(c)

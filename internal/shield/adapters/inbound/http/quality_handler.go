@@ -2,7 +2,7 @@ package http
 
 import (
 	"sage-backend/internal/shared/response"
-	"sage-backend/internal/shield/usecase/dto"
+	"sage-backend/internal/shield/ports/dto"
 	"sage-backend/internal/shield/ports/inbound"
 	"time"
 
@@ -27,7 +27,7 @@ func (h *QualityHandler) GetDataQualitySummary(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "FAILED_TO_GET_SUMMARY", err.Error())
 	}
-	return response.JSON(c, fiber.StatusOK, "Quality summary", scan.ToResponse())
+	return response.JSON(c, fiber.StatusOK, "Quality summary", dto.DataQualityScanToResponse(scan))
 }
 func (h *QualityHandler) RunDataQualityScan(c *fiber.Ctx) error {
 	orgID, err := getOrgID(c)
@@ -61,7 +61,7 @@ func (h *QualityHandler) GetDataQualityBreakdown(c *fiber.Ctx) error {
 	items := make([]interface{}, len(metrics))
 	for i, m := range metrics {
 		// enrich with source name? For now, use minimal response
-		items[i] = m.ToResponse("") // source name empty; handler could fetch source if needed
+		items[i] = dto.DataQualityMetricToResponse(m, "") // source name empty; handler could fetch source if needed
 	}
 	paginated := map[string]interface{}{
 		"items":     items,

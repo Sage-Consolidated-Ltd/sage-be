@@ -1,6 +1,9 @@
 AGENTS.md
 .env
-docs
+.env.*
+Sage_Backend_Documentation.*
+docs/users
+docs/shield
 grep
 TODO.md
 system-overview.txt

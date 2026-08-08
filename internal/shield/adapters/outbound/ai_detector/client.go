@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sage-backend/internal/shield/domain"
+	"sage-backend/internal/shield/ports/dto"
 	"strings"
 
 	"github.com/go-resty/resty/v2"
@@ -31,8 +32,8 @@ func NewAIDetectorClient(baseURL, token string, restyClient *resty.Client) *AIDe
 	}
 }
 
-func (a *AIDetectorClient) Health(ctx context.Context) (*domain.CheckHealthResponse, error) {
-	var result domain.CheckHealthResponse
+func (a *AIDetectorClient) Health(ctx context.Context) (*dto.CheckHealthResponse, error) {
+	var result dto.CheckHealthResponse
 
 	resp, err := a.restyClient.R().
 		SetContext(ctx).

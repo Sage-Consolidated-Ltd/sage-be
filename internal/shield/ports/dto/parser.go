@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"time"
+
 	"sage-backend/internal/shared/types"
 
 	"github.com/google/uuid"
@@ -62,4 +64,21 @@ type ApplySuggestedFixRequest struct {
 	SuggestionID string  `json:"suggestion_id" validate:"required,uuid"`
 	SourceID     *string `json:"source_id,omitempty"`
 	ParserID     *string `json:"parser_id,omitempty"`
+}
+
+type ParserResponse struct {
+	ID              string                   `json:"id"`
+	Name            string                   `json:"name"`
+	Description     *string                  `json:"description,omitempty"`
+	DataSource      *DataSourceResponse      `json:"data_source,omitempty"`
+	ParserType      string                   `json:"parser_type"`
+	Status          string                   `json:"status"`
+	Tags            []string                 `json:"tags"`
+	Logic           map[string]interface{}   `json:"logic"`
+	Mappings        []map[string]interface{} `json:"mappings"`
+	EventsParsed24h int64                    `json:"events_parsed_24h"`
+	ErrorRate       float64                  `json:"error_rate"`
+	Owner           *string                  `json:"owner,omitempty"`
+	CreatedAt       time.Time                `json:"created_at"`
+	UpdatedAt       time.Time                `json:"updated_at"`
 }

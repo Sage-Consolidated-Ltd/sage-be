@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http/httptest"
 	"sage-backend/internal/shield/domain"
-	"sage-backend/internal/shield/usecase/dto"
+	"sage-backend/internal/shield/ports/dto"
 	"strings"
 	"testing"
 	"time"

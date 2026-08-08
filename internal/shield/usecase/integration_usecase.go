@@ -7,7 +7,7 @@ import (
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/adapters/outbound/providers"
 	"sage-backend/internal/shield/ports/outbound"
-	"sage-backend/internal/shield/usecase/dto"
+	"sage-backend/internal/shield/ports/dto"
 	"sage-backend/pkg/crypto"
 	"time"
 

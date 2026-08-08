@@ -191,3 +191,37 @@ func _GetActivity() {}
 // @Success 200 {object} UploadAvatarResponse
 // @Router /profile/avatar [post]
 func _UploadAvatar() {}
+
+// @Summary Change Password
+// @Description Changes the authenticated user's password after verifying the current password and ensuring password complexity.
+// @Tags User Profile
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param request body dto.ChangePasswordRequest true "Change Password Request"
+// @Success 200 {object} response.Response
+// @Router /profile/change-password [post]
+func _ChangePassword() {}
+
+// @Summary Configure Backup Email
+// @Description Configures a backup email address for account recovery. Backup email must be different from primary email.
+// @Tags User Profile
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param request body dto.ConfigureBackupEmailRequest true "Configure Backup Email Request"
+// @Success 200 {object} response.Response
+// @Router /profile/backup-email [post]
+func _ConfigureBackupEmail() {}
+
+// @Summary Delete Account
+// @Description Soft-deletes the authenticated user's account upon confirmation. User must type 'DELETE' to confirm.
+// @Tags User Profile
+// @Accept json
+// @Produce json
+// @Security ApiKeyAuth
+// @Param request body dto.DeleteAccountRequest true "Delete Account Confirmation Request"
+// @Success 200 {object} response.Response
+// @Router /profile/me [delete]
+func _DeleteAccount() {}
+

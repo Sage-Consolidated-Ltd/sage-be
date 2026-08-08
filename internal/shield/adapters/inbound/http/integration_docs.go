@@ -2,7 +2,7 @@ package http
 
 import (
 	_ "sage-backend/internal/shared/response"
-	_ "sage-backend/internal/shield/usecase/dto"
+	_ "sage-backend/internal/shield/ports/dto"
 )
 
 // @Summary Create Integration

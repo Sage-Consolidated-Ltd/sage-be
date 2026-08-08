@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"sage-backend/internal/shared/storage/s3"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,31 +38,25 @@ const (
 	DetectedUnknown         DetectedType = "unknown"
 )
 
-type PresignUploadResponse struct {
-	Key       string           `json:"key"`
-	ExpiresAt time.Time        `json:"expires_at"`
-	Post      s3.PresignedPost `json:"post"`
-}
-
 type LogFile struct {
-	ID               uuid.UUID     `db:"id"`
-	UserID           uuid.UUID     `db:"user_id"`
-	OrganizationID   uuid.UUID     `db:"organization_id"`
-	S3Key            string        `db:"s3_key"`
-	FileClass        FileClass     `db:"file_class"`
-	EventCount       *int          `db:"event_count"`
-	ProcessedAt      *time.Time    `db:"processed_at"`
-	SourceType       *string       `db:"source_type"`
-	SourceID         *uuid.UUID    `db:"source_id"`
-	Description      *string       `db:"description"`
-	Category         *string       `db:"category"`
-	AppOrContext     *string       `db:"app_or_context"`
-	Status           string        `db:"status"`
-	ErrorMessage     *string       `db:"error_message"`
-	DetectedType     *DetectedType `db:"detected_type"`
-	UserSelectedType *DetectedType `db:"user_selected_type"`
-	CreatedAt        time.Time     `db:"created_at"`
-	UpdatedAt        time.Time     `db:"updated_at"`
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	OrganizationID   uuid.UUID
+	S3Key            string
+	FileClass        FileClass
+	EventCount       *int
+	ProcessedAt      *time.Time
+	SourceType       *string
+	SourceID         *uuid.UUID
+	Description      *string
+	Category         *string
+	AppOrContext     *string
+	Status           string
+	ErrorMessage     *string
+	DetectedType     *DetectedType
+	UserSelectedType *DetectedType
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 func (f *LogFile) EffectiveType() DetectedType {

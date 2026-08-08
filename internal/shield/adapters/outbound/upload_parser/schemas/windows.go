@@ -3,7 +3,7 @@ package schemas
 import (
 	"database/sql"
 
-	"sage-backend/internal/shield/upload_parser"
+	"sage-backend/internal/shield/adapters/outbound/upload_parser"
 )
 
 var eventTypeToLevel = map[string]string{

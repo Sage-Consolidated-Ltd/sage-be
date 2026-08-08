@@ -5,7 +5,7 @@ import (
 	"errors"
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/domain"
-	"sage-backend/internal/shield/usecase/dto"
+	"sage-backend/internal/shield/ports/dto"
 	"testing"
 	"time"
 
@@ -210,7 +210,7 @@ func TestLogsService_Struct(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 	assert.NotNil(t, service)
 }
 
@@ -218,7 +218,7 @@ func TestLogsService_IngestLog_Success(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -267,7 +267,7 @@ func TestLogsService_IngestLog_InvalidSourceID(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -290,7 +290,7 @@ func TestLogsService_IngestLog_SourceNotFound(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -318,7 +318,7 @@ func TestLogsService_IngestLog_RepositoryError(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -356,7 +356,7 @@ func TestLogsService_BulkIngestLogs_Success(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -406,7 +406,7 @@ func TestLogsService_BulkIngestLogs_InvalidSourceID(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -425,7 +425,7 @@ func TestLogsService_BulkIngestLogs_SourceNotFound(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -458,7 +458,7 @@ func TestLogsService_BulkIngestLogs_RepositoryError(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -501,7 +501,7 @@ func TestLogsService_SearchLogs_Success(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -522,7 +522,7 @@ func TestLogsService_SearchLogs_RepositoryError(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -541,7 +541,7 @@ func TestLogsService_GetLogByID_Success(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()
@@ -568,7 +568,7 @@ func TestLogsService_GetLogByID_NotFound(t *testing.T) {
 	mockEventRepo := new(mockEventRepo)
 	mockDataSourceRepo := new(mockDataSourceRepo)
 	mockJobRepo := new(mockJobRepo)
-	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo)
+	service := NewLogsService(mockEventRepo, mockDataSourceRepo, mockJobRepo, nil)
 
 	ctx := context.Background()
 	orgID := uuid.New()

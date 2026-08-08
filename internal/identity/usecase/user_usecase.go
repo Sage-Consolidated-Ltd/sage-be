@@ -6,12 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"mime/multipart"
-	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/identity/domain"
 	"sage-backend/internal/identity/ports/inbound"
 	"sage-backend/internal/identity/ports/outbound"
 	"sage-backend/internal/identity/usecase/dto"
 	orgDomain "sage-backend/internal/organization/domain"
+	"sage-backend/internal/shared/errors/apperrors"
+	"sage-backend/internal/shared/storage/s3"
+	"sage-backend/internal/shared/utils"
 	"strings"
 	"time"
 
@@ -269,3 +271,71 @@ func (s *UserServices) LogActivity(ctx context.Context, userID, orgID, actionTyp
 
 	return s.profileRepo.CreateAuditLog(ctx, log)
 }
+
+// ChangePassword changes the authenticated user's password after validating current password
+func (s *UserServices) ChangePassword(ctx context.Context, userID string, req *dto.ChangePasswordRequest) error {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil || user == nil {
+		return apperrors.NotFoundError("user not found")
+	}
+
+	if match := utils.CompareHashAndPassword(req.CurrentPassword, user.PasswordHash().String()); !match {
+		return apperrors.BadException("Current password is incorrect")
+	}
+
+	password, err := domain.NewPassword(req.NewPassword)
+	if err != nil {
+		return apperrors.BadException(err.Error())
+	}
+
+	rawHash, err := utils.HashPassword(password.String())
+	if err != nil {
+		return apperrors.InternalServerError("failed to hash password")
+	}
+
+	if err := s.userRepo.UpdatePasswordHashByID(ctx, userID, rawHash); err != nil {
+		return err
+	}
+
+	_ = s.LogActivity(ctx, userID, "", "user.change_password", "user", userID, nil, "", "")
+	return nil
+}
+
+// ConfigureBackupEmail configures user's backup email address
+func (s *UserServices) ConfigureBackupEmail(ctx context.Context, userID string, req *dto.ConfigureBackupEmailRequest) error {
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil || user == nil {
+		return apperrors.NotFoundError("user not found")
+	}
+
+	if strings.EqualFold(strings.TrimSpace(req.BackupEmail), user.Email().String()) {
+		return apperrors.BadException("Backup email must be different from primary email address")
+	}
+
+	if err := s.userRepo.UpdateUserContactInfo(ctx, userID, "", req.BackupEmail); err != nil {
+		return err
+	}
+
+	_ = s.LogActivity(ctx, userID, "", "user.update_backup_email", "user", userID, map[string]interface{}{"backup_email": req.BackupEmail}, "", "")
+	return nil
+}
+
+// DeleteAccount soft deletes user account upon confirmation
+func (s *UserServices) DeleteAccount(ctx context.Context, userID string, req *dto.DeleteAccountRequest) error {
+	if !strings.EqualFold(strings.TrimSpace(req.Confirmation), "DELETE") {
+		return apperrors.BadException("Please type DELETE to confirm account deletion")
+	}
+
+	user, err := s.userRepo.GetUserByID(ctx, userID)
+	if err != nil || user == nil {
+		return apperrors.NotFoundError("user not found")
+	}
+
+	if err := s.userRepo.SoftDeleteUser(ctx, userID); err != nil {
+		return err
+	}
+
+	_ = s.LogActivity(ctx, userID, "", "user.delete_account", "user", userID, nil, "", "")
+	return nil
+}
+

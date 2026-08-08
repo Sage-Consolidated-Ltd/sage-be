@@ -1,5 +1,7 @@
 package dto
 
+import "time"
+
 type CreateIntegrationRequest struct {
 	Name           string `json:"name" validate:"required"`
 	Provider       string `json:"provider" validate:"required,oneof=okta entra"`
@@ -23,4 +25,14 @@ type EntraParams struct {
 type CredentialInput struct {
 	Key   string `json:"key" validate:"required"`
 	Value string `json:"value" validate:"required"`
+}
+
+type IntegrationResponse struct {
+	ID             string                 `json:"id"`
+	Name           string                 `json:"name"`
+	Provider       string                 `json:"provider"`
+	ConnectionType string                 `json:"connection_type"`
+	Status         string                 `json:"status"`
+	Config         map[string]interface{} `json:"config"`
+	CreatedAt      time.Time              `json:"created_at"`
 }
