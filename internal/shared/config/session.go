@@ -33,14 +33,20 @@ func InitSessionStore(cfg *BaseConfig) {
 	} else {
 		sameSite = "None"
 	}
+
+	cookieDomain := cfg.CookieDomain
+	if cfg.APP_ENV == "local" || cfg.APP_ENV == "development" {
+		cookieDomain = ""
+	}
+
 	Store = session.New(session.Config{
 		Storage:        storage,
 		Expiration:     24 * time.Hour,
 		KeyLookup:      "cookie:session_id",
 		CookieHTTPOnly: true,
-		CookieSecure:   cfg.APP_ENV == "production",
+		CookieSecure:   cfg.APP_ENV == "production" || cfg.APP_ENV == "staging",
 		CookieSameSite: sameSite,
-		// CookieDomain: "localhost",
+		CookieDomain:   cookieDomain,
 	})
 }
 

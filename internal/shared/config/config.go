@@ -22,6 +22,7 @@ type BaseConfig struct {
 	ResendApiKey     string
 	ResendFromEmail  string
 	FrontendBaseURL  string
+	CookieDomain     string
 	S3Bucket         string
 	S3Region         string
 }
@@ -131,6 +132,7 @@ func loadBase() BaseConfig {
 		ResendApiKey:     requireEnv("RESEND_API_KEY"),
 		ResendFromEmail:  requireEnv("RESEND_FROM_EMAIL"),
 		FrontendBaseURL:  requireEnv("FRONTEND_BASE_URL"),
+		CookieDomain:     getEnv("COOKIE_DOMAIN", ".sageconsolidated.com"),
 		S3Bucket:         getEnv("S3_BUCKET", "sage-uploads"),
 		S3Region:         getEnv("S3_REGION", "us-east-1"),
 	}

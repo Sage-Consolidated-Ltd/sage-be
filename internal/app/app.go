@@ -44,7 +44,7 @@ func NewFiberApp() *fiber.App {
 		},
 		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS,PATCH",
 		AllowCredentials: true,
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, session_id",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, session_id, X-Session-ID",
 	}))
 	app.Use(recover.New())
 
