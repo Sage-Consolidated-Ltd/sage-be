@@ -18,12 +18,14 @@ type Module struct {
 	DataQualityUseCase inbound.DataQualityUseCase
 	ParserUseCase      inbound.ParserUseCase
 	IntegrationUseCase inbound.IntegrationUseCase
+	DashboardUseCase   inbound.DashboardUseCase
 
 	EventHandler       *shield_http.EventHandler
 	QualityHandler     *shield_http.QualityHandler
 	ParserHandler      *shield_http.ParserHandler
 	IntegrationHandler *shield_http.IntegrationHandler
 	LogsDataHandler    *shield_http.LogsDataHandler
+	DashboardHandler   *shield_http.DashboardHandler
 }
 
 func NewModule(
@@ -39,6 +41,7 @@ func NewModule(
 	parserRepo := postgres.NewParserRepository(database)
 	integrationRepo := postgres.NewIntegrationRepository(database)
 	parsedLogRepo := postgres.NewParsedLogRepository(database)
+	dashboardRepo := postgres.NewDashboardRepository(database)
 
 	logsUseCase := usecase.NewLogsService(
 		eventRepo,
@@ -75,11 +78,14 @@ func NewModule(
 		restyClient,
 	)
 
+	dashboardUseCase := usecase.NewDashboardService(dashboardRepo)
+
 	eventHandler := shield_http.NewEventHandler(logsUseCase)
 	qualityHandler := shield_http.NewQualityHandler(dataQualityUseCase)
 	parserHandler := shield_http.NewParserHandler(parserUseCase)
 	integrationHandler := shield_http.NewIntegrationHandler(integrationUseCase)
 	logsDataHandler := shield_http.NewLogsDataHandlerWithService(logsDataUseCase)
+	dashboardHandler := shield_http.NewDashboardHandler(dashboardUseCase)
 
 	return &Module{
 		LogsUseCase:        logsUseCase,
@@ -87,10 +93,12 @@ func NewModule(
 		DataQualityUseCase: dataQualityUseCase,
 		ParserUseCase:      parserUseCase,
 		IntegrationUseCase: integrationUseCase,
+		DashboardUseCase:   dashboardUseCase,
 		EventHandler:       eventHandler,
 		QualityHandler:     qualityHandler,
 		ParserHandler:      parserHandler,
 		IntegrationHandler: integrationHandler,
 		LogsDataHandler:    logsDataHandler,
+		DashboardHandler:   dashboardHandler,
 	}
 }

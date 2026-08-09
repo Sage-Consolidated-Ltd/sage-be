@@ -1,5 +1,148 @@
 basePath: /api/v1
 definitions:
+  domain.ActiveIncident:
+    properties:
+      id:
+        type: string
+      incident_name:
+        type: string
+      last_activity:
+        type: string
+      severity:
+        type: string
+      status:
+        type: string
+    type: object
+  domain.AssetProtectionCoverage:
+    properties:
+      coverage_percentage:
+        type: integer
+      protected_count:
+        type: integer
+      unprotected_count:
+        type: integer
+    type: object
+  domain.AssetRiskDistribution:
+    properties:
+      breakdown:
+        items:
+          $ref: '#/definitions/domain.AssetRiskItem'
+        type: array
+      overall_risk_percentage:
+        type: integer
+    type: object
+  domain.AssetRiskItem:
+    properties:
+      asset_name:
+        type: string
+      percentage:
+        type: integer
+    type: object
+  domain.ComplianceRiskIndicators:
+    properties:
+      detection_action_result:
+        type: string
+      dormant_accounts:
+        type: integer
+      encryption_vulnerabilities:
+        type: integer
+      excessive_user_permissions:
+        type: integer
+      overly_trusted_users:
+        type: integer
+      physical_security:
+        type: integer
+      unencrypted_devices:
+        type: integer
+      vulnerabilities_email:
+        type: integer
+    type: object
+  domain.GeoThreatOrigin:
+    properties:
+      count:
+        type: integer
+      country:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+    type: object
+  domain.GeoThreatsSummary:
+    properties:
+      high_threat_region:
+        type: string
+      most_targeted_asset:
+        type: string
+      origins:
+        items:
+          $ref: '#/definitions/domain.GeoThreatOrigin'
+        type: array
+      total_threats:
+        type: integer
+    type: object
+  domain.IdentityHealthSummary:
+    properties:
+      accounts_without_mfa:
+        type: integer
+      coverage_percentage:
+        type: integer
+      dormant_accounts:
+        type: integer
+      elevated_privileges:
+        type: integer
+    type: object
+  domain.SecurityPosturePillars:
+    properties:
+      config_health:
+        type: integer
+      response_readiness:
+        type: integer
+      threat_coverage:
+        type: integer
+      vulnerabilities:
+        type: integer
+    type: object
+  domain.SecurityPostureScore:
+    properties:
+      description:
+        type: string
+      overall_score:
+        type: integer
+      pending_recommendations:
+        type: integer
+      pillars:
+        $ref: '#/definitions/domain.SecurityPosturePillars'
+      weekly_delta:
+        type: integer
+    type: object
+  domain.ThreatDayTrend:
+    properties:
+      current_month_count:
+        type: integer
+      day:
+        type: integer
+      last_month_count:
+        type: integer
+    type: object
+  domain.ThreatIntelFeedsSummary:
+    properties:
+      active_feeds:
+        type: integer
+      inactive_feeds:
+        type: integer
+      indicators_processed_24h:
+        type: integer
+    type: object
+  domain.ThreatTrendsSummary:
+    properties:
+      current_month:
+        type: string
+      days:
+        items:
+          $ref: '#/definitions/domain.ThreatDayTrend'
+        type: array
+    type: object
   domain.ThreatsSummary:
     properties:
       critical:
@@ -316,6 +459,75 @@ info:
   title: Sage Shield API
   version: "1.0"
 paths:
+  /assets/protection-coverage:
+    get:
+      consumes:
+      - application/json
+      description: Returns asset protection coverage percentage, protected count,
+        and unprotected count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.AssetProtectionCoverage'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Endpoint Protection Coverage
+      tags:
+      - Endpoint Protection & Assets
+  /compliance/risk-indicators:
+    get:
+      consumes:
+      - application/json
+      description: Returns itemized compliance risk indicator counts (encryption vulns,
+        dormant accounts, unencrypted devices).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.ComplianceRiskIndicators'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Compliance Risk Indicators
+      tags:
+      - Compliance & Risk Indicators
+  /events/geo-threats:
+    get:
+      consumes:
+      - application/json
+      description: Returns live Geo-IP threat origins with latitude/longitude coordinates
+        and top threat region.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.GeoThreatsSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Geo Threat Origins
+      tags:
+      - Geo Threat Intelligence
   /events/logs:
     get:
       consumes:
@@ -403,6 +615,52 @@ paths:
       summary: Get Log Detail
       tags:
       - Logs & Data
+  /events/threat-trends:
+    get:
+      consumes:
+      - application/json
+      description: Returns time-series threat severity counts comparing current month
+        to baseline period.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.ThreatTrendsSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Threat Severity Trends
+      tags:
+      - Threats & Vulnerabilities
+  /events/threats/asset-risk-distribution:
+    get:
+      consumes:
+      - application/json
+      description: Returns overall risk percentage and asset breakdown for dangerous
+        threats donut chart.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.AssetRiskDistribution'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Asset Risk Distribution
+      tags:
+      - Threats & Vulnerabilities
   /events/threats/summary:
     get:
       consumes:
@@ -426,6 +684,59 @@ paths:
       summary: Get Known Vulnerabilities & Threats Summary
       tags:
       - Logs & Data
+  /identity-health/summary:
+    get:
+      consumes:
+      - application/json
+      description: Returns MFA coverage percentage, dormant account count, and elevated
+        privilege counts.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.IdentityHealthSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Identity & Access Health Summary
+      tags:
+      - Identity & Access Risk
+  /incidents:
+    get:
+      consumes:
+      - application/json
+      description: Returns active security incidents with severity, last activity
+        timestamp, and status.
+      parameters:
+      - description: 'Limit (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.ActiveIncident'
+                  type: array
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Active Incidents
+      tags:
+      - Incident Response
   /integrations:
     post:
       consumes:
@@ -1281,6 +1592,52 @@ paths:
       summary: Ingest Log Event
       tags:
       - Logs & Data
+  /security-posture/score:
+    get:
+      consumes:
+      - application/json
+      description: Returns multi-pillar security posture score, weekly delta trend,
+        and pillar breakdown.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.SecurityPostureScore'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Overall Security Posture Score
+      tags:
+      - Security Posture & Quality
+  /threat-intel/feeds/summary:
+    get:
+      consumes:
+      - application/json
+      description: Returns total indicators processed in 24h, active feeds count,
+        and inactive feeds count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.ThreatIntelFeedsSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Threat Intelligence Feeds Summary
+      tags:
+      - Threat Intelligence Feeds
 securityDefinitions:
   SessionAuth:
     in: cookie
