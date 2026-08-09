@@ -35,7 +35,7 @@ func InitSessionStore(cfg *BaseConfig) {
 	}
 
 	cookieDomain := cfg.CookieDomain
-	if cfg.APP_ENV == "local" || cfg.APP_ENV == "development" {
+	if cookieDomain == "localhost" || cookieDomain == "127.0.0.1" {
 		cookieDomain = ""
 	}
 
