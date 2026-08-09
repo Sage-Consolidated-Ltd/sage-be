@@ -98,6 +98,14 @@ func (m *mockEventRepo) BulkInsertRawEvents(ctx context.Context, orgID uuid.UUID
 	return nil, args.Error(0)
 }
 
+func (m *mockEventRepo) GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error) {
+	args := m.Called(ctx, orgID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ThreatsSummary), args.Error(1)
+}
+
 type mockDataSourceRepo struct {
 	mock.Mock
 }
