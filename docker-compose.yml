@@ -61,6 +61,7 @@ services:
     environment:
       PORT: 3333
       REDIS_DB_URL: redis://redis:6379/0
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-.sageconsolidated.com}
     ports:
       - "3333:3333"
     depends_on:
@@ -81,6 +82,7 @@ services:
     environment:
       SHIELD_PORT: 3335
       REDIS_DB_URL: redis://redis:6379/0
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-.sageconsolidated.com}
     ports:
       - "3335:3335"
     depends_on:
