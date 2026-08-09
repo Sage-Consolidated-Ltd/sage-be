@@ -53,3 +53,12 @@ type CreateRawEventResponse struct {
 	Payload   []byte
 	CreatedAt time.Time
 }
+
+type ThreatsSummary struct {
+	Critical       int64 `json:"critical" db:"critical"`
+	High           int64 `json:"high" db:"high"`
+	Medium         int64 `json:"medium" db:"medium"`
+	Low            int64 `json:"low" db:"low"`
+	NewInLast7Days int64 `json:"new_in_last_7_days" db:"new_in_last_7_days"`
+	TotalThreats   int64 `json:"total_threats" db:"total_threats"`
+}
