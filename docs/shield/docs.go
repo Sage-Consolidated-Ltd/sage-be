@@ -153,6 +153,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/events/threats/summary": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns aggregate counts of threats and vulnerabilities grouped by severity (critical, high, medium, low) and 7-day trend count.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Logs \u0026 Data"
+                ],
+                "summary": "Get Known Vulnerabilities \u0026 Threats Summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.ThreatsSummary"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/integrations": {
             "post": {
                 "security": [
@@ -1501,6 +1541,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.ThreatsSummary": {
+            "type": "object",
+            "properties": {
+                "critical": {
+                    "type": "integer"
+                },
+                "high": {
+                    "type": "integer"
+                },
+                "low": {
+                    "type": "integer"
+                },
+                "medium": {
+                    "type": "integer"
+                },
+                "new_in_last_7_days": {
+                    "type": "integer"
+                },
+                "total_threats": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.ApplySuggestedFixRequest": {
             "type": "object",
             "required": [

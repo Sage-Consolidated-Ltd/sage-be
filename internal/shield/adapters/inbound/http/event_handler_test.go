@@ -497,3 +497,33 @@ func TestEventHandler_BulkIngestLogs_ServiceError(t *testing.T) {
 
 	mockService.AssertExpectations(t)
 }
+
+func TestEventHandler_GetThreatsSummary_Success(t *testing.T) {
+	app := fiber.New()
+	mockService := new(mockLogsService)
+	handler := NewEventHandler(mockService)
+
+	orgID := uuid.New()
+	expectedSummary := &domain.ThreatsSummary{
+		Critical:       8,
+		High:           12,
+		Medium:         27,
+		Low:            63,
+		NewInLast7Days: 8,
+		TotalThreats:   110,
+	}
+
+	mockService.On("GetThreatsSummary", mock.Anything, orgID).Return(expectedSummary, nil)
+
+	app.Get("/events/threats/summary", func(c *fiber.Ctx) error {
+		c.Locals("orgID", orgID)
+		return handler.GetThreatsSummary(c)
+	})
+
+	req := httptest.NewRequest("GET", "/events/threats/summary", nil)
+	resp, err := app.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	mockService.AssertExpectations(t)
+}

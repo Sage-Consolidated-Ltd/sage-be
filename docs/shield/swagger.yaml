@@ -1,5 +1,20 @@
 basePath: /api/v1
 definitions:
+  domain.ThreatsSummary:
+    properties:
+      critical:
+        type: integer
+      high:
+        type: integer
+      low:
+        type: integer
+      medium:
+        type: integer
+      new_in_last_7_days:
+        type: integer
+      total_threats:
+        type: integer
+    type: object
   dto.ApplySuggestedFixRequest:
     properties:
       parser_id:
@@ -386,6 +401,29 @@ paths:
       security:
       - SessionAuth: []
       summary: Get Log Detail
+      tags:
+      - Logs & Data
+  /events/threats/summary:
+    get:
+      consumes:
+      - application/json
+      description: Returns aggregate counts of threats and vulnerabilities grouped
+        by severity (critical, high, medium, low) and 7-day trend count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.ThreatsSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Known Vulnerabilities & Threats Summary
       tags:
       - Logs & Data
   /integrations:
