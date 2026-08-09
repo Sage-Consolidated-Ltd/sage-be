@@ -13,10 +13,12 @@ func SetUpRouter(
 	ldh *LogsDataHandler,
 	ph *ParserHandler,
 	eh *EventHandler,
+	dh *DashboardHandler,
 	m *middlewares.AuthMiddleware,
 ) {
 	RegisterLogsDataRoutes(router, ldh, ph, qh, ih, m)
 	RegisterEventRoutes(router, eh, m)
+	RegisterDashboardRoutes(router, dh, m)
 }
 
 func RegisterLogsDataRoutes(
@@ -85,5 +87,21 @@ func RegisterEventRoutes(router fiber.Router, eh *EventHandler, m *middlewares.A
 		events.Post("/logs/bulk-ingest", m.RequireAuth, eh.BulkIngestLogs)
 		events.Get("/threats/summary", m.RequireAuth, eh.GetThreatsSummary)
 		events.Get("/vulnerabilities/summary", m.RequireAuth, eh.GetThreatsSummary)
+	}
+}
+
+func RegisterDashboardRoutes(router fiber.Router, dh *DashboardHandler, m *middlewares.AuthMiddleware) {
+	if dh != nil {
+		router.Get("/security-posture/score", m.RequireAuth, dh.GetSecurityPostureScore)
+		router.Get("/identity-health/summary", m.RequireAuth, dh.GetIdentityHealthSummary)
+		router.Get("/assets/protection-coverage", m.RequireAuth, dh.GetAssetProtectionCoverage)
+		router.Get("/threat-intel/feeds/summary", m.RequireAuth, dh.GetThreatIntelFeedsSummary)
+		router.Get("/incidents", m.RequireAuth, dh.GetActiveIncidents)
+		router.Get("/compliance/risk-indicators", m.RequireAuth, dh.GetComplianceRiskIndicators)
+
+		events := router.Group("/events")
+		events.Get("/threats/asset-risk-distribution", m.RequireAuth, dh.GetAssetRiskDistribution)
+		events.Get("/threat-trends", m.RequireAuth, dh.GetThreatTrends)
+		events.Get("/geo-threats", m.RequireAuth, dh.GetGeoThreats)
 	}
 }

@@ -14,6 +14,126 @@
     "host": "shield.sageconsolidated.com",
     "basePath": "/api/v1",
     "paths": {
+        "/assets/protection-coverage": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns asset protection coverage percentage, protected count, and unprotected count.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Endpoint Protection \u0026 Assets"
+                ],
+                "summary": "Get Endpoint Protection Coverage",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.AssetProtectionCoverage"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/compliance/risk-indicators": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns itemized compliance risk indicator counts (encryption vulns, dormant accounts, unencrypted devices).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Compliance \u0026 Risk Indicators"
+                ],
+                "summary": "Get Compliance Risk Indicators",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.ComplianceRiskIndicators"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/events/geo-threats": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns live Geo-IP threat origins with latitude/longitude coordinates and top threat region.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Geo Threat Intelligence"
+                ],
+                "summary": "Get Geo Threat Origins",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.GeoThreatsSummary"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/events/logs": {
             "get": {
                 "security": [
@@ -147,6 +267,86 @@
                 }
             }
         },
+        "/events/threat-trends": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns time-series threat severity counts comparing current month to baseline period.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threats \u0026 Vulnerabilities"
+                ],
+                "summary": "Get Threat Severity Trends",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.ThreatTrendsSummary"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/events/threats/asset-risk-distribution": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns overall risk percentage and asset breakdown for dangerous threats donut chart.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threats \u0026 Vulnerabilities"
+                ],
+                "summary": "Get Asset Risk Distribution",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.AssetRiskDistribution"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/events/threats/summary": {
             "get": {
                 "security": [
@@ -178,6 +378,97 @@
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/domain.ThreatsSummary"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/identity-health/summary": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns MFA coverage percentage, dormant account count, and elevated privilege counts.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Identity \u0026 Access Risk"
+                ],
+                "summary": "Get Identity \u0026 Access Health Summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.IdentityHealthSummary"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/incidents": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns active security incidents with severity, last activity timestamp, and status.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Incident Response"
+                ],
+                "summary": "Get Active Incidents",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Limit (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/domain.ActiveIncident"
+                                            }
                                         }
                                     }
                                 }
@@ -1532,9 +1823,310 @@
                     }
                 }
             }
+        },
+        "/security-posture/score": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns multi-pillar security posture score, weekly delta trend, and pillar breakdown.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Security Posture \u0026 Quality"
+                ],
+                "summary": "Get Overall Security Posture Score",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.SecurityPostureScore"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/threat-intel/feeds/summary": {
+            "get": {
+                "security": [
+                    {
+                        "SessionAuth": []
+                    }
+                ],
+                "description": "Returns total indicators processed in 24h, active feeds count, and inactive feeds count.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Threat Intelligence Feeds"
+                ],
+                "summary": "Get Threat Intelligence Feeds Summary",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/domain.ThreatIntelFeedsSummary"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "domain.ActiveIncident": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "incident_name": {
+                    "type": "string"
+                },
+                "last_activity": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.AssetProtectionCoverage": {
+            "type": "object",
+            "properties": {
+                "coverage_percentage": {
+                    "type": "integer"
+                },
+                "protected_count": {
+                    "type": "integer"
+                },
+                "unprotected_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.AssetRiskDistribution": {
+            "type": "object",
+            "properties": {
+                "breakdown": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.AssetRiskItem"
+                    }
+                },
+                "overall_risk_percentage": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.AssetRiskItem": {
+            "type": "object",
+            "properties": {
+                "asset_name": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ComplianceRiskIndicators": {
+            "type": "object",
+            "properties": {
+                "detection_action_result": {
+                    "type": "string"
+                },
+                "dormant_accounts": {
+                    "type": "integer"
+                },
+                "encryption_vulnerabilities": {
+                    "type": "integer"
+                },
+                "excessive_user_permissions": {
+                    "type": "integer"
+                },
+                "overly_trusted_users": {
+                    "type": "integer"
+                },
+                "physical_security": {
+                    "type": "integer"
+                },
+                "unencrypted_devices": {
+                    "type": "integer"
+                },
+                "vulnerabilities_email": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.GeoThreatOrigin": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.GeoThreatsSummary": {
+            "type": "object",
+            "properties": {
+                "high_threat_region": {
+                    "type": "string"
+                },
+                "most_targeted_asset": {
+                    "type": "string"
+                },
+                "origins": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.GeoThreatOrigin"
+                    }
+                },
+                "total_threats": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.IdentityHealthSummary": {
+            "type": "object",
+            "properties": {
+                "accounts_without_mfa": {
+                    "type": "integer"
+                },
+                "coverage_percentage": {
+                    "type": "integer"
+                },
+                "dormant_accounts": {
+                    "type": "integer"
+                },
+                "elevated_privileges": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.SecurityPosturePillars": {
+            "type": "object",
+            "properties": {
+                "config_health": {
+                    "type": "integer"
+                },
+                "response_readiness": {
+                    "type": "integer"
+                },
+                "threat_coverage": {
+                    "type": "integer"
+                },
+                "vulnerabilities": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.SecurityPostureScore": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "overall_score": {
+                    "type": "integer"
+                },
+                "pending_recommendations": {
+                    "type": "integer"
+                },
+                "pillars": {
+                    "$ref": "#/definitions/domain.SecurityPosturePillars"
+                },
+                "weekly_delta": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ThreatDayTrend": {
+            "type": "object",
+            "properties": {
+                "current_month_count": {
+                    "type": "integer"
+                },
+                "day": {
+                    "type": "integer"
+                },
+                "last_month_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ThreatIntelFeedsSummary": {
+            "type": "object",
+            "properties": {
+                "active_feeds": {
+                    "type": "integer"
+                },
+                "inactive_feeds": {
+                    "type": "integer"
+                },
+                "indicators_processed_24h": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ThreatTrendsSummary": {
+            "type": "object",
+            "properties": {
+                "current_month": {
+                    "type": "string"
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ThreatDayTrend"
+                    }
+                }
+            }
+        },
         "domain.ThreatsSummary": {
             "type": "object",
             "properties": {
