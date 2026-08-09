@@ -57,3 +57,13 @@ func _IngestLog() {}
 // @Success 200 {object} response.Response
 // @Router /logs/bulk-ingest [post]
 func _BulkIngestLogs() {}
+
+// @Summary Get Known Vulnerabilities & Threats Summary
+// @Description Returns aggregate counts of threats and vulnerabilities grouped by severity (critical, high, medium, low) and 7-day trend count.
+// @Tags Logs & Data
+// @Accept json
+// @Produce json
+// @Security SessionAuth
+// @Success 200 {object} response.Response{data=domain.ThreatsSummary}
+// @Router /events/threats/summary [get]
+func _GetThreatsSummary() {}
