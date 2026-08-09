@@ -63,6 +63,14 @@ func (m *mockLogsService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, qu
 	return args.Get(0).(domain.SearchResult), args.Error(1)
 }
 
+func (m *mockLogsService) GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error) {
+	args := m.Called(ctx, orgID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*domain.ThreatsSummary), args.Error(1)
+}
+
 func TestNewEventHandler(t *testing.T) {
 	mockService := new(mockLogsService)
 	handler := &EventHandler{service: mockService}
