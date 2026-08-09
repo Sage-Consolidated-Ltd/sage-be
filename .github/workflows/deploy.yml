@@ -169,6 +169,7 @@ jobs:
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export GHCR_IMAGE_PREFIX="ghcr.io/${{ env.REPO_LOWER }}"
             export TAG="latest"
+            docker compose down --remove-orphans
             docker compose pull
             docker compose up -d --force-recreate --remove-orphans
             docker ps
