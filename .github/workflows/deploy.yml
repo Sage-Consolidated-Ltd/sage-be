@@ -236,6 +236,13 @@ jobs:
 
             echo ""
             echo "========================================"
+            echo "Running Database Migrations"
+            echo "========================================"
+
+            docker compose up migrate --force-recreate --remove-orphans
+
+            echo ""
+            echo "========================================"
             echo "Starting new containers"
             echo "========================================"
 
