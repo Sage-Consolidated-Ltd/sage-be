@@ -705,14 +705,33 @@ func nullIfEmpty(s string) interface{} {
 func (r *SecurityEventRepository) GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error) {
 	const q = `
 		SELECT
-			COALESCE(COUNT(*) FILTER (WHERE LOWER(severity) = 'critical'), 0) AS critical,
-			COALESCE(COUNT(*) FILTER (WHERE LOWER(severity) = 'high'), 0) AS high,
-			COALESCE(COUNT(*) FILTER (WHERE LOWER(severity) = 'medium'), 0) AS medium,
-			COALESCE(COUNT(*) FILTER (WHERE LOWER(severity) = 'low'), 0) AS low,
-			COALESCE(COUNT(*) FILTER (WHERE occurred_at >= NOW() - INTERVAL '7 days'), 0) AS new_in_last_7_days,
-			COALESCE(COUNT(*), 0) AS total_threats
-		FROM security_events
-		WHERE organization_id = $1
+			COALESCE(SUM(critical), 0) AS critical,
+			COALESCE(SUM(high), 0) AS high,
+			COALESCE(SUM(medium), 0) AS medium,
+			COALESCE(SUM(low), 0) AS low,
+			COALESCE(SUM(new_in_last_7_days), 0) AS new_in_last_7_days,
+			COALESCE(SUM(total_threats), 0) AS total_threats
+		FROM (
+			SELECT
+				COUNT(*) FILTER (WHERE LOWER(severity) = 'critical') AS critical,
+				COUNT(*) FILTER (WHERE LOWER(severity) = 'high') AS high,
+				COUNT(*) FILTER (WHERE LOWER(severity) = 'medium') AS medium,
+				COUNT(*) FILTER (WHERE LOWER(severity) = 'low') AS low,
+				COUNT(*) FILTER (WHERE occurred_at >= NOW() - INTERVAL '7 days') AS new_in_last_7_days,
+				COUNT(*) AS total_threats
+			FROM security_events
+			WHERE organization_id = $1
+			UNION ALL
+			SELECT
+				COUNT(*) FILTER (WHERE LOWER(severity) = 'critical') AS critical,
+				COUNT(*) FILTER (WHERE LOWER(severity) = 'high') AS high,
+				COUNT(*) FILTER (WHERE LOWER(severity) = 'medium') AS medium,
+				COUNT(*) FILTER (WHERE LOWER(severity) = 'low') AS low,
+				COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') AS new_in_last_7_days,
+				COUNT(*) AS total_threats
+			FROM threats
+			WHERE organization_id = $1
+		) combined
 	`
 	var summary domain.ThreatsSummary
 	if err := r.db.GetContext(ctx, &summary, q, orgID); err != nil {
