@@ -83,5 +83,7 @@ func RegisterEventRoutes(router fiber.Router, eh *EventHandler, m *middlewares.A
 		events.Get("/logs/:id", m.RequireAuth, eh.GetLogDetail)
 		events.Post("/logs/ingest", m.RequireAuth, eh.IngestLog)
 		events.Post("/logs/bulk-ingest", m.RequireAuth, eh.BulkIngestLogs)
+		events.Get("/threats/summary", m.RequireAuth, eh.GetThreatsSummary)
+		events.Get("/vulnerabilities/summary", m.RequireAuth, eh.GetThreatsSummary)
 	}
 }

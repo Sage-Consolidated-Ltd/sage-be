@@ -116,3 +116,15 @@ func (h *EventHandler) BulkIngestLogs(c *fiber.Ctx) error {
 	}
 	return response.JSON(c, fiber.StatusOK, "Bulk ingestion completed", result)
 }
+
+func (h *EventHandler) GetThreatsSummary(c *fiber.Ctx) error {
+	orgID, err := getOrgID(c)
+	if err != nil {
+		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+	}
+	summary, err := h.service.GetThreatsSummary(c.Context(), orgID)
+	if err != nil {
+		return response.Error(c, fiber.StatusInternalServerError, "FAILED_TO_GET_THREATS_SUMMARY", err.Error())
+	}
+	return response.JSON(c, fiber.StatusOK, "Threats summary retrieved", summary)
+}

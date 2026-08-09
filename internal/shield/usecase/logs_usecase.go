@@ -151,3 +151,7 @@ func (s *LogsService) SearchLogs(ctx context.Context, orgID uuid.UUID, filters m
 func (s *LogsService) GetLogByID(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*domain.SecurityEvent, error) {
 	return s.eventRepo.GetEventByID(ctx, id, orgID)
 }
+
+func (s *LogsService) GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error) {
+	return s.eventRepo.GetThreatsSummary(ctx, orgID)
+}

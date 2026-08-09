@@ -22,6 +22,7 @@ type SecurityEventRepository interface {
 	BulkCreateEventsWithReturning(ctx context.Context, events []*domain.SecurityEvent) ([]uuid.UUID, error)
 	BulkInsertRawEvents(ctx context.Context, orgID uuid.UUID, sourceID *uuid.UUID, events []domain.NormalizedEvent) ([]domain.CreateRawEventResponse, error)
 	GetRawEventByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*domain.RawEvent, error)
+	GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error)
 }
 
 type DataQualityRepository interface {

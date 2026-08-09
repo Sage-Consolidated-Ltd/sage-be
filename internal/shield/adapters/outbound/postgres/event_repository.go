@@ -701,3 +701,22 @@ func nullIfEmpty(s string) interface{} {
 	}
 	return s
 }
+
+func (r *SecurityEventRepository) GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error) {
+	const q = `
+		SELECT
+			COALESCE(COUNT(*) FILTER (WHERE LOWER(severity) = 'critical'), 0) AS critical,
+			COALESCE(COUNT(*) FILTER (WHERE LOWER(severity) = 'high'), 0) AS high,
+			COALESCE(COUNT(*) FILTER (WHERE LOWER(severity) = 'medium'), 0) AS medium,
+			COALESCE(COUNT(*) FILTER (WHERE LOWER(severity) = 'low'), 0) AS low,
+			COALESCE(COUNT(*) FILTER (WHERE occurred_at >= NOW() - INTERVAL '7 days'), 0) AS new_in_last_7_days,
+			COALESCE(COUNT(*), 0) AS total_threats
+		FROM security_events
+		WHERE organization_id = $1
+	`
+	var summary domain.ThreatsSummary
+	if err := r.db.GetContext(ctx, &summary, q, orgID); err != nil {
+		return nil, fmt.Errorf("failed to get threats summary: %w", err)
+	}
+	return &summary, nil
+}
