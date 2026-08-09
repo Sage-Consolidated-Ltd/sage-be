@@ -34,7 +34,7 @@ services:
     networks: [sage-net]
 
   migrate:
-    image: ${GHCR_IMAGE_PREFIX:-sage}-migrate:${TAG:-latest}
+    image: ${GHCR_IMAGE_PREFIX:-sage}/migrate:${TAG:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -51,7 +51,7 @@ services:
     restart: "no"
 
   api:
-    image: ${GHCR_IMAGE_PREFIX:-sage}-api:${TAG:-latest}
+    image: ${GHCR_IMAGE_PREFIX:-sage}/api:${TAG:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -71,7 +71,7 @@ services:
     networks: [sage-net]
 
   shield:
-    image: ${GHCR_IMAGE_PREFIX:-sage}-shield:${TAG:-latest}
+    image: ${GHCR_IMAGE_PREFIX:-sage}/shield:${TAG:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile
@@ -91,7 +91,7 @@ services:
     networks: [sage-net]
 
   worker:
-    image: ${GHCR_IMAGE_PREFIX:-sage}-worker:${TAG:-latest}
+    image: ${GHCR_IMAGE_PREFIX:-sage}/worker:${TAG:-latest}
     build:
       context: .
       dockerfile: docker/Dockerfile
