@@ -4,12 +4,16 @@ import (
 	"sage-backend/internal/shared/config"
 	"sage-backend/internal/shared/db"
 	shield_http "sage-backend/internal/shield/adapters/inbound/http"
+	"sage-backend/internal/shield/adapters/outbound/memory"
 	"sage-backend/internal/shield/adapters/outbound/postgres"
+	shield_redis "sage-backend/internal/shield/adapters/outbound/redis"
 	"sage-backend/internal/shield/ports/inbound"
+	"sage-backend/internal/shield/ports/outbound"
 	"sage-backend/internal/shield/usecase"
 	"sage-backend/pkg/crypto"
 
 	"github.com/go-resty/resty/v2"
+	redis_driver "github.com/redis/go-redis/v9"
 )
 
 type Module struct {
@@ -19,6 +23,8 @@ type Module struct {
 	ParserUseCase      inbound.ParserUseCase
 	IntegrationUseCase inbound.IntegrationUseCase
 	DashboardUseCase   inbound.DashboardUseCase
+	QualityEngine      inbound.DataQualityEngine
+	IncidentEngine     inbound.IncidentEngine
 
 	EventHandler       *shield_http.EventHandler
 	QualityHandler     *shield_http.QualityHandler
@@ -34,6 +40,16 @@ func NewModule(
 	encryptor crypto.Encryptor,
 	restyClient *resty.Client,
 ) *Module {
+	return NewModuleWithRedis(database, appConfig, encryptor, restyClient, nil)
+}
+
+func NewModuleWithRedis(
+	database *db.DB,
+	appConfig *config.APIConfig,
+	encryptor crypto.Encryptor,
+	restyClient *resty.Client,
+	redisClient *redis_driver.Client,
+) *Module {
 	eventRepo := postgres.NewSecurityEventRepository(database)
 	dataSourceRepo := postgres.NewDataSourceRepository(database)
 	jobRepo := postgres.NewIngestionJobRepository(database)
@@ -42,6 +58,17 @@ func NewModule(
 	integrationRepo := postgres.NewIntegrationRepository(database)
 	parsedLogRepo := postgres.NewParsedLogRepository(database)
 	dashboardRepo := postgres.NewDashboardRepository(database)
+
+	var correlationStore outbound.CorrelationStore
+	if redisClient != nil {
+		correlationStore = shield_redis.NewCorrelationStore(redisClient)
+	} else {
+		correlationStore = memory.NewCorrelationStore()
+	}
+
+	dataQualityEngine := usecase.NewDataQualityEngine()
+	incidentEngine := usecase.NewIncidentEngine(correlationStore)
+	_ = usecase.RegisterDefaultWindowsRules(incidentEngine, correlationStore)
 
 	logsUseCase := usecase.NewLogsService(
 		eventRepo,
@@ -94,6 +121,8 @@ func NewModule(
 		ParserUseCase:      parserUseCase,
 		IntegrationUseCase: integrationUseCase,
 		DashboardUseCase:   dashboardUseCase,
+		QualityEngine:      dataQualityEngine,
+		IncidentEngine:     incidentEngine,
 		EventHandler:       eventHandler,
 		QualityHandler:     qualityHandler,
 		ParserHandler:      parserHandler,

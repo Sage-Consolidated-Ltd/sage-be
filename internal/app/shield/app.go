@@ -29,7 +29,7 @@ func New() (*app.App, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	_, err = shared_redis.LaunchRedis(&cfg.BaseConfig)
+	redisClient, err := shared_redis.LaunchRedis(&cfg.BaseConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
@@ -44,11 +44,12 @@ func New() (*app.App, error) {
 	restyClient := resty.New()
 	authMiddleware := &middlewares.AuthMiddleware{}
 
-	shieldMod := shield.NewModule(
+	shieldMod := shield.NewModuleWithRedis(
 		database,
 		&config.APIConfig{BaseConfig: cfg.BaseConfig},
 		encryptor,
 		restyClient,
+		redisClient,
 	)
 
 	fiberApp := app.NewFiberApp()
