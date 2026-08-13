@@ -3,10 +3,12 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
 
@@ -119,15 +121,15 @@ func (r *DataQualityRepository) UpdateScan(ctx context.Context, scan *domain.Dat
 }
 
 func (r *DataQualityRepository) GetScanByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*domain.DataQualityScan, error) {
-	var scan domain.DataQualityScan
-	err := r.db.GetContext(ctx, &scan, GET_SCAN, id, orgID)
+	var dto models.DataQualityScanDTO
+	err := r.db.GetContext(ctx, &dto, GET_SCAN, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, apperrors.NotFoundError("SCAN NOT FOUND")
 		}
 		return nil, err
 	}
-	return &scan, nil
+	return dto.ToDomain(), nil
 }
 
 func (r *DataQualityRepository) ListScans(ctx context.Context, orgID uuid.UUID, page, pageSize int) ([]*domain.DataQualityScan, error) {
@@ -138,10 +140,15 @@ func (r *DataQualityRepository) ListScans(ctx context.Context, orgID uuid.UUID, 
 		pageSize = 25
 	}
 	offset := (page - 1) * pageSize
-	var scans []*domain.DataQualityScan
-	err := r.db.SelectContext(ctx, &scans, LIST_SCANS, orgID, pageSize, offset)
+	var dtos []*models.DataQualityScanDTO
+	err := r.db.SelectContext(ctx, &dtos, LIST_SCANS, orgID, pageSize, offset)
 	if err != nil {
 		return nil, err
+	}
+
+	scans := make([]*domain.DataQualityScan, 0, len(dtos))
+	for _, dto := range dtos {
+		scans = append(scans, dto.ToDomain())
 	}
 	return scans, nil
 }
@@ -163,10 +170,15 @@ func (r *DataQualityRepository) CreateSourceMetric(ctx context.Context, metric *
 }
 
 func (r *DataQualityRepository) GetSourceMetricsByScan(ctx context.Context, scanID uuid.UUID, orgID uuid.UUID) ([]*domain.DataQualitySourceMetric, error) {
-	var metrics []*domain.DataQualitySourceMetric
-	err := r.db.SelectContext(ctx, &metrics, GET_METRICS_BY_SCAN, scanID, orgID)
+	var dtos []*models.DataQualitySourceMetricDTO
+	err := r.db.SelectContext(ctx, &dtos, GET_METRICS_BY_SCAN, scanID, orgID)
 	if err != nil {
 		return nil, err
+	}
+
+	metrics := make([]*domain.DataQualitySourceMetric, 0, len(dtos))
+	for _, dto := range dtos {
+		metrics = append(metrics, dto.ToDomain())
 	}
 	return metrics, nil
 }
@@ -174,11 +186,14 @@ func (r *DataQualityRepository) GetSourceMetricsByScan(ctx context.Context, scan
 func (r *DataQualityRepository) CreateSuggestion(ctx context.Context, suggestion *domain.DataQualitySuggestion) error {
 	var id uuid.UUID
 	var createdAt time.Time
-	err := r.db.QueryRowContext(
+	fixJSON, err := json.Marshal(suggestion.SuggestedFix)
+	if err != nil {
+		return err
+	}
+	err = r.db.QueryRowContext(
 		ctx, CREATE_SUGGESTION,
 		suggestion.OrganizationID, suggestion.SourceID, suggestion.ParserID,
-		suggestion.Summary, suggestion.Recommendation, suggestion.SuggestedFix,
-		suggestion.Confidence, suggestion.Status,
+		suggestion.Summary, suggestion.Recommendation, fixJSON, suggestion.Confidence, suggestion.Status,
 	).Scan(&id, &createdAt)
 	if err != nil {
 		return err
@@ -199,7 +214,7 @@ func (r *DataQualityRepository) UpdateSuggestionStatus(ctx context.Context, id u
 }
 
 func (r *DataQualityRepository) GetSuggestions(ctx context.Context, orgID uuid.UUID, sourceID, parserID *uuid.UUID, status domain.SuggestionStatus) ([]*domain.DataQualitySuggestion, error) {
-	var suggestions []*domain.DataQualitySuggestion
+	var dtos []*models.DataQualitySuggestionDTO
 	source := ""
 	if sourceID != nil {
 		source = sourceID.String()
@@ -214,9 +229,14 @@ func (r *DataQualityRepository) GetSuggestions(ctx context.Context, orgID uuid.U
 	}
 	// Build query with optional filters using OR conditions
 	query := GET_SUGGESTIONS + " ORDER BY created_at DESC"
-	err := r.db.SelectContext(ctx, &suggestions, query, orgID, source, parser, statusStr)
+	err := r.db.SelectContext(ctx, &dtos, query, orgID, source, parser, statusStr)
 	if err != nil {
 		return nil, err
+	}
+
+	suggestions := make([]*domain.DataQualitySuggestion, 0, len(dtos))
+	for _, dto := range dtos {
+		suggestions = append(suggestions, dto.ToDomain())
 	}
 	return suggestions, nil
 }

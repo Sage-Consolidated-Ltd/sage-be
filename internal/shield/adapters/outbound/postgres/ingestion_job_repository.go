@@ -7,6 +7,7 @@ import (
 
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
 
@@ -81,15 +82,15 @@ func (r *IngestionJobRepository) CreateJob(ctx context.Context, job *domain.Inge
 }
 
 func (r *IngestionJobRepository) GetJobByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*domain.IngestionJob, error) {
-	var job domain.IngestionJob
-	err := r.db.GetContext(ctx, &job, GET_JOB, id, orgID)
+	var dto models.IngestionJobDTO
+	err := r.db.GetContext(ctx, &dto, GET_JOB, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, apperrors.NotFoundError("JOB NOT FOUND")
 		}
 		return nil, err
 	}
-	return &job, nil
+	return dto.ToDomain(), nil
 }
 
 func (r *IngestionJobRepository) UpdateJobStatus(ctx context.Context, id uuid.UUID, orgID uuid.UUID, status domain.JobStatus, eventsProcessed, eventsFailed int64, errMsg *string) error {
@@ -134,10 +135,15 @@ func (r *IngestionJobRepository) ListJobs(ctx context.Context, orgID uuid.UUID, 
 		return nil, 0, err
 	}
 
-	var jobs []*domain.IngestionJob
-	err = r.db.SelectContext(ctx, &jobs, LIST_JOBS, orgID, jobTypeStr, statusStr, pageSize, offset)
+	var dtos []*models.IngestionJobDTO
+	err = r.db.SelectContext(ctx, &dtos, LIST_JOBS, orgID, jobTypeStr, statusStr, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	jobs := make([]*domain.IngestionJob, 0, len(dtos))
+	for _, dto := range dtos {
+		jobs = append(jobs, dto.ToDomain())
 	}
 	return jobs, total, nil
 }

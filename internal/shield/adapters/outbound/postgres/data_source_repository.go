@@ -8,6 +8,7 @@ import (
 
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
 
@@ -146,15 +147,15 @@ func (r *DataSourceRepository) UpdateDataSource(ctx context.Context, ds *domain.
 }
 
 func (r *DataSourceRepository) GetDataSourceByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*domain.DataSource, error) {
-	var ds domain.DataSource
-	err := r.db.GetContext(ctx, &ds, GET_DATA_SOURCE, id, orgID)
+	var dto models.DataSourceDTO
+	err := r.db.GetContext(ctx, &dto, GET_DATA_SOURCE, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, apperrors.NotFoundError("DATA SOURCE NOT FOUND")
 		}
 		return nil, err
 	}
-	return &ds, nil
+	return dto.ToDomain(), nil
 }
 
 func (r *DataSourceRepository) ListDataSources(ctx context.Context, orgID uuid.UUID, filters map[string]interface{}, page, pageSize int) ([]*domain.DataSource, int, error) {
@@ -185,12 +186,16 @@ func (r *DataSourceRepository) ListDataSources(ctx context.Context, orgID uuid.U
 		return nil, 0, err
 	}
 
-	var sources []*domain.DataSource
+	var sources []*models.DataSourceDTO
 	err = r.db.SelectContext(ctx, &sources, LIST_DATA_SOURCES, orgID, status, typ, search, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
 	}
-	return sources, total, nil
+	var domainSources []*domain.DataSource
+	for _, dto := range sources {
+		domainSources = append(domainSources, dto.ToDomain())
+	}
+	return domainSources, total, nil
 }
 
 func (r *DataSourceRepository) UpdateHealthMetrics(ctx context.Context, id uuid.UUID, eventsToday, totalEvents, errorCount int64, lastEventAt, lastSyncAt *time.Time) error {
@@ -274,8 +279,8 @@ func (r *DataSourceRepository) GetAggregatedHealth(ctx context.Context, orgID uu
 }
 
 func (r *DataSourceRepository) GetSourcesWithIssues(ctx context.Context, orgID uuid.UUID) ([]*domain.DataSource, error) {
-	var sources []*domain.DataSource
-	err := r.db.SelectContext(ctx, &sources, `
+	var dtos []*models.DataSourceDTO
+	err := r.db.SelectContext(ctx, &dtos, `
 		SELECT * FROM data_sources
 		WHERE organization_id = $1 AND deleted_at IS NULL
 			AND (delayed_by_minutes > 15 OR status = $2)
@@ -284,14 +289,22 @@ func (r *DataSourceRepository) GetSourcesWithIssues(ctx context.Context, orgID u
 	if err != nil {
 		return nil, err
 	}
+	var sources []*domain.DataSource
+	for _, dto := range dtos {
+		sources = append(sources, dto.ToDomain())
+	}
 	return sources, nil
 }
 
 func (r *DataSourceRepository) ListAllActiveDataSources(ctx context.Context) ([]*domain.DataSource, error) {
-	var sources []*domain.DataSource
-	err := r.db.SelectContext(ctx, &sources, LIST_ALL_ACTIVE_DATA_SOURCES)
+	var dtos []*models.DataSourceDTO
+	err := r.db.SelectContext(ctx, &dtos, LIST_ALL_ACTIVE_DATA_SOURCES)
 	if err != nil {
 		return nil, err
+	}
+	var sources []*domain.DataSource
+	for _, dto := range dtos {
+		sources = append(sources, dto.ToDomain())
 	}
 	return sources, nil
 }
