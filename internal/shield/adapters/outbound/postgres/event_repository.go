@@ -234,33 +234,45 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 	}
 	offset := (page - 1) * pageSize
 
-	sourceID := ""
-	if s, ok := filters["source_id"].(string); ok {
-		sourceID = s
+	var sourceID *uuid.UUID
+	if sid, ok := filters["source_id"].(uuid.UUID); ok && sid != uuid.Nil {
+		sourceID = &sid
+	} else if sidStr, ok := filters["source_id"].(string); ok && sidStr != "" {
+		if uid, err := uuid.Parse(sidStr); err == nil {
+			sourceID = &uid
+		}
 	}
-	source := ""
-	if s, ok := filters["source"].(string); ok {
-		source = s
+
+	var source *string
+	if s, ok := filters["source"].(string); ok && s != "" {
+		source = &s
 	}
-	eventType := ""
-	if et, ok := filters["event_type"].(string); ok {
-		eventType = et
+
+	var eventType *string
+	if et, ok := filters["event_type"].(string); ok && et != "" {
+		eventType = &et
 	}
-	category := ""
-	if c, ok := filters["category"].(string); ok {
-		category = c
+
+	var category *string
+	if c, ok := filters["event_category"].(string); ok && c != "" {
+		category = &c
+	} else if c, ok := filters["category"].(string); ok && c != "" {
+		category = &c
 	}
-	severity := ""
-	if s, ok := filters["severity"].(string); ok {
-		severity = s
+
+	var severity *string
+	if s, ok := filters["severity"].(string); ok && s != "" {
+		severity = &s
 	}
-	actorEmail := ""
-	if ae, ok := filters["actor_email"].(string); ok {
-		actorEmail = ae
+
+	var actorEmail *string
+	if ae, ok := filters["actor_email"].(string); ok && ae != "" {
+		actorEmail = &ae
 	}
-	ipAddress := ""
-	if ip, ok := filters["ip_address"].(string); ok {
-		ipAddress = ip
+
+	var ipAddress *string
+	if ip, ok := filters["ip_address"].(string); ok && ip != "" {
+		ipAddress = &ip
 	}
 
 	var startTime *time.Time
@@ -273,9 +285,11 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 		endTime = &et
 	}
 
-	search := ""
-	if q, ok := filters["q"].(string); ok {
-		search = q
+	var search *string
+	if q, ok := filters["q"].(string); ok && q != "" {
+		search = &q
+	} else if s, ok := filters["search"].(string); ok && s != "" {
+		search = &s
 	}
 
 	var total int
@@ -309,14 +323,16 @@ func (r *SecurityEventRepository) GetEventsBySource(ctx context.Context, sourceI
 	}
 	offset := (page - 1) * pageSize
 
-	eventType := ""
-	if et, ok := filters["event_type"].(string); ok {
-		eventType = et
+	var eventType *string
+	if et, ok := filters["event_type"].(string); ok && et != "" {
+		eventType = &et
 	}
-	severity := ""
-	if s, ok := filters["severity"].(string); ok {
-		severity = s
+
+	var severity *string
+	if s, ok := filters["severity"].(string); ok && s != "" {
+		severity = &s
 	}
+
 	var startTime *time.Time
 	if st, ok := filters["start_time"].(time.Time); ok && !st.IsZero() {
 		startTime = &st
