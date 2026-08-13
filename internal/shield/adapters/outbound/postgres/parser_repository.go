@@ -3,11 +3,13 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"time"
 
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/types"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
 
@@ -122,15 +124,15 @@ func (r *ParserRepository) UpdateParser(ctx context.Context, parser *domain.Pars
 }
 
 func (r *ParserRepository) GetParserByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*domain.Parser, error) {
-	var parser domain.Parser
-	err := r.db.GetContext(ctx, &parser, GET_PARSER, id, orgID)
+	var dto models.ParserDTO
+	err := r.db.GetContext(ctx, &dto, GET_PARSER, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, apperrors.NotFoundError("PARSER NOT FOUND")
 		}
 		return nil, err
 	}
-	return &parser, nil
+	return dto.ToDomain(), nil
 }
 
 func (r *ParserRepository) ListParsers(ctx context.Context, orgID uuid.UUID, filters map[string]interface{}, page, pageSize int) ([]*domain.Parser, int, error) {
@@ -161,10 +163,15 @@ func (r *ParserRepository) ListParsers(ctx context.Context, orgID uuid.UUID, fil
 		return nil, 0, err
 	}
 
-	var parsers []*domain.Parser
-	err = r.db.SelectContext(ctx, &parsers, LIST_PARSERS, orgID, status, parserType, search, pageSize, offset)
+	var dtos []*models.ParserDTO
+	err = r.db.SelectContext(ctx, &dtos, LIST_PARSERS, orgID, status, parserType, search, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	parsers := make([]*domain.Parser, 0, len(dtos))
+	for _, dto := range dtos {
+		parsers = append(parsers, dto.ToDomain())
 	}
 	return parsers, total, nil
 }
@@ -174,7 +181,10 @@ func (r *ParserRepository) EnableParser(ctx context.Context, id uuid.UUID, orgID
 	if err != nil {
 		return err
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if rows == 0 {
 		return apperrors.NotFoundError("PARSER NOT FOUND")
 	}
@@ -186,7 +196,10 @@ func (r *ParserRepository) DisableParser(ctx context.Context, id uuid.UUID, orgI
 	if err != nil {
 		return err
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if rows == 0 {
 		return apperrors.NotFoundError("PARSER NOT FOUND")
 	}
@@ -194,28 +207,41 @@ func (r *ParserRepository) DisableParser(ctx context.Context, id uuid.UUID, orgI
 }
 
 func (r *ParserRepository) CreateParserVersion(ctx context.Context, version *domain.ParserVersion) error {
-	var id uuid.UUID
-	var createdAt time.Time
-	err := r.db.QueryRowContext(
-		ctx, CREATE_PARSER_VERSION,
-		version.OrganizationID, version.ParserID, version.VersionNumber,
-		version.Logic, version.Mappings, version.ChangedBy, version.ChangeNote,
-	).Scan(&id, &createdAt)
+	logicJSON, err := json.Marshal(version.Logic)
 	if err != nil {
 		return err
 	}
-	version.ID = id
-	version.CreatedAt = createdAt
-	return nil
+	mappingsJSON, err := json.Marshal(version.Mappings)
+	if err != nil {
+		return err
+	}
+
+	err = r.db.QueryRowContext(
+		ctx,
+		CREATE_PARSER_VERSION,
+		version.OrganizationID,
+		version.ParserID,
+		version.VersionNumber,
+		logicJSON,
+		mappingsJSON,
+		version.ChangedBy,
+		version.ChangeNote,
+	).Scan(&version.ID, &version.CreatedAt)
+
+	return err
 }
 
 func (r *ParserRepository) GetParserVersions(ctx context.Context, parserID uuid.UUID, orgID uuid.UUID) ([]*domain.ParserVersion, error) {
-	var versions []*domain.ParserVersion
-	// Use query that also filters org
+	var dtos []*models.ParserVersionDTO
 	query := GET_PARSER_VERSIONS + " AND organization_id = $2"
-	err := r.db.SelectContext(ctx, &versions, query, parserID, orgID)
+	err := r.db.SelectContext(ctx, &dtos, query, parserID, orgID)
 	if err != nil {
 		return nil, err
+	}
+
+	versions := make([]*domain.ParserVersion, 0, len(dtos))
+	for _, dto := range dtos {
+		versions = append(versions, dto.ToDomain())
 	}
 	return versions, nil
 }

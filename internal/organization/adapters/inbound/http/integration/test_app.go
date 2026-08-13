@@ -43,6 +43,10 @@ func setUpOrgApp(t *testing.T) *TestHarness {
 
 	database := testPostgres(t)
 	rdb := testRedis(t)
+	if database == nil || rdb == nil {
+		t.Skip("Integration test skipped: database or Redis instance unavailable")
+		return nil
+	}
 
 	config.InitSessionStore(&cfg.BaseConfig)
 
