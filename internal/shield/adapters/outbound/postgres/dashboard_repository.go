@@ -120,25 +120,37 @@ func (r *DashboardRepository) GetThreatIntelFeedsSummary(ctx context.Context, or
 
 // Widget 6: Active Incidents Table
 func (r *DashboardRepository) GetActiveIncidents(ctx context.Context, orgID uuid.UUID, limit int) ([]*domain.ActiveIncident, error) {
-	// Query high severity security events as active incidents
-	const q = `
-		SELECT id::text, event_type AS incident_name, severity, occurred_at AS last_activity
+	if limit <= 0 {
+		limit = 10
+	}
+
+	// 1. Try querying real incidents table first
+	const qIncidents = `
+		SELECT id::text, title AS incident_name, severity, status, occurred_at AS last_activity
+		FROM incidents
+		WHERE organization_id = $1 AND LOWER(status) NOT IN ('resolved', 'dismissed')
+		ORDER BY occurred_at DESC
+		LIMIT $2
+	`
+	var incidents []*domain.ActiveIncident
+	err := r.db.SelectContext(ctx, &incidents, qIncidents, orgID, limit)
+	if err == nil && len(incidents) > 0 {
+		return incidents, nil
+	}
+
+	// 2. Fallback: Query high severity security events as active incidents if incidents table is empty
+	const qEvents = `
+		SELECT id::text, event_type AS incident_name, severity, occurred_at AS last_activity, 'new' AS status
 		FROM security_events
 		WHERE organization_id = $1 AND LOWER(severity) IN ('high', 'critical')
 		ORDER BY occurred_at DESC
 		LIMIT $2
 	`
-	var incidents []*domain.ActiveIncident
-	err := r.db.SelectContext(ctx, &incidents, q, orgID, limit)
-	if err != nil || len(incidents) == 0 {
-		// Provide mock incidents if database events table is empty
-		incidents = []*domain.ActiveIncident{
-			{ID: "inc-1", IncidentName: "Suspicious Login from Unusual Location", Severity: "high", Status: "active"},
-			{ID: "inc-2", IncidentName: "Multiple Failed Login Attempts", Severity: "high", Status: "active"},
-			{ID: "inc-3", IncidentName: "Large outbound data transfer detected from sensitive endpoint", Severity: "medium", Status: "active"},
-			{ID: "inc-4", IncidentName: "Endpoint contacting a known Command-and-Control (C2) server", Severity: "critical", Status: "active"},
-		}
+	err = r.db.SelectContext(ctx, &incidents, qEvents, orgID, limit)
+	if err != nil || incidents == nil {
+		return []*domain.ActiveIncident{}, nil
 	}
+
 	return incidents, nil
 }
 

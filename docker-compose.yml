@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-sage_db}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5435}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +25,7 @@ services:
     container_name: sage-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6381}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -40,9 +40,10 @@ services:
       dockerfile: docker/Dockerfile
       args:
         BUILD_PATH: ./migrations
-    command: ["--up"]
+    command: ["--up", "--seed"]
     env_file: .env
     environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
       REDIS_DB_URL: redis://redis:6379/0
     depends_on:
       postgres:
@@ -59,11 +60,12 @@ services:
         BUILD_PATH: ./cmd/api
     env_file: .env
     environment:
-      PORT: 3333
+      PORT: ${PORT:-4000}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
       REDIS_DB_URL: redis://redis:6379/0
-      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-.sageconsolidated.com}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
     ports:
-      - "3333:3333"
+      - "${PORT:-4000}:${PORT:-4000}"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -80,11 +82,12 @@ services:
         BUILD_PATH: ./cmd/shield
     env_file: .env
     environment:
-      SHIELD_PORT: 3335
+      SHIELD_PORT: ${SHIELD_PORT:-3335}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
       REDIS_DB_URL: redis://redis:6379/0
-      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-.sageconsolidated.com}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
     ports:
-      - "3335:3335"
+      - "${SHIELD_PORT:-3335}:${SHIELD_PORT:-3335}"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -102,6 +105,7 @@ services:
     command: ["start", "--redis-addr", "redis:6379", "--concurrency", "10"]
     env_file: .env
     environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
       REDIS_DB_URL: redis://redis:6379/0
     depends_on:
       migrate:

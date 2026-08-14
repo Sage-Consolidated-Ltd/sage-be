@@ -87,6 +87,17 @@ func GetOrgID(c *fiber.Ctx) (uuid.UUID, error) {
 }
 
 func GetOrgIDStr(c *fiber.Ctx) string {
+	if config.Store == nil {
+		if orgIDVal := c.Locals("orgID"); orgIDVal != nil {
+			if id, ok := orgIDVal.(uuid.UUID); ok {
+				return id.String()
+			}
+			if s, ok := orgIDVal.(string); ok {
+				return s
+			}
+		}
+		return ""
+	}
 	sess, err := config.Store.Get(c)
 	if err != nil {
 		return ""
@@ -99,22 +110,29 @@ func GetOrgIDStr(c *fiber.Ctx) string {
 }
 
 func GetUserID(c *fiber.Ctx) uuid.UUID {
-	sess, err := config.Store.Get(c)
+	s := GetUserIDStr(c)
+	if s == "" {
+		return uuid.Nil
+	}
+	id, err := uuid.Parse(s)
 	if err != nil {
 		return uuid.Nil
 	}
-	userIDStr := sess.Get("userID")
-	if userIDStr == nil {
-		return uuid.Nil
-	}
-	userID, err := uuid.Parse(userIDStr.(string))
-	if err != nil {
-		return uuid.Nil
-	}
-	return userID
+	return id
 }
 
 func GetUserIDStr(c *fiber.Ctx) string {
+	if config.Store == nil {
+		if uidVal := c.Locals("userID"); uidVal != nil {
+			if id, ok := uidVal.(uuid.UUID); ok {
+				return id.String()
+			}
+			if s, ok := uidVal.(string); ok {
+				return s
+			}
+		}
+		return ""
+	}
 	sess, err := config.Store.Get(c)
 	if err != nil {
 		return ""
@@ -127,6 +145,14 @@ func GetUserIDStr(c *fiber.Ctx) string {
 }
 
 func GetRole(c *fiber.Ctx) string {
+	if config.Store == nil {
+		if roleVal := c.Locals("role"); roleVal != nil {
+			if s, ok := roleVal.(string); ok {
+				return s
+			}
+		}
+		return ""
+	}
 	sess, err := config.Store.Get(c)
 	if err != nil {
 		return ""
@@ -147,3 +173,22 @@ func GetSessionInfo(c *fiber.Ctx) (string, string, string, bool) {
 	}
 	return orgID, userID, role, true
 }
+
+type RequestContext struct {
+	UserID             string
+	RequestID          string
+	OrganizationID     string
+	RoleInOrganization string
+}
+
+func GetRequestContext(c *fiber.Ctx) RequestContext {
+	requestID, _ := c.Locals("requestID").(string)
+
+	return RequestContext{
+		UserID:             GetUserIDStr(c),
+		OrganizationID:     GetOrgIDStr(c),
+		RoleInOrganization: GetRole(c),
+		RequestID:          requestID,
+	}
+}
+

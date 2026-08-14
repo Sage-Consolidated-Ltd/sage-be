@@ -61,10 +61,10 @@ func TestSecurityEventRepository_StructScanMapping(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test SearchEvents row deserialization into SecurityEvent struct
-	filters := map[string]interface{}{"source_id": sourceID.String()}
+	filters := map[string]interface{}{"source_id": sourceID}
 	events, total, err := repo.SearchEvents(ctx, orgID, filters, 1, 10)
 	require.NoError(t, err, "SearchEvents MUST NOT fail with struct mapping errors")
+	require.NotEmpty(t, events, "SearchEvents MUST return matching events")
 	assert.GreaterOrEqual(t, total, 1)
-	assert.NotEmpty(t, events)
 	assert.Equal(t, orgID, events[0].OrganizationID)
 }

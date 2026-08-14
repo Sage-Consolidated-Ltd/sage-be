@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"sage-backend/internal/shared/db"
-	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shared/types"
 )
 
@@ -75,8 +74,3 @@ type IngestionJobResponse struct {
 	CreatedAt       time.Time              `json:"created_at"`
 }
 
-type PresignUploadResponse struct {
-	Key       string           `json:"key"`
-	ExpiresAt time.Time        `json:"expires_at"`
-	Post      s3.PresignedPost `json:"post"`
-}

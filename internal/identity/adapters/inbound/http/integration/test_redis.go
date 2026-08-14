@@ -17,7 +17,8 @@ func testRedis(t *testing.T) *redisClient.Client {
 
 	rdb, err := redis.LaunchRedis(&cfg.BaseConfig)
 	if err != nil {
-		t.Fatalf("failed to connect to test redis: %v", err)
+		t.Skipf("Skipping integration test: Redis unavailable: %v", err)
+		return nil
 	}
 
 	cleanupRedis(t, rdb)

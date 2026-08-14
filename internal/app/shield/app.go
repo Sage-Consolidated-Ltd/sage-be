@@ -1,6 +1,7 @@
 package shield
 
 import (
+	"context"
 	"fmt"
 
 	"sage-backend/internal/app"
@@ -10,8 +11,10 @@ import (
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/middlewares"
 	"sage-backend/internal/shared/response"
+	"sage-backend/internal/shared/storage/s3"
 	"sage-backend/internal/shield"
 	shield_http "sage-backend/internal/shield/adapters/inbound/http"
+	"sage-backend/internal/shield/adapters/outbound/queue"
 	"sage-backend/pkg/crypto"
 
 	"github.com/go-resty/resty/v2"
@@ -29,7 +32,7 @@ func New() (*app.App, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	_, err = shared_redis.LaunchRedis(&cfg.BaseConfig)
+	redisClient, err := shared_redis.LaunchRedis(&cfg.BaseConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
@@ -41,14 +44,25 @@ func New() (*app.App, error) {
 		return nil, fmt.Errorf("failed to initialize encryptor: %w", err)
 	}
 
+	s3Client, err := s3.NewClient(context.Background(), cfg.S3Bucket, cfg.S3Region)
+	var s3Uploader *s3.Uploader
+	if err == nil && s3Client != nil {
+		s3Uploader = s3.NewUploader(s3Client)
+	}
+
+	taskClient := queue.NewTaskClient(cfg.RedisDbUrl)
+
 	restyClient := resty.New()
 	authMiddleware := &middlewares.AuthMiddleware{}
 
-	shieldMod := shield.NewModule(
+	shieldMod := shield.NewModuleWithServices(
 		database,
 		&config.APIConfig{BaseConfig: cfg.BaseConfig},
 		encryptor,
 		restyClient,
+		redisClient,
+		s3Uploader,
+		taskClient,
 	)
 
 	fiberApp := app.NewFiberApp()
@@ -75,6 +89,7 @@ func New() (*app.App, error) {
 		shieldMod.ParserHandler,
 		shieldMod.EventHandler,
 		shieldMod.DashboardHandler,
+		shieldMod.UploadHandler,
 		authMiddleware,
 	)
 

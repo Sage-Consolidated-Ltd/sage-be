@@ -11,6 +11,7 @@ import (
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/errors/apperrors"
 	"sage-backend/internal/shared/types"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
 
@@ -213,15 +214,15 @@ func (r *SecurityEventRepository) BulkCreateEvents(ctx context.Context, events [
 }
 
 func (r *SecurityEventRepository) GetEventByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*domain.SecurityEvent, error) {
-	var event domain.SecurityEvent
-	err := r.db.GetContext(ctx, &event, GET_EVENT, id, orgID)
+	var dto models.SecurityEventDTO
+	err := r.db.GetContext(ctx, &dto, GET_EVENT, id, orgID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, apperrors.NotFoundError("EVENT NOT FOUND")
 		}
 		return nil, err
 	}
-	return &event, nil
+	return dto.ToDomain(), nil
 }
 
 func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.UUID, filters map[string]interface{}, page, pageSize int) ([]*domain.SecurityEvent, int, error) {
@@ -234,7 +235,6 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 	offset := (page - 1) * pageSize
 
 	var sourceID *uuid.UUID
-	fmt.Println("Got here")
 	if sid, ok := filters["source_id"].(uuid.UUID); ok && sid != uuid.Nil {
 		sourceID = &sid
 	} else if sidStr, ok := filters["source_id"].(string); ok && sidStr != "" {
@@ -242,33 +242,39 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 			sourceID = &uid
 		}
 	}
-	fmt.Printf("Parsed source_id: %s\n", sourceID)
 
 	var source *string
-	if s, ok := filters["source"].(string); s != "" && ok {
+	if s, ok := filters["source"].(string); ok && s != "" {
 		source = &s
 	}
 
 	var eventType *string
-	if et, ok := filters["event_type"].(string); et != "" && ok {
+	if et, ok := filters["event_type"].(string); ok && et != "" {
 		eventType = &et
 	}
+
 	var category *string
-	if c, ok := filters["event_category"].(string); c != "" && ok {
+	if c, ok := filters["event_category"].(string); ok && c != "" {
+		category = &c
+	} else if c, ok := filters["category"].(string); ok && c != "" {
 		category = &c
 	}
+
 	var severity *string
-	if s, ok := filters["severity"].(string); s != "" && ok {
+	if s, ok := filters["severity"].(string); ok && s != "" {
 		severity = &s
 	}
+
 	var actorEmail *string
-	if a, ok := filters["actor_email"].(string); a != "" && ok {
-		actorEmail = &a
+	if ae, ok := filters["actor_email"].(string); ok && ae != "" {
+		actorEmail = &ae
 	}
+
 	var ipAddress *string
-	if ip, ok := filters["ip_address"].(string); ip != "" && ok {
+	if ip, ok := filters["ip_address"].(string); ok && ip != "" {
 		ipAddress = &ip
 	}
+
 	var startTime *time.Time
 	if st, ok := filters["start_time"].(time.Time); ok && !st.IsZero() {
 		startTime = &st
@@ -278,12 +284,13 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 	if et, ok := filters["end_time"].(time.Time); ok && !et.IsZero() {
 		endTime = &et
 	}
+
 	var search *string
-	if s, ok := filters["search"].(string); s != "" && ok {
+	if q, ok := filters["q"].(string); ok && q != "" {
+		search = &q
+	} else if s, ok := filters["search"].(string); ok && s != "" {
 		search = &s
 	}
-
-	fmt.Printf("Filters - sourceID: %v, source: %v, eventType: %v, category: %v, severity: %v, actorEmail: %v, ipAddress: %v, startTime: %v, endTime: %v, search: %v, orgID:%v\n", sourceID, source, eventType, category, severity, actorEmail, ipAddress, startTime, endTime, search, orgID)
 
 	var total int
 	err := r.db.GetContext(ctx, &total, COUNT_EVENTS,
@@ -292,12 +299,17 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 		return nil, 0, err
 	}
 
-	var events []*domain.SecurityEvent
-	err = r.db.SelectContext(ctx, &events, SEARCH_EVENTS,
+	var dtos []*models.SecurityEventDTO
+	err = r.db.SelectContext(ctx, &dtos, SEARCH_EVENTS,
 		orgID, sourceID, source, eventType, category, severity, actorEmail, ipAddress,
 		startTime, endTime, search, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	events := make([]*domain.SecurityEvent, 0, len(dtos))
+	for _, dto := range dtos {
+		events = append(events, dto.ToDomain())
 	}
 	return events, total, nil
 }
@@ -311,14 +323,16 @@ func (r *SecurityEventRepository) GetEventsBySource(ctx context.Context, sourceI
 	}
 	offset := (page - 1) * pageSize
 
-	eventType := ""
-	if et, ok := filters["event_type"].(string); ok {
-		eventType = et
+	var eventType *string
+	if et, ok := filters["event_type"].(string); ok && et != "" {
+		eventType = &et
 	}
-	severity := ""
-	if s, ok := filters["severity"].(string); ok {
-		severity = s
+
+	var severity *string
+	if s, ok := filters["severity"].(string); ok && s != "" {
+		severity = &s
 	}
+
 	var startTime *time.Time
 	if st, ok := filters["start_time"].(time.Time); ok && !st.IsZero() {
 		startTime = &st
@@ -336,11 +350,16 @@ func (r *SecurityEventRepository) GetEventsBySource(ctx context.Context, sourceI
 		return nil, 0, err
 	}
 
-	var events []*domain.SecurityEvent
-	err = r.db.SelectContext(ctx, &events, GET_EVENTS_BY_SOURCE,
+	var dtos []*models.SecurityEventDTO
+	err = r.db.SelectContext(ctx, &dtos, GET_EVENTS_BY_SOURCE,
 		orgID, sourceID, eventType, severity, startTime, endTime, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	events := make([]*domain.SecurityEvent, 0, len(dtos))
+	for _, dto := range dtos {
+		events = append(events, dto.ToDomain())
 	}
 	return events, total, nil
 }
@@ -354,10 +373,15 @@ func (r *SecurityEventRepository) UpdateParseStatus(ctx context.Context, id uuid
 }
 
 func (r *SecurityEventRepository) GetEventsByParser(ctx context.Context, parserID uuid.UUID, orgID uuid.UUID, limit int) ([]*domain.SecurityEvent, error) {
-	var events []*domain.SecurityEvent
-	err := r.db.SelectContext(ctx, &events, GET_EVENTS_BY_PARSER, parserID, orgID, types.ParseStatusSuccess, limit)
+	var dtos []*models.SecurityEventDTO
+	err := r.db.SelectContext(ctx, &dtos, GET_EVENTS_BY_PARSER, parserID, orgID, types.ParseStatusSuccess, limit)
 	if err != nil {
 		return nil, err
+	}
+
+	events := make([]*domain.SecurityEvent, 0, len(dtos))
+	for _, dto := range dtos {
+		events = append(events, dto.ToDomain())
 	}
 	return events, nil
 }
@@ -684,15 +708,15 @@ func (r *SecurityEventRepository) BulkInsertRawEvents(
 }
 
 func (r *SecurityEventRepository) GetRawEventByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*domain.RawEvent, error) {
-	var rawEvent domain.RawEvent
-	err := r.db.GetContext(ctx, &rawEvent, GET_RAW_EVENT_BY_ID, id, orgID, "worker-1")
+	var dto models.RawEventDTO
+	err := r.db.GetContext(ctx, &dto, GET_RAW_EVENT_BY_ID, id, orgID, "worker-1")
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, apperrors.NotFoundError("RAW EVENT NOT FOUND")
 		}
 		return nil, err
 	}
-	return &rawEvent, nil
+	return dto.ToDomain(), nil
 }
 
 func nullIfEmpty(s string) interface{} {
@@ -733,9 +757,9 @@ func (r *SecurityEventRepository) GetThreatsSummary(ctx context.Context, orgID u
 			WHERE organization_id = $1
 		) combined
 	`
-	var summary domain.ThreatsSummary
-	if err := r.db.GetContext(ctx, &summary, q, orgID); err != nil {
+	var dto models.ThreatsSummaryDTO
+	if err := r.db.GetContext(ctx, &dto, q, orgID); err != nil {
 		return nil, fmt.Errorf("failed to get threats summary: %w", err)
 	}
-	return &summary, nil
+	return dto.ToDomain(), nil
 }

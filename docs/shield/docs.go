@@ -1752,14 +1752,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/logs/bulk-ingest": {
+        "/integrations/logs-data/upload/complete": {
             "post": {
                 "security": [
                     {
                         "SessionAuth": []
                     }
                 ],
-                "description": "Bulk ingests raw security events for a data source.",
+                "description": "Confirms a direct S3 upload by verifying the file exists in S3 and storing the log file record.\n\n## Flow\nCall this endpoint after receiving HTTP 204 from the S3 POST upload.\n\n## Rules\n- ` + "`" + `key` + "`" + ` must match exactly what was returned by ` + "`" + `/upload/presign` + "`" + `\n- ` + "`" + `etag` + "`" + ` must match the ` + "`" + `ETag` + "`" + ` response header from the S3 POST — include surrounding quotes e.g. ` + "`" + `\"abc123\"` + "`" + `\n- The file must exist in S3 at the given key or the request will fail with 404\n- ` + "`" + `metadata.source_type` + "`" + ` is required — describes the log source e.g. ` + "`" + `firewall` + "`" + `, ` + "`" + `nginx` + "`" + `, ` + "`" + `windows_security` + "`" + `\n- The upload can only be confirmed once — subsequent calls with the same key will fail\n- ` + "`" + `source_id` + "`" + ` is optional — links the log file to an existing data source in the system",
                 "consumes": [
                     "application/json"
                 ],
@@ -1769,21 +1769,51 @@ const docTemplate = `{
                 "tags": [
                     "Logs \u0026 Data"
                 ],
-                "summary": "Bulk Ingest Logs",
+                "summary": "Complete Upload",
                 "parameters": [
                     {
-                        "description": "Bulk Ingest Logs Request",
+                        "description": "Upload complete request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.BulkIngestLogsRequest"
+                            "$ref": "#/definitions/dto.UploadCompleteRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Confirmed log file record",
+                        "schema": {
+                            "$ref": "#/definitions/http.ConfirmUploadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or ETag mismatch",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "File not found in S3",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "409": {
+                        "description": "Upload already confirmed",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -1791,14 +1821,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/logs/ingest": {
+        "/integrations/logs-data/upload/presign": {
             "post": {
                 "security": [
                     {
                         "SessionAuth": []
                     }
                 ],
-                "description": "Ingests one raw security event, normalizes it, and stores it for investigation and detection.",
+                "description": "Initiates a direct-to-S3 upload flow by generating a presigned POST URL.\n\n## Flow\n1. Call this endpoint with the file metadata (name, size, content type)\n2. Use the returned ` + "`" + `post.url` + "`" + ` and ` + "`" + `post.fields` + "`" + ` to upload the file directly to S3 as ` + "`" + `multipart/form-data` + "`" + `\n3. The ` + "`" + `file` + "`" + ` field must be the **last** field in the multipart body\n4. On S3 success (HTTP 204), call ` + "`" + `/upload/complete` + "`" + ` with the ` + "`" + `key` + "`" + ` and ` + "`" + `ETag` + "`" + ` from the S3 response headers\n\n## Rules\n- Supported extensions: ` + "`" + `.json` + "`" + `, ` + "`" + `.csv` + "`" + `, ` + "`" + `.xml` + "`" + `, ` + "`" + `.gz` + "`" + `, ` + "`" + `.zip` + "`" + `, ` + "`" + `.tar` + "`" + `, ` + "`" + `.pcap` + "`" + `, ` + "`" + `.log` + "`" + `, ` + "`" + `.evt` + "`" + `, ` + "`" + `.evtx` + "`" + `, ` + "`" + `.txt` + "`" + `, ` + "`" + `.yml` + "`" + `, ` + "`" + `.yaml` + "`" + `\n- Maximum file size is enforced via the ` + "`" + `content-length-range` + "`" + ` condition in the policy\n- The presign URL expires in 24 hours — complete the upload before expiry\n- The returned ` + "`" + `key` + "`" + ` must be passed exactly as-is to the complete endpoint\n- Do not modify or add extra fields to the S3 POST — the policy will reject the request with HTTP 403",
                 "consumes": [
                     "application/json"
                 ],
@@ -1808,21 +1838,45 @@ const docTemplate = `{
                 "tags": [
                     "Logs \u0026 Data"
                 ],
-                "summary": "Ingest Log Event",
+                "summary": "Create Upload Presign",
                 "parameters": [
                     {
-                        "description": "Ingest Log Request",
+                        "description": "File metadata",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.IngestLogRequest"
+                            "$ref": "#/definitions/dto.UploadLogRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Presign response containing S3 POST URL, fields, key and expiry",
+                        "schema": {
+                            "$ref": "#/definitions/http.UploadPresignResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or unsupported file type",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "413": {
+                        "description": "File size exceeds maximum allowed",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.Response"
                         }
@@ -2000,6 +2054,40 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.DetectedType": {
+            "type": "string",
+            "enum": [
+                "windows_event_log",
+                "linux_syslog",
+                "csv_structured",
+                "xlsx_structured",
+                "unknown"
+            ],
+            "x-enum-varnames": [
+                "DetectedWindowsEventLog",
+                "DetectedLinuxSyslog",
+                "DetectedCSVStructured",
+                "DetectedXLSXStructured",
+                "DetectedUnknown"
+            ]
+        },
+        "domain.FileClass": {
+            "type": "string",
+            "enum": [
+                "csv",
+                "xlsx",
+                "log",
+                "json",
+                "pcap"
+            ],
+            "x-enum-varnames": [
+                "FileClassCSV",
+                "FileClassXLSX",
+                "FileClassLog",
+                "FileClassJSON",
+                "FileClassPCAP"
+            ]
+        },
         "domain.GeoThreatOrigin": {
             "type": "object",
             "properties": {
@@ -2137,22 +2225,28 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "critical": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
                 "high": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
                 "low": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
                 "medium": {
-                    "type": "integer"
+                    "type": "integer",
+                    "format": "int64"
                 },
-                "new_in_last_7_days": {
-                    "type": "integer"
+                "newInLast7Days": {
+                    "type": "integer",
+                    "format": "int64"
                 },
-                "total_threats": {
-                    "type": "integer"
+                "totalThreats": {
+                    "type": "integer",
+                    "format": "int64"
                 }
             }
         },
@@ -2169,25 +2263,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "suggestion_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.BulkIngestLogsRequest": {
-            "type": "object",
-            "required": [
-                "events",
-                "source_id"
-            ],
-            "properties": {
-                "events": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "$ref": "#/definitions/dto.IngestLogRequest"
-                    }
-                },
-                "source_id": {
                     "type": "string"
                 }
             }
@@ -2336,63 +2411,41 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.IngestLogRequest": {
+        "dto.LogUploadMetadata": {
             "type": "object",
             "required": [
-                "event_category",
-                "event_type",
-                "occurred_at",
-                "raw_payload",
-                "severity",
-                "source_id"
+                "source_type"
             ],
             "properties": {
-                "actor_email": {
-                    "type": "string"
+                "app_or_context": {
+                    "type": "string",
+                    "example": "windows"
                 },
-                "actor_username": {
-                    "type": "string"
+                "category": {
+                    "type": "string",
+                    "example": "windows"
                 },
-                "event_category": {
-                    "type": "string"
+                "description": {
+                    "type": "string",
+                    "example": "Windows security event logs"
                 },
-                "event_type": {
-                    "type": "string"
+                "host": {
+                    "type": "string",
+                    "example": "DESKTOP-1234567"
                 },
-                "geo_city": {
-                    "type": "string"
-                },
-                "geo_country": {
-                    "type": "string"
-                },
-                "ip_address": {
-                    "type": "string"
-                },
-                "occurred_at": {
-                    "type": "string"
-                },
-                "raw_payload": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "severity": {
-                    "enum": [
-                        "low",
-                        "medium",
-                        "high",
-                        "critical"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/types.Severity"
-                        }
-                    ]
-                },
-                "source_event_id": {
-                    "type": "string"
+                "index_name": {
+                    "type": "string",
+                    "example": "windows_security"
                 },
                 "source_id": {
-                    "type": "string"
+                    "description": "Optional ID of an existing data source to link this log file to",
+                    "type": "string",
+                    "example": "a1b2c3d4-..."
+                },
+                "source_type": {
+                    "description": "Log source type e.g. firewall, nginx, windows_security",
+                    "type": "string",
+                    "example": "windows_security"
                 }
             }
         },
@@ -2490,6 +2543,124 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.UploadCompleteRequest": {
+            "type": "object",
+            "required": [
+                "etag",
+                "key",
+                "metadata"
+            ],
+            "properties": {
+                "etag": {
+                    "description": "ETag header value from the S3 POST response — include surrounding quotes",
+                    "type": "string",
+                    "example": "\"7f5d37276b649790cfd8f11ee5946e02\""
+                },
+                "key": {
+                    "description": "S3 object key returned by the presign endpoint",
+                    "type": "string",
+                    "example": "uploads/pending/csv/428d4fcc-.../abc-123.csv"
+                },
+                "metadata": {
+                    "$ref": "#/definitions/dto.LogUploadMetadata"
+                }
+            }
+        },
+        "dto.UploadLogRequest": {
+            "type": "object",
+            "required": [
+                "contentType",
+                "filename",
+                "size"
+            ],
+            "properties": {
+                "contentType": {
+                    "description": "MIME type of the file e.g. text/csv",
+                    "type": "string"
+                },
+                "filename": {
+                    "description": "Original filename including extension e.g. windows_security.csv",
+                    "type": "string"
+                },
+                "size": {
+                    "description": "File size in bytes — must match the actual file size uploaded to S3",
+                    "type": "integer"
+                }
+            }
+        },
+        "http.ConfirmUploadResponse": {
+            "type": "object",
+            "properties": {
+                "appOrContext": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "detectedType": {
+                    "$ref": "#/definitions/domain.DetectedType"
+                },
+                "errorMessage": {
+                    "type": "string"
+                },
+                "eventCount": {
+                    "type": "integer"
+                },
+                "fileClass": {
+                    "$ref": "#/definitions/domain.FileClass"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "organizationID": {
+                    "type": "string"
+                },
+                "processedAt": {
+                    "type": "string"
+                },
+                "s3Key": {
+                    "type": "string"
+                },
+                "sourceID": {
+                    "type": "string"
+                },
+                "sourceType": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "userID": {
+                    "type": "string"
+                },
+                "userSelectedType": {
+                    "$ref": "#/definitions/domain.DetectedType"
+                }
+            }
+        },
+        "http.UploadPresignResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "post": {
+                    "$ref": "#/definitions/s3.PresignedPost"
+                }
+            }
+        },
         "response.Response": {
             "type": "object",
             "properties": {
@@ -2499,6 +2670,52 @@ const docTemplate = `{
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "s3.PresignedPost": {
+            "type": "object",
+            "properties": {
+                "fields": {
+                    "$ref": "#/definitions/s3.PresignedPostFields"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "s3.PresignedPostFields": {
+            "type": "object",
+            "properties": {
+                "Content-Type": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "policy": {
+                    "type": "string"
+                },
+                "x-amz-algorithm": {
+                    "type": "string"
+                },
+                "x-amz-credential": {
+                    "type": "string"
+                },
+                "x-amz-date": {
+                    "type": "string"
+                },
+                "x-amz-meta-expected-class": {
+                    "type": "string"
+                },
+                "x-amz-meta-original-name": {
+                    "type": "string"
+                },
+                "x-amz-meta-upload-source": {
+                    "type": "string"
+                },
+                "x-amz-signature": {
+                    "type": "string"
                 }
             }
         },
@@ -2532,21 +2749,6 @@ const docTemplate = `{
                 "ParserTypeCSV",
                 "ParserTypeKeyValue",
                 "ParserTypeAINLP"
-            ]
-        },
-        "types.Severity": {
-            "type": "string",
-            "enum": [
-                "low",
-                "medium",
-                "high",
-                "critical"
-            ],
-            "x-enum-varnames": [
-                "SeverityLow",
-                "SeverityMedium",
-                "SeverityHigh",
-                "SeverityCritical"
             ]
         }
     },
