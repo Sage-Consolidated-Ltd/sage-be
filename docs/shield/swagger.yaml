@@ -57,6 +57,34 @@ definitions:
       vulnerabilities_email:
         type: integer
     type: object
+  domain.DetectedType:
+    enum:
+    - windows_event_log
+    - linux_syslog
+    - csv_structured
+    - xlsx_structured
+    - unknown
+    type: string
+    x-enum-varnames:
+    - DetectedWindowsEventLog
+    - DetectedLinuxSyslog
+    - DetectedCSVStructured
+    - DetectedXLSXStructured
+    - DetectedUnknown
+  domain.FileClass:
+    enum:
+    - csv
+    - xlsx
+    - log
+    - json
+    - pcap
+    type: string
+    x-enum-varnames:
+    - FileClassCSV
+    - FileClassXLSX
+    - FileClassLog
+    - FileClassJSON
+    - FileClassPCAP
   domain.GeoThreatOrigin:
     properties:
       count:
@@ -146,16 +174,22 @@ definitions:
   domain.ThreatsSummary:
     properties:
       critical:
+        format: int64
         type: integer
       high:
+        format: int64
         type: integer
       low:
+        format: int64
         type: integer
       medium:
+        format: int64
         type: integer
-      new_in_last_7_days:
+      newInLast7Days:
+        format: int64
         type: integer
-      total_threats:
+      totalThreats:
+        format: int64
         type: integer
     type: object
   dto.ApplySuggestedFixRequest:
@@ -168,19 +202,6 @@ definitions:
         type: string
     required:
     - suggestion_id
-    type: object
-  dto.BulkIngestLogsRequest:
-    properties:
-      events:
-        items:
-          $ref: '#/definitions/dto.IngestLogRequest'
-        minItems: 1
-        type: array
-      source_id:
-        type: string
-    required:
-    - events
-    - source_id
     type: object
   dto.CreateIntegrationRequest:
     properties:
@@ -281,46 +302,34 @@ definitions:
     - name
     - parser_type
     type: object
-  dto.IngestLogRequest:
+  dto.LogUploadMetadata:
     properties:
-      actor_email:
+      app_or_context:
+        example: windows
         type: string
-      actor_username:
+      category:
+        example: windows
         type: string
-      event_category:
+      description:
+        example: Windows security event logs
         type: string
-      event_type:
+      host:
+        example: DESKTOP-1234567
         type: string
-      geo_city:
-        type: string
-      geo_country:
-        type: string
-      ip_address:
-        type: string
-      occurred_at:
-        type: string
-      raw_payload:
-        additionalProperties: true
-        type: object
-      severity:
-        allOf:
-        - $ref: '#/definitions/types.Severity'
-        enum:
-        - low
-        - medium
-        - high
-        - critical
-      source_event_id:
+      index_name:
+        example: windows_security
         type: string
       source_id:
+        description: Optional ID of an existing data source to link this log file
+          to
+        example: a1b2c3d4-...
+        type: string
+      source_type:
+        description: Log source type e.g. firewall, nginx, windows_security
+        example: windows_security
         type: string
     required:
-    - event_category
-    - event_type
-    - occurred_at
-    - raw_payload
-    - severity
-    - source_id
+    - source_type
     type: object
   dto.OktaParams:
     properties:
@@ -386,6 +395,89 @@ definitions:
           type: string
         type: array
     type: object
+  dto.UploadCompleteRequest:
+    properties:
+      etag:
+        description: ETag header value from the S3 POST response — include surrounding
+          quotes
+        example: '"7f5d37276b649790cfd8f11ee5946e02"'
+        type: string
+      key:
+        description: S3 object key returned by the presign endpoint
+        example: uploads/pending/csv/428d4fcc-.../abc-123.csv
+        type: string
+      metadata:
+        $ref: '#/definitions/dto.LogUploadMetadata'
+    required:
+    - etag
+    - key
+    - metadata
+    type: object
+  dto.UploadLogRequest:
+    properties:
+      contentType:
+        description: MIME type of the file e.g. text/csv
+        type: string
+      filename:
+        description: Original filename including extension e.g. windows_security.csv
+        type: string
+      size:
+        description: File size in bytes — must match the actual file size uploaded
+          to S3
+        type: integer
+    required:
+    - contentType
+    - filename
+    - size
+    type: object
+  http.ConfirmUploadResponse:
+    properties:
+      appOrContext:
+        type: string
+      category:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      detectedType:
+        $ref: '#/definitions/domain.DetectedType'
+      errorMessage:
+        type: string
+      eventCount:
+        type: integer
+      fileClass:
+        $ref: '#/definitions/domain.FileClass'
+      id:
+        type: string
+      organizationID:
+        type: string
+      processedAt:
+        type: string
+      s3Key:
+        type: string
+      sourceID:
+        type: string
+      sourceType:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: string
+      userSelectedType:
+        $ref: '#/definitions/domain.DetectedType'
+    type: object
+  http.UploadPresignResponse:
+    properties:
+      expires_at:
+        type: string
+      key:
+        type: string
+      post:
+        $ref: '#/definitions/s3.PresignedPost'
+    type: object
   response.Response:
     properties:
       data: {}
@@ -393,6 +485,36 @@ definitions:
         type: string
       success:
         type: boolean
+    type: object
+  s3.PresignedPost:
+    properties:
+      fields:
+        $ref: '#/definitions/s3.PresignedPostFields'
+      url:
+        type: string
+    type: object
+  s3.PresignedPostFields:
+    properties:
+      Content-Type:
+        type: string
+      key:
+        type: string
+      policy:
+        type: string
+      x-amz-algorithm:
+        type: string
+      x-amz-credential:
+        type: string
+      x-amz-date:
+        type: string
+      x-amz-meta-expected-class:
+        type: string
+      x-amz-meta-original-name:
+        type: string
+      x-amz-meta-upload-source:
+        type: string
+      x-amz-signature:
+        type: string
     type: object
   types.ParserStatus:
     enum:
@@ -420,18 +542,6 @@ definitions:
     - ParserTypeCSV
     - ParserTypeKeyValue
     - ParserTypeAINLP
-  types.Severity:
-    enum:
-    - low
-    - medium
-    - high
-    - critical
-    type: string
-    x-enum-varnames:
-    - SeverityLow
-    - SeverityMedium
-    - SeverityHigh
-    - SeverityCritical
 host: shield.sageconsolidated.com
 info:
   contact:
@@ -1543,53 +1653,114 @@ paths:
       summary: Sync Data Source
       tags:
       - Logs & Data
-  /logs/bulk-ingest:
+  /integrations/logs-data/upload/complete:
     post:
       consumes:
       - application/json
-      description: Bulk ingests raw security events for a data source.
+      description: |-
+        Confirms a direct S3 upload by verifying the file exists in S3 and storing the log file record.
+
+        ## Flow
+        Call this endpoint after receiving HTTP 204 from the S3 POST upload.
+
+        ## Rules
+        - `key` must match exactly what was returned by `/upload/presign`
+        - `etag` must match the `ETag` response header from the S3 POST — include surrounding quotes e.g. `"abc123"`
+        - The file must exist in S3 at the given key or the request will fail with 404
+        - `metadata.source_type` is required — describes the log source e.g. `firewall`, `nginx`, `windows_security`
+        - The upload can only be confirmed once — subsequent calls with the same key will fail
+        - `source_id` is optional — links the log file to an existing data source in the system
       parameters:
-      - description: Bulk Ingest Logs Request
+      - description: Upload complete request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.BulkIngestLogsRequest'
+          $ref: '#/definitions/dto.UploadCompleteRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Confirmed log file record
+          schema:
+            $ref: '#/definitions/http.ConfirmUploadResponse'
+        "400":
+          description: Invalid request body or ETag mismatch
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: File not found in S3
+          schema:
+            $ref: '#/definitions/response.Response'
+        "409":
+          description: Upload already confirmed
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.Response'
       security:
       - SessionAuth: []
-      summary: Bulk Ingest Logs
+      summary: Complete Upload
       tags:
       - Logs & Data
-  /logs/ingest:
+  /integrations/logs-data/upload/presign:
     post:
       consumes:
       - application/json
-      description: Ingests one raw security event, normalizes it, and stores it for
-        investigation and detection.
+      description: |-
+        Initiates a direct-to-S3 upload flow by generating a presigned POST URL.
+
+        ## Flow
+        1. Call this endpoint with the file metadata (name, size, content type)
+        2. Use the returned `post.url` and `post.fields` to upload the file directly to S3 as `multipart/form-data`
+        3. The `file` field must be the **last** field in the multipart body
+        4. On S3 success (HTTP 204), call `/upload/complete` with the `key` and `ETag` from the S3 response headers
+
+        ## Rules
+        - Supported extensions: `.json`, `.csv`, `.xml`, `.gz`, `.zip`, `.tar`, `.pcap`, `.log`, `.evt`, `.evtx`, `.txt`, `.yml`, `.yaml`
+        - Maximum file size is enforced via the `content-length-range` condition in the policy
+        - The presign URL expires in 24 hours — complete the upload before expiry
+        - The returned `key` must be passed exactly as-is to the complete endpoint
+        - Do not modify or add extra fields to the S3 POST — the policy will reject the request with HTTP 403
       parameters:
-      - description: Ingest Log Request
+      - description: File metadata
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.IngestLogRequest'
+          $ref: '#/definitions/dto.UploadLogRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: OK
+          description: Presign response containing S3 POST URL, fields, key and expiry
+          schema:
+            $ref: '#/definitions/http.UploadPresignResponse'
+        "400":
+          description: Invalid request body or unsupported file type
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "413":
+          description: File size exceeds maximum allowed
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.Response'
       security:
       - SessionAuth: []
-      summary: Ingest Log Event
+      summary: Create Upload Presign
       tags:
       - Logs & Data
   /security-posture/score:

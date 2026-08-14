@@ -14,9 +14,10 @@ func SetUpRouter(
 	ph *ParserHandler,
 	eh *EventHandler,
 	dh *DashboardHandler,
+	uh *UploadHandler,
 	m *middlewares.AuthMiddleware,
 ) {
-	RegisterLogsDataRoutes(router, ldh, ph, qh, ih, m)
+	RegisterLogsDataRoutes(router, ldh, ph, qh, ih, uh, m)
 	RegisterEventRoutes(router, eh, m)
 	RegisterDashboardRoutes(router, dh, m)
 }
@@ -27,6 +28,7 @@ func RegisterLogsDataRoutes(
 	ph *ParserHandler,
 	qh *QualityHandler,
 	ih *IntegrationHandler,
+	uh *UploadHandler,
 	m *middlewares.AuthMiddleware,
 ) {
 	integrations := router.Group("/integrations")
@@ -46,6 +48,12 @@ func RegisterLogsDataRoutes(
 		logsData.Post("/sources/:id/sync", m.RequireAuth, ldh.SyncSource)
 		logsData.Post("/sources/:id/disconnect", m.RequireAuth, ldh.DisconnectSource)
 		logsData.Get("/sources/:id/logs", m.RequireAuth, ldh.GetSourceLogs)
+	}
+
+	if uh != nil {
+		upload := logsData.Group("/upload")
+		upload.Post("/presign", m.RequireAuth, uh.UploadLog)
+		upload.Post("/complete", m.RequireAuth, uh.UploadComplete)
 	}
 
 	parsers := logsData.Group("/parsers")
@@ -83,8 +91,9 @@ func RegisterEventRoutes(router fiber.Router, eh *EventHandler, m *middlewares.A
 		events := router.Group("/events")
 		events.Get("/logs", m.RequireAuth, eh.SearchLogs)
 		events.Get("/logs/:id", m.RequireAuth, eh.GetLogDetail)
-		events.Post("/logs/ingest", m.RequireAuth, eh.IngestLog)
-		events.Post("/logs/bulk-ingest", m.RequireAuth, eh.BulkIngestLogs)
+		// HTTP ingestion endpoints disabled (ingestion is handled via polling service & upload service)
+		// events.Post("/logs/ingest", m.RequireAuth, eh.IngestLog)
+		// events.Post("/logs/bulk-ingest", m.RequireAuth, eh.BulkIngestLogs)
 		events.Get("/threats/summary", m.RequireAuth, eh.GetThreatsSummary)
 		events.Get("/vulnerabilities/summary", m.RequireAuth, eh.GetThreatsSummary)
 	}

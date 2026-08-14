@@ -36,28 +36,6 @@ func _SearchLogs() {}
 // @Router /events/logs/{id} [get]
 func _GetLogDetail() {}
 
-// @Summary Ingest Log Event
-// @Description Ingests one raw security event, normalizes it, and stores it for investigation and detection.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Security SessionAuth
-// @Param request body dto.IngestLogRequest true "Ingest Log Request"
-// @Success 200 {object} response.Response
-// @Router /logs/ingest [post]
-func _IngestLog() {}
-
-// @Summary Bulk Ingest Logs
-// @Description Bulk ingests raw security events for a data source.
-// @Tags Logs & Data
-// @Accept json
-// @Produce json
-// @Security SessionAuth
-// @Param request body dto.BulkIngestLogsRequest true "Bulk Ingest Logs Request"
-// @Success 200 {object} response.Response
-// @Router /logs/bulk-ingest [post]
-func _BulkIngestLogs() {}
-
 // @Summary Get Known Vulnerabilities & Threats Summary
 // @Description Returns aggregate counts of threats and vulnerabilities grouped by severity (critical, high, medium, low) and 7-day trend count.
 // @Tags Logs & Data

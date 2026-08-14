@@ -18,7 +18,6 @@ COPY go.mod go.sum ./
 
 RUN go mod download
 
-
 # ============================================================
 # Builder
 # ============================================================
@@ -31,45 +30,10 @@ RUN test -n "$BUILD_PATH" || \
     (echo "BUILD_PATH build-arg is required" && exit 1)
 
 # ------------------------------------------------------------
-# Install Swagger generator
-# ------------------------------------------------------------
-
-RUN go install github.com/swaggo/swag/cmd/swag@latest
-
-# ------------------------------------------------------------
 # Copy source
 # ------------------------------------------------------------
 
 COPY . .
-
-# ------------------------------------------------------------
-# Generate Users Swagger
-# ------------------------------------------------------------
-
-RUN swag init \
-    -g main.go \
-    -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared \
-    --parseInternal \
-    -o ./docs/users
-
-# ------------------------------------------------------------
-# Generate Shield Swagger
-# ------------------------------------------------------------
-
-RUN swag init \
-    -g main.go \
-    -d ./cmd/shield,./internal/shield,./internal/shared \
-    --parseInternal \
-    -o ./docs/shield
-
-# ------------------------------------------------------------
-# Verify Swagger generation
-# ------------------------------------------------------------
-
-RUN echo "========================================" && \
-    echo "Generated Swagger files" && \
-    echo "========================================" && \
-    find ./docs -type f -print
 
 # ------------------------------------------------------------
 # Build application
@@ -82,7 +46,6 @@ RUN CGO_ENABLED=0 \
     -ldflags="-s -w" \
     -o /out/service \
     ./${BUILD_PATH}
-
 
 # ============================================================
 # Runtime
