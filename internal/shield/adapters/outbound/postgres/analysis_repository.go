@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sage-backend/internal/shared/db"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
 
@@ -46,7 +47,7 @@ func (r *AnalysisRepository) RecordAnalysis(ctx context.Context, params *domain.
 		RETURNING id, log_file_id, json_input_id, request_type,
 		          log_type, approach, overall, summary, outcome, created_at`
 
-	var result domain.AnalysisResult
+	var dto models.AnalysisResultDTO
 	err = tx.QueryRowxContext(ctx, insertAnalysis,
 		params.LogFileID,
 		params.JsonInputID,
@@ -56,7 +57,7 @@ func (r *AnalysisRepository) RecordAnalysis(ctx context.Context, params *domain.
 		params.Overall,
 		summaryJSON,
 		outcomeJSON,
-	).StructScan(&result)
+	).StructScan(&dto)
 	if err != nil {
 		return nil, fmt.Errorf("insert analysis: %w", err)
 	}
@@ -75,7 +76,7 @@ func (r *AnalysisRepository) RecordAnalysis(ctx context.Context, params *domain.
 			) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
 		_, err = tx.ExecContext(ctx, insertThreat,
-			result.ID,
+			dto.ID,
 			params.OrganizationID,
 			t.Source,
 			t.Title,
@@ -97,50 +98,58 @@ func (r *AnalysisRepository) RecordAnalysis(ctx context.Context, params *domain.
 		return nil, fmt.Errorf("commit: %w", err)
 	}
 
+	result := dto.ToDomain()
 	result.Threats = params.Threats
-	return &result, nil
+	return result, nil
 }
 
 func (r *AnalysisRepository) GetByLogFileID(ctx context.Context, logFileID uuid.UUID) (*domain.AnalysisResult, error) {
 	const q = `SELECT * FROM analysis_results WHERE log_file_id = $1`
 
-	var result domain.AnalysisResult
-	if err := r.db.QueryRowxContext(ctx, q, logFileID).StructScan(&result); err != nil {
+	var dto models.AnalysisResultDTO
+	if err := r.db.QueryRowxContext(ctx, q, logFileID).StructScan(&dto); err != nil {
 		return nil, err
 	}
 
-	threats, err := r.GetThreatsByAnalysisID(ctx, result.ID)
+	threats, err := r.GetThreatsByAnalysisID(ctx, dto.ID)
 	if err != nil {
 		return nil, err
 	}
 
+	result := dto.ToDomain()
 	result.Threats = threats
-	return &result, nil
+	return result, nil
 }
 
 func (r *AnalysisRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.AnalysisResult, error) {
 	const q = `SELECT * FROM analysis_results WHERE id = $1`
 
-	var result domain.AnalysisResult
-	if err := r.db.QueryRowxContext(ctx, q, id).StructScan(&result); err != nil {
+	var dto models.AnalysisResultDTO
+	if err := r.db.QueryRowxContext(ctx, q, id).StructScan(&dto); err != nil {
 		return nil, err
 	}
 
-	threats, err := r.GetThreatsByAnalysisID(ctx, result.ID)
+	threats, err := r.GetThreatsByAnalysisID(ctx, dto.ID)
 	if err != nil {
 		return nil, err
 	}
 
+	result := dto.ToDomain()
 	result.Threats = threats
-	return &result, nil
+	return result, nil
 }
 
 func (r *AnalysisRepository) GetThreatsByAnalysisID(ctx context.Context, analysisID uuid.UUID) ([]domain.Threat, error) {
 	const q = `SELECT * FROM threats WHERE analysis_id = $1 ORDER BY severity, created_at`
 
-	var threats []domain.Threat
-	if err := r.db.SelectContext(ctx, &threats, q, analysisID); err != nil {
+	var dtos []models.ThreatDTO
+	if err := r.db.SelectContext(ctx, &dtos, q, analysisID); err != nil {
 		return nil, err
+	}
+
+	threats := make([]domain.Threat, len(dtos))
+	for i, d := range dtos {
+		threats[i] = d.ToDomain()
 	}
 
 	return threats, nil

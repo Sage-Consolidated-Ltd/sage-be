@@ -39,24 +39,24 @@ const (
 )
 
 type LogFile struct {
-	ID               uuid.UUID     `db:"id"                 json:"id"`
-	UserID           uuid.UUID     `db:"user_id"            json:"user_id"`
-	OrganizationID   uuid.UUID     `db:"organization_id"    json:"organization_id"`
-	S3Key            string        `db:"s3_key"             json:"s3_key"`
-	FileClass        FileClass     `db:"file_class"         json:"file_class"`
-	EventCount       *int          `db:"event_count"        json:"event_count"`
-	ProcessedAt      *time.Time    `db:"processed_at"       json:"processed_at"`
-	SourceType       *string       `db:"source_type"        json:"source_type"`
-	SourceID         *uuid.UUID    `db:"source_id"          json:"source_id"`
-	Description      *string       `db:"description"        json:"description"`
-	Category         *string       `db:"category"           json:"category"`
-	AppOrContext     *string       `db:"app_or_context"     json:"app_or_context"`
-	Status           string        `db:"status"             json:"status"`
-	ErrorMessage     *string       `db:"error_message"      json:"error_message"`
-	DetectedType     *DetectedType `db:"detected_type"      json:"detected_type"`
-	UserSelectedType *DetectedType `db:"user_selected_type" json:"user_selected_type"`
-	CreatedAt        time.Time     `db:"created_at"         json:"created_at"`
-	UpdatedAt        time.Time     `db:"updated_at"         json:"updated_at"`
+	ID               uuid.UUID
+	UserID           uuid.UUID
+	OrganizationID   uuid.UUID
+	S3Key            string
+	FileClass        FileClass
+	EventCount       *int
+	ProcessedAt      *time.Time
+	SourceType       *string
+	SourceID         *uuid.UUID
+	Description      *string
+	Category         *string
+	AppOrContext     *string
+	Status           string
+	ErrorMessage     *string
+	DetectedType     *DetectedType
+	UserSelectedType *DetectedType
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 func (f *LogFile) EffectiveType() DetectedType {

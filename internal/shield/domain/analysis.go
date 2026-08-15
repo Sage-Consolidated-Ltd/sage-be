@@ -39,17 +39,17 @@ type SubmitLogFileForAnalysis struct {
 }
 
 type AnalysisResult struct {
-	ID          uuid.UUID                       `db:"id"            json:"id"`
-	LogFileID   *uuid.UUID                      `db:"log_file_id"   json:"log_file_id"`
-	LogType     string                          `db:"log_type"      json:"log_type"`
-	JsonInputID *uuid.UUID                      `db:"json_input_id" json:"json_input_id"`
-	RequestType AnalysisRequestType             `db:"request_type"  json:"request_type"`
-	Approach    string                          `db:"approach"      json:"approach"`
-	Overall     string                          `db:"overall"       json:"overall"`
-	Summary     db.GenericJSON[AnalysisSummary] `db:"summary"       json:"summary"`
-	Outcome     db.GenericJSON[AnalysisOutcome] `db:"outcome"       json:"outcome"`
-	Threats     []Threat                        `db:"-"             json:"threats"`
-	CreatedAt   time.Time                       `db:"created_at"    json:"created_at"`
+	ID          uuid.UUID
+	LogFileID   *uuid.UUID
+	LogType     string
+	JsonInputID *uuid.UUID
+	RequestType AnalysisRequestType
+	Approach    string
+	Overall     string
+	Summary     db.GenericJSON[AnalysisSummary]
+	Outcome     db.GenericJSON[AnalysisOutcome]
+	Threats     []Threat
+	CreatedAt   time.Time
 }
 
 type AnalysisSummary struct {
@@ -67,16 +67,16 @@ type AnalysisOutcome struct {
 }
 
 type Threat struct {
-	ID             uuid.UUID `db:"id"             json:"id"`
-	AnalysisID     uuid.UUID `db:"analysis_id"    json:"analysis_id"`
-	Source         string    `db:"source"         json:"source"`
-	Title          string    `db:"title"          json:"title"`
-	Category       string    `db:"category"       json:"category"`
-	Severity       string    `db:"severity"       json:"severity"`
-	Mitre          string    `db:"mitre"          json:"mitre"`
-	EventCount     int       `db:"event_count"    json:"event_count"`
-	TimeRange      string    `db:"time_range"     json:"time_range"`
-	WhatHappened   string    `db:"what_happened"  json:"what_happened"`
-	Evidence       []string  `db:"evidence"       json:"evidence"`
-	Recommendation string    `db:"recommendation" json:"recommendation"`
+	ID             uuid.UUID
+	AnalysisID     uuid.UUID
+	Source         string
+	Title          string
+	Category       string
+	Severity       string
+	Mitre          string
+	EventCount     int
+	TimeRange      string
+	WhatHappened   string
+	Evidence       []string
+	Recommendation string
 }
