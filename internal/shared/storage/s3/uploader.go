@@ -224,11 +224,15 @@ func (u *Uploader) PresignUploadPost(
 	}
 
 	ext := strings.ToLower(filepath.Ext(filename))
+	reqPrefix := ""
+	if rc.RequestID != "" {
+		reqPrefix = rc.RequestID + "-"
+	}
 	key := fmt.Sprintf(
-		"uploads/pending/%s/%s/%s-%d%s",
+		"uploads/pending/%s/%s/%s%d%s",
 		info.Class,
 		rc.UserID,
-		rc.RequestID,
+		reqPrefix,
 		time.Now().UnixNano(),
 		ext,
 	)
@@ -241,23 +245,17 @@ func (u *Uploader) PresignUploadPost(
 	now := time.Now().UTC()
 	creds := buildCredential(u.client.cfg, now)
 
-	maxSize := u.logUploadPolicy.MaxSize
-	if maxSize <= 0 {
-		maxSize = 100 * 1024 * 1024
-	}
-
 	conditions := []interface{}{
 		map[string]string{"bucket": u.client.Bucket},
 		map[string]string{"key": key},
-		[]interface{}{"starts-with", "$Content-Type", ""},
-		[]interface{}{"content-length-range", 0, maxSize},
+		map[string]string{"Content-Type": info.ContentType},
+		[]interface{}{"content-length-range", 0, sizeBytes},
 		map[string]string{"x-amz-algorithm": "AWS4-HMAC-SHA256"},
 		map[string]string{"x-amz-credential": creds},
 		map[string]string{"x-amz-date": now.Format("20060102T150405Z")},
-		[]interface{}{"starts-with", "$x-amz-meta-", ""},
-		[]interface{}{"starts-with", "$x-amz-meta-expected-class", ""},
-		[]interface{}{"starts-with", "$x-amz-meta-original-name", ""},
-		[]interface{}{"starts-with", "$x-amz-meta-upload-source", ""},
+		map[string]string{"x-amz-meta-expected-class": string(info.Class)},
+		map[string]string{"x-amz-meta-original-name": filename},
+		map[string]string{"x-amz-meta-upload-source": "siem"},
 	}
 	if u.client.cfg.SessionToken != "" {
 		conditions = append(conditions, map[string]string{"x-amz-security-token": u.client.cfg.SessionToken})
