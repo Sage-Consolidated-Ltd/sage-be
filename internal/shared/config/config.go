@@ -25,6 +25,8 @@ type BaseConfig struct {
 	CookieDomain     string
 	S3Bucket         string
 	S3Region         string
+	S3AccessKey      string
+	S3SecretKey      string
 }
 
 type APIConfig struct {
@@ -135,13 +137,16 @@ func loadBase() BaseConfig {
 		CookieDomain:     getEnv("COOKIE_DOMAIN", ".sageconsolidated.com"),
 		S3Bucket:         getEnv("S3_BUCKET", "sage-uploads"),
 		S3Region:         getEnv("S3_REGION", "us-east-1"),
+		S3AccessKey:      getEnv("AWS_ACCESS_KEY_ID", getEnv("S3_ACCESS_KEY", "")),
+		S3SecretKey:      getEnv("AWS_SECRET_ACCESS_KEY", getEnv("S3_SECRET_KEY", "")),
 	}
 }
 
 func SetupAPI() *APIConfig {
 	_ = godotenv.Load(".env")
+	base := loadBase()
 	return &APIConfig{
-		BaseConfig:         loadBase(),
+		BaseConfig:         base,
 		JWTSecret:          requireEnv("JWT_SECRET"),
 		PORT:               getEnv("PORT", "3333"),
 		GomniSecurityKey:   requireEnv("GOMNI_SECURITY_KEY"),
@@ -154,9 +159,10 @@ func SetupAPI() *APIConfig {
 		AzureClientId:      requireEnv("AZURE_CLIENT_ID"),
 		AzureClientSecret:  requireEnv("AZURE_CLIENT_SECRET"),
 		AzureRedirectUrl:   requireEnv("AZURE_REDIRECT_URL"),
-		S3Region:           requireEnv("S3_REGION"),
-		S3AccessKey:        requireEnv("AWS_ACCESS_KEY_ID"),
-		S3SecretKey:        requireEnv("AWS_SECRET_ACCESS_KEY"),
+		S3Region:           base.S3Region,
+		S3Bucket:           base.S3Bucket,
+		S3AccessKey:        base.S3AccessKey,
+		S3SecretKey:        base.S3SecretKey,
 	}
 }
 

@@ -50,7 +50,14 @@ func New() (*Worker, error) {
 	taskClient := queue.NewTaskClient(cfg.RedisDbUrl)
 
 	var s3Uploader *s3.Uploader
-	s3Client, err := s3.NewClient(context.Background(), cfg.S3Bucket, cfg.S3Region)
+	s3Client, err := s3.NewClientWithConfig(context.Background(), s3.S3Config{
+		Bucket:          cfg.S3Bucket,
+		Region:          cfg.S3Region,
+		AccessKeyID:     cfg.S3AccessKey,
+		SecretAccessKey: cfg.S3SecretKey,
+		PresignExpiry:   1440,
+		MaxFileSizeMB:   100,
+	})
 	if err == nil && s3Client != nil {
 		s3Uploader = s3.NewUploader(s3Client)
 	}

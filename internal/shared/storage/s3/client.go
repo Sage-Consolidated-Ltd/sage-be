@@ -16,24 +16,12 @@ type Client struct {
 }
 
 func NewClient(ctx context.Context, bucket, region string) (*Client, error) {
-	cfg, err := config.LoadDefaultConfig(ctx,
-		config.WithRegion(region),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Client{
-		S3:     s3.NewFromConfig(cfg),
-		Bucket: bucket,
-		Region: region,
-		cfg: S3Config{
-			Bucket:        bucket,
-			Region:        region,
-			PresignExpiry: 1440,
-			MaxFileSizeMB: 100,
-		},
-	}, nil
+	return NewClientWithConfig(ctx, S3Config{
+		Bucket:        bucket,
+		Region:        region,
+		PresignExpiry: 1440,
+		MaxFileSizeMB: 100,
+	})
 }
 
 func NewClientWithConfig(ctx context.Context, s3Cfg S3Config) (*Client, error) {
@@ -50,6 +38,18 @@ func NewClientWithConfig(ctx context.Context, s3Cfg S3Config) (*Client, error) {
 	cfg, err := config.LoadDefaultConfig(ctx, optFns...)
 	if err != nil {
 		return nil, err
+	}
+
+	// Resolve credentials from loaded config provider chain if not passed directly in s3Cfg
+	if s3Cfg.AccessKeyID == "" || s3Cfg.SecretAccessKey == "" {
+		if creds, err := cfg.Credentials.Retrieve(ctx); err == nil {
+			if s3Cfg.AccessKeyID == "" {
+				s3Cfg.AccessKeyID = creds.AccessKeyID
+			}
+			if s3Cfg.SecretAccessKey == "" {
+				s3Cfg.SecretAccessKey = creds.SecretAccessKey
+			}
+		}
 	}
 
 	if s3Cfg.PresignExpiry <= 0 {
