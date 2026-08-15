@@ -31,7 +31,7 @@ func NewClientWithConfig(ctx context.Context, s3Cfg S3Config) (*Client, error) {
 	}
 	if s3Cfg.AccessKeyID != "" && s3Cfg.SecretAccessKey != "" {
 		optFns = append(optFns, config.WithCredentialsProvider(
-			credentials.NewStaticCredentialsProvider(s3Cfg.AccessKeyID, s3Cfg.SecretAccessKey, ""),
+			credentials.NewStaticCredentialsProvider(s3Cfg.AccessKeyID, s3Cfg.SecretAccessKey, s3Cfg.SessionToken),
 		))
 	}
 
@@ -40,15 +40,20 @@ func NewClientWithConfig(ctx context.Context, s3Cfg S3Config) (*Client, error) {
 		return nil, err
 	}
 
+	if s3Cfg.Region == "" && cfg.Region != "" {
+		s3Cfg.Region = cfg.Region
+	}
+
 	// Resolve credentials from loaded config provider chain if not passed directly in s3Cfg
-	if s3Cfg.AccessKeyID == "" || s3Cfg.SecretAccessKey == "" {
-		if creds, err := cfg.Credentials.Retrieve(ctx); err == nil {
-			if s3Cfg.AccessKeyID == "" {
-				s3Cfg.AccessKeyID = creds.AccessKeyID
-			}
-			if s3Cfg.SecretAccessKey == "" {
-				s3Cfg.SecretAccessKey = creds.SecretAccessKey
-			}
+	if creds, err := cfg.Credentials.Retrieve(ctx); err == nil {
+		if s3Cfg.AccessKeyID == "" {
+			s3Cfg.AccessKeyID = creds.AccessKeyID
+		}
+		if s3Cfg.SecretAccessKey == "" {
+			s3Cfg.SecretAccessKey = creds.SecretAccessKey
+		}
+		if s3Cfg.SessionToken == "" {
+			s3Cfg.SessionToken = creds.SessionToken
 		}
 	}
 

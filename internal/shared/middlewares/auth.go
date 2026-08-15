@@ -183,6 +183,9 @@ type RequestContext struct {
 
 func GetRequestContext(c *fiber.Ctx) RequestContext {
 	requestID, _ := c.Locals("requestID").(string)
+	if requestID == "" {
+		requestID = c.Get("X-Request-ID")
+	}
 
 	return RequestContext{
 		UserID:             GetUserIDStr(c),

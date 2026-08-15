@@ -224,11 +224,15 @@ func (u *Uploader) PresignUploadPost(
 	}
 
 	ext := strings.ToLower(filepath.Ext(filename))
+	reqPrefix := ""
+	if rc.RequestID != "" {
+		reqPrefix = rc.RequestID + "-"
+	}
 	key := fmt.Sprintf(
-		"uploads/pending/%s/%s/%s-%d%s",
+		"uploads/pending/%s/%s/%s%d%s",
 		info.Class,
 		rc.UserID,
-		rc.RequestID,
+		reqPrefix,
 		time.Now().UnixNano(),
 		ext,
 	)
@@ -241,20 +245,25 @@ func (u *Uploader) PresignUploadPost(
 	now := time.Now().UTC()
 	creds := buildCredential(u.client.cfg, now)
 
+	conditions := []interface{}{
+		map[string]string{"bucket": u.client.Bucket},
+		map[string]string{"key": key},
+		map[string]string{"Content-Type": info.ContentType},
+		[]interface{}{"content-length-range", 0, sizeBytes},
+		map[string]string{"x-amz-algorithm": "AWS4-HMAC-SHA256"},
+		map[string]string{"x-amz-credential": creds},
+		map[string]string{"x-amz-date": now.Format("20060102T150405Z")},
+		map[string]string{"x-amz-meta-expected-class": string(info.Class)},
+		map[string]string{"x-amz-meta-original-name": filename},
+		map[string]string{"x-amz-meta-upload-source": "siem"},
+	}
+	if u.client.cfg.SessionToken != "" {
+		conditions = append(conditions, map[string]string{"x-amz-security-token": u.client.cfg.SessionToken})
+	}
+
 	policy := map[string]interface{}{
 		"expiration": expiration.UTC().Format(time.RFC3339),
-		"conditions": []interface{}{
-			map[string]string{"bucket": u.client.Bucket},
-			map[string]string{"key": key},
-			map[string]string{"Content-Type": info.ContentType},
-			[]interface{}{"content-length-range", 0, sizeBytes},
-			map[string]string{"x-amz-algorithm": "AWS4-HMAC-SHA256"},
-			map[string]string{"x-amz-credential": creds},
-			map[string]string{"x-amz-date": now.Format("20060102T150405Z")},
-			map[string]string{"x-amz-meta-expected-class": string(info.Class)},
-			map[string]string{"x-amz-meta-original-name": filename},
-			map[string]string{"x-amz-meta-upload-source": "siem"},
-		},
+		"conditions": conditions,
 	}
 
 	policyBytes, err := json.Marshal(policy)
@@ -271,6 +280,7 @@ func (u *Uploader) PresignUploadPost(
 		XAmzCredential:        creds,
 		XAmzDate:              now.Format("20060102T150405Z"),
 		XAmzSignature:         signPolicy(policyBase64, u.client.cfg, now),
+		XAmzSecurityToken:     u.client.cfg.SessionToken,
 		XAmzMetaExpectedClass: string(info.Class),
 		XAmzMetaOriginalName:  filename,
 		XAmzMetaUploadSource:  "siem",

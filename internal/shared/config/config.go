@@ -27,6 +27,7 @@ type BaseConfig struct {
 	S3Region         string
 	S3AccessKey      string
 	S3SecretKey      string
+	S3SessionToken   string
 }
 
 type APIConfig struct {
@@ -47,6 +48,7 @@ type APIConfig struct {
 	S3Bucket           string
 	S3AccessKey        string
 	S3SecretKey        string
+	S3SessionToken     string
 }
 
 type OffenseConfig struct {
@@ -136,9 +138,10 @@ func loadBase() BaseConfig {
 		FrontendBaseURL:  requireEnv("FRONTEND_BASE_URL"),
 		CookieDomain:     getEnv("COOKIE_DOMAIN", ".sageconsolidated.com"),
 		S3Bucket:         getEnv("S3_BUCKET", "sage-uploads"),
-		S3Region:         getEnv("S3_REGION", "us-east-1"),
+		S3Region:         getEnv("S3_REGION", getEnv("AWS_REGION", getEnv("AWS_DEFAULT_REGION", "us-east-1"))),
 		S3AccessKey:      getEnv("AWS_ACCESS_KEY_ID", getEnv("S3_ACCESS_KEY", "")),
 		S3SecretKey:      getEnv("AWS_SECRET_ACCESS_KEY", getEnv("S3_SECRET_KEY", "")),
+		S3SessionToken:   getEnv("AWS_SESSION_TOKEN", getEnv("AWS_SECURITY_TOKEN", "")),
 	}
 }
 
@@ -163,6 +166,7 @@ func SetupAPI() *APIConfig {
 		S3Bucket:           base.S3Bucket,
 		S3AccessKey:        base.S3AccessKey,
 		S3SecretKey:        base.S3SecretKey,
+		S3SessionToken:     base.S3SessionToken,
 	}
 }
 

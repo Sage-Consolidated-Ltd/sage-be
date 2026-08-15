@@ -29,6 +29,7 @@ type S3Config struct {
 	MaxFileSizeMB   int64
 	AccessKeyID     string
 	SecretAccessKey string
+	SessionToken    string
 }
 
 type PresignResult struct {
@@ -62,9 +63,10 @@ type PresignedPostFields struct {
 	XAmzCredential        string `json:"x-amz-credential"`
 	XAmzDate              string `json:"x-amz-date"`
 	XAmzSignature         string `json:"x-amz-signature"`
-	XAmzMetaExpectedClass string `json:"x-amz-meta-expected-class"`
-	XAmzMetaOriginalName  string `json:"x-amz-meta-original-name"`
-	XAmzMetaUploadSource  string `json:"x-amz-meta-upload-source"`
+	XAmzSecurityToken     string `json:"x-amz-security-token,omitempty"`
+	XAmzMetaExpectedClass string `json:"x-amz-meta-expected-class,omitempty"`
+	XAmzMetaOriginalName  string `json:"x-amz-meta-original-name,omitempty"`
+	XAmzMetaUploadSource  string `json:"x-amz-meta-upload-source,omitempty"`
 }
 
 type PresignedPost struct {
