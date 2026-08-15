@@ -246,20 +246,26 @@ func (u *Uploader) PresignUploadPost(
 		maxSize = 100 * 1024 * 1024
 	}
 
+	conditions := []interface{}{
+		map[string]string{"bucket": u.client.Bucket},
+		map[string]string{"key": key},
+		[]interface{}{"starts-with", "$Content-Type", ""},
+		[]interface{}{"content-length-range", 0, maxSize},
+		map[string]string{"x-amz-algorithm": "AWS4-HMAC-SHA256"},
+		map[string]string{"x-amz-credential": creds},
+		map[string]string{"x-amz-date": now.Format("20060102T150405Z")},
+		[]interface{}{"starts-with", "$x-amz-meta-", ""},
+		[]interface{}{"starts-with", "$x-amz-meta-expected-class", ""},
+		[]interface{}{"starts-with", "$x-amz-meta-original-name", ""},
+		[]interface{}{"starts-with", "$x-amz-meta-upload-source", ""},
+	}
+	if u.client.cfg.SessionToken != "" {
+		conditions = append(conditions, map[string]string{"x-amz-security-token": u.client.cfg.SessionToken})
+	}
+
 	policy := map[string]interface{}{
 		"expiration": expiration.UTC().Format(time.RFC3339),
-		"conditions": []interface{}{
-			map[string]string{"bucket": u.client.Bucket},
-			map[string]string{"key": key},
-			[]interface{}{"starts-with", "$Content-Type", ""},
-			[]interface{}{"content-length-range", 0, maxSize},
-			map[string]string{"x-amz-algorithm": "AWS4-HMAC-SHA256"},
-			map[string]string{"x-amz-credential": creds},
-			map[string]string{"x-amz-date": now.Format("20060102T150405Z")},
-			[]interface{}{"starts-with", "$x-amz-meta-expected-class", ""},
-			[]interface{}{"starts-with", "$x-amz-meta-original-name", ""},
-			[]interface{}{"starts-with", "$x-amz-meta-upload-source", ""},
-		},
+		"conditions": conditions,
 	}
 
 	policyBytes, err := json.Marshal(policy)
@@ -276,6 +282,7 @@ func (u *Uploader) PresignUploadPost(
 		XAmzCredential:        creds,
 		XAmzDate:              now.Format("20060102T150405Z"),
 		XAmzSignature:         signPolicy(policyBase64, u.client.cfg, now),
+		XAmzSecurityToken:     u.client.cfg.SessionToken,
 		XAmzMetaExpectedClass: string(info.Class),
 		XAmzMetaOriginalName:  filename,
 		XAmzMetaUploadSource:  "siem",

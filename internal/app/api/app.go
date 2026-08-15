@@ -48,6 +48,7 @@ func New() (*app.App, error) {
 		Region:          cfg.S3Region,
 		AccessKeyID:     cfg.S3AccessKey,
 		SecretAccessKey: cfg.S3SecretKey,
+		SessionToken:    cfg.S3SessionToken,
 		PresignExpiry:   1440,
 		MaxFileSizeMB:   100,
 	})
