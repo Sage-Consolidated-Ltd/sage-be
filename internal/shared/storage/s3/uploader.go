@@ -241,19 +241,24 @@ func (u *Uploader) PresignUploadPost(
 	now := time.Now().UTC()
 	creds := buildCredential(u.client.cfg, now)
 
+	maxSize := u.logUploadPolicy.MaxSize
+	if maxSize <= 0 {
+		maxSize = 100 * 1024 * 1024
+	}
+
 	policy := map[string]interface{}{
 		"expiration": expiration.UTC().Format(time.RFC3339),
 		"conditions": []interface{}{
 			map[string]string{"bucket": u.client.Bucket},
 			map[string]string{"key": key},
-			map[string]string{"Content-Type": info.ContentType},
-			[]interface{}{"content-length-range", 0, sizeBytes},
+			[]interface{}{"starts-with", "$Content-Type", ""},
+			[]interface{}{"content-length-range", 0, maxSize},
 			map[string]string{"x-amz-algorithm": "AWS4-HMAC-SHA256"},
 			map[string]string{"x-amz-credential": creds},
 			map[string]string{"x-amz-date": now.Format("20060102T150405Z")},
-			map[string]string{"x-amz-meta-expected-class": string(info.Class)},
-			map[string]string{"x-amz-meta-original-name": filename},
-			map[string]string{"x-amz-meta-upload-source": "siem"},
+			[]interface{}{"starts-with", "$x-amz-meta-expected-class", ""},
+			[]interface{}{"starts-with", "$x-amz-meta-original-name", ""},
+			[]interface{}{"starts-with", "$x-amz-meta-upload-source", ""},
 		},
 	}
 
