@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"flag"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"sage-backend/internal/shared/config"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -16,6 +18,25 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
+
+func waitForDatabase(databaseURL string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for {
+		db, err := sql.Open("postgres", databaseURL)
+		if err == nil {
+			err = db.Ping()
+			db.Close()
+			if err == nil {
+				return nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timed out waiting for database: %w", err)
+		}
+		log.Println("Waiting for database to be ready...")
+		time.Sleep(2 * time.Second)
+	}
+}
 
 func main() {
 	up := flag.Bool("up", false, "Migrate up")
@@ -27,6 +48,12 @@ func main() {
 	flag.Parse()
 
 	cfg := config.SetupWorker()
+
+	if *up || *down || *reset || *forceVersion != -999 || *seed || *seedFile != "" {
+		if err := waitForDatabase(cfg.DatabaseUrl, 60*time.Second); err != nil {
+			log.Fatalf("Database connection check failed: %v", err)
+		}
+	}
 
 	if *up {
 		log.Println("Running UP migrations...")
