@@ -10,7 +10,6 @@ import (
 
 type ParsedLog struct {
 	ID           uuid.UUID
-	LogFileID    uuid.UUID
 	DataSourceID uuid.UUID
 	FileID       uuid.UUID
 	Timestamp    sql.NullTime

@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"sage-backend/internal/shared/db"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
 )
@@ -125,14 +126,19 @@ func (p *ParsedLogRepository) ReplaceParsedLogs(ctx context.Context, fileID uuid
 }
 
 func (r *ParsedLogRepository) Search(ctx context.Context, params domain.SearchParams) (domain.SearchResult, error) {
-	var logs []domain.ParsedLog
+	var dtos []models.ParsedLogDTO
 	query, args, err := buildSearchQuery(params)
 	if err != nil {
 		return domain.SearchResult{}, fmt.Errorf("build search query: %w", err)
 	}
 
-	if err := r.db.SelectContext(ctx, &logs, query, args...); err != nil {
+	if err := r.db.SelectContext(ctx, &dtos, query, args...); err != nil {
 		return domain.SearchResult{}, fmt.Errorf("search parsed logs: %w", err)
+	}
+
+	logs := make([]domain.ParsedLog, len(dtos))
+	for i, d := range dtos {
+		logs[i] = d.ToDomain()
 	}
 
 	var next *time.Time

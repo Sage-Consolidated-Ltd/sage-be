@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"sage-backend/internal/shared/db"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
 )
@@ -22,18 +23,18 @@ func (r *LogUploadRepository) CreatePending(ctx context.Context, params domain.C
 		VALUES ($1, $2, $3, $4, 'pending')
 		RETURNING *`
 
-	var lf domain.LogFile
+	var dto models.LogFileDTO
 	err := r.db.QueryRowxContext(ctx, q,
 		params.UserID,
 		params.OrganizationID,
 		params.S3Key,
 		params.FileClass,
-	).StructScan(&lf)
+	).StructScan(&dto)
 	if err != nil {
 		return nil, err
 	}
 
-	return &lf, nil
+	return dto.ToDomain(), nil
 }
 
 func (r *LogUploadRepository) Confirm(ctx context.Context, params domain.ConfirmLogFileParams) (*domain.LogFile, error) {
@@ -51,7 +52,7 @@ func (r *LogUploadRepository) Confirm(ctx context.Context, params domain.Confirm
 		  AND status = 'pending'
 		RETURNING *`
 
-	var lf domain.LogFile
+	var dto models.LogFileDTO
 	err := r.db.QueryRowxContext(ctx, q,
 		params.S3Key,
 		params.SourceType,
@@ -59,24 +60,24 @@ func (r *LogUploadRepository) Confirm(ctx context.Context, params domain.Confirm
 		params.Description,
 		params.Category,
 		params.AppOrContext,
-	).StructScan(&lf)
+	).StructScan(&dto)
 	if err != nil {
 		return nil, err
 	}
 
-	return &lf, nil
+	return dto.ToDomain(), nil
 }
 
 func (r *LogUploadRepository) GetByS3Key(ctx context.Context, s3Key string) (*domain.LogFile, error) {
 	const q = `SELECT * FROM log_files WHERE s3_key = $1`
 
-	var lf domain.LogFile
-	err := r.db.QueryRowxContext(ctx, q, s3Key).StructScan(&lf)
+	var dto models.LogFileDTO
+	err := r.db.QueryRowxContext(ctx, q, s3Key).StructScan(&dto)
 	if err != nil {
 		return nil, err
 	}
 
-	return &lf, nil
+	return dto.ToDomain(), nil
 }
 
 func (r *LogUploadRepository) MarkSubmitted(ctx context.Context, s3Key string) error {

@@ -40,7 +40,7 @@ type SubmitLogFileForAnalysis struct {
 
 type AnalysisResult struct {
 	ID          uuid.UUID
-	LogFileID   uuid.UUID
+	LogFileID   *uuid.UUID
 	LogType     string
 	JsonInputID *uuid.UUID
 	RequestType AnalysisRequestType
@@ -53,17 +53,17 @@ type AnalysisResult struct {
 }
 
 type AnalysisSummary struct {
-	TotalEvents     int
-	ThreatsDetected int
-	ConfirmedBoth   int
-	MLOnly          int
-	RuleOnly        int
-	ThreatRatePct   float64
+	TotalEvents     int     `json:"total_events"`
+	ThreatsDetected int     `json:"threats_detected"`
+	ConfirmedBoth   int     `json:"confirmed_both"`
+	MLOnly          int     `json:"ml_only"`
+	RuleOnly        int     `json:"rule_only"`
+	ThreatRatePct   float64 `json:"threat_rate_pct"`
 }
 
 type AnalysisOutcome struct {
-	Status string
-	Detail string
+	Status string `json:"status"`
+	Detail string `json:"detail"`
 }
 
 type Threat struct {
