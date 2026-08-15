@@ -44,7 +44,14 @@ func New() (*app.App, error) {
 		return nil, fmt.Errorf("failed to initialize encryptor: %w", err)
 	}
 
-	s3Client, err := s3.NewClient(context.Background(), cfg.S3Bucket, cfg.S3Region)
+	s3Client, err := s3.NewClientWithConfig(context.Background(), s3.S3Config{
+		Bucket:          cfg.S3Bucket,
+		Region:          cfg.S3Region,
+		AccessKeyID:     cfg.S3AccessKey,
+		SecretAccessKey: cfg.S3SecretKey,
+		PresignExpiry:   1440,
+		MaxFileSizeMB:   100,
+	})
 	var s3Uploader *s3.Uploader
 	if err == nil && s3Client != nil {
 		s3Uploader = s3.NewUploader(s3Client)
