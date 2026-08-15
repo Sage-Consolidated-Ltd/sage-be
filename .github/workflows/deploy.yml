@@ -236,6 +236,13 @@ jobs:
 
             echo ""
             echo "========================================"
+            echo "Starting Database & Redis dependencies"
+            echo "========================================"
+
+            docker compose up -d postgres redis
+
+            echo ""
+            echo "========================================"
             echo "Running Database Migrations"
             echo "========================================"
 
@@ -243,7 +250,7 @@ jobs:
 
             echo ""
             echo "========================================"
-            echo "Starting new containers"
+            echo "Starting application containers"
             echo "========================================"
 
             docker compose up -d \
