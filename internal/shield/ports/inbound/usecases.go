@@ -71,6 +71,6 @@ type DashboardUseCase interface {
 	GetActiveIncidents(ctx context.Context, orgID uuid.UUID, limit int) ([]*domain.ActiveIncident, error)
 	GetAssetRiskDistribution(ctx context.Context, orgID uuid.UUID) (*domain.AssetRiskDistribution, error)
 	GetComplianceRiskIndicators(ctx context.Context, orgID uuid.UUID) (*domain.ComplianceRiskIndicators, error)
-	GetThreatTrends(ctx context.Context, orgID uuid.UUID) (*domain.ThreatTrendsSummary, error)
+	GetThreatTrends(ctx context.Context, orgID uuid.UUID, currentMonth, previousMonth string) (*domain.ThreatTrendsSummary, error)
 	GetGeoThreats(ctx context.Context, orgID uuid.UUID) (*domain.GeoThreatsSummary, error)
 }

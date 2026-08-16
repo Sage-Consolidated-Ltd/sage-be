@@ -7,6 +7,8 @@ import (
 	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -184,7 +186,15 @@ func (r *DashboardRepository) GetComplianceRiskIndicators(ctx context.Context, o
 }
 
 // Widget 9: Threat Severity Trends Line Chart
-func (r *DashboardRepository) GetThreatTrends(ctx context.Context, orgID uuid.UUID) (*domain.ThreatTrendsSummary, error) {
+func (r *DashboardRepository) GetThreatTrends(ctx context.Context, orgID uuid.UUID, currentMonthQuery, previousMonthQuery string) (*domain.ThreatTrendsSummary, error) {
+	now := time.Now().UTC()
+	currentStart, currentName := parseMonthBoundary(currentMonthQuery, now)
+	currentEnd := currentStart.AddDate(0, 1, 0)
+
+	defaultPrev := currentStart.AddDate(0, -1, 0)
+	prevStart, prevName := parseMonthBoundary(previousMonthQuery, defaultPrev)
+	prevEnd := prevStart.AddDate(0, 1, 0)
+
 	const q = `
 		WITH current_month AS (
 			SELECT 
@@ -195,8 +205,7 @@ func (r *DashboardRepository) GetThreatTrends(ctx context.Context, orgID uuid.UU
 				UNION ALL
 				SELECT occurred_at AS created_at FROM security_events WHERE organization_id = $1
 			) t
-			WHERE created_at >= date_trunc('month', CURRENT_DATE)
-			  AND created_at < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+			WHERE created_at >= $2 AND created_at < $3
 			GROUP BY EXTRACT(DAY FROM created_at)
 		),
 		last_month AS (
@@ -208,8 +217,7 @@ func (r *DashboardRepository) GetThreatTrends(ctx context.Context, orgID uuid.UU
 				UNION ALL
 				SELECT occurred_at AS created_at FROM security_events WHERE organization_id = $1
 			) t
-			WHERE created_at >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month')
-			  AND created_at < date_trunc('month', CURRENT_DATE)
+			WHERE created_at >= $4 AND created_at < $5
 			GROUP BY EXTRACT(DAY FROM created_at)
 		),
 		all_days AS (
@@ -226,7 +234,7 @@ func (r *DashboardRepository) GetThreatTrends(ctx context.Context, orgID uuid.UU
 	`
 
 	var dtos []models.ThreatDayTrendDTO
-	if err := r.db.SelectContext(ctx, &dtos, q, orgID); err != nil {
+	if err := r.db.SelectContext(ctx, &dtos, q, orgID, currentStart, currentEnd, prevStart, prevEnd); err != nil {
 		return nil, fmt.Errorf("failed to get threat trends: %w", err)
 	}
 
@@ -236,9 +244,52 @@ func (r *DashboardRepository) GetThreatTrends(ctx context.Context, orgID uuid.UU
 	}
 
 	return &domain.ThreatTrendsSummary{
-		CurrentMonth: time.Now().Format("January"),
-		Days:         days,
+		CurrentMonth:  currentName,
+		PreviousMonth: prevName,
+		Days:          days,
 	}, nil
+}
+
+func parseMonthBoundary(input string, defaultTime time.Time) (time.Time, string) {
+	trimmed := strings.TrimSpace(input)
+	if trimmed == "" {
+		start := time.Date(defaultTime.Year(), defaultTime.Month(), 1, 0, 0, 0, 0, time.UTC)
+		return start, start.Format("January")
+	}
+
+	// Try YYYY-MM
+	if t, err := time.Parse("2006-01", trimmed); err == nil {
+		start := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+		return start, start.Format("January 2006")
+	}
+
+	// Try YYYY-MM-DD
+	if t, err := time.Parse("2006-01-02", trimmed); err == nil {
+		start := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+		return start, start.Format("January 2006")
+	}
+
+	// Try integer month 1-12
+	if m, err := strconv.Atoi(trimmed); err == nil && m >= 1 && m <= 12 {
+		start := time.Date(defaultTime.Year(), time.Month(m), 1, 0, 0, 0, 0, time.UTC)
+		return start, start.Format("January")
+	}
+
+	// Try month full names or abbreviations (e.g. "July", "jul", "August")
+	monthNames := []string{
+		"January", "February", "March", "April", "May", "June",
+		"July", "August", "September", "October", "November", "December",
+	}
+	for i, name := range monthNames {
+		if strings.EqualFold(name, trimmed) || (len(trimmed) >= 3 && strings.EqualFold(name[:3], trimmed)) {
+			start := time.Date(defaultTime.Year(), time.Month(i+1), 1, 0, 0, 0, 0, time.UTC)
+			return start, start.Format("January")
+		}
+	}
+
+	// Fallback to default
+	start := time.Date(defaultTime.Year(), defaultTime.Month(), 1, 0, 0, 0, 0, time.UTC)
+	return start, start.Format("January")
 }
 
 // Widget 10: Live Geo Threat Origins Map

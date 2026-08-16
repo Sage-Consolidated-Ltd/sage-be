@@ -74,8 +74,9 @@ type ComplianceRiskIndicators struct {
 
 // Widget 9: Threat Severity Trends Line Chart
 type ThreatTrendsSummary struct {
-	CurrentMonth string       `json:"current_month"`
-	Days         []ThreatDayTrend `json:"days"`
+	CurrentMonth  string           `json:"current_month"`
+	PreviousMonth string           `json:"previous_month,omitempty"`
+	Days          []ThreatDayTrend `json:"days"`
 }
 
 type ThreatDayTrend struct {

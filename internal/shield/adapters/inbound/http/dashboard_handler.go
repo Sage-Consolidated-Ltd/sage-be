@@ -113,7 +113,10 @@ func (h *DashboardHandler) GetThreatTrends(c *fiber.Ctx) error {
 	if err != nil {
 		return response.Error(c, fiber.StatusUnauthorized, "UNAUTHORIZED", err.Error())
 	}
-	res, err := h.service.GetThreatTrends(c.Context(), orgID)
+	currentMonthQuery := c.Query("current_month", c.Query("month", ""))
+	prevMonthQuery := c.Query("previous_month", c.Query("prev_month", c.Query("compare_month", "")))
+
+	res, err := h.service.GetThreatTrends(c.Context(), orgID, currentMonthQuery, prevMonthQuery)
 	if err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "FAILED_TO_GET_THREAT_TRENDS", err.Error())
 	}
