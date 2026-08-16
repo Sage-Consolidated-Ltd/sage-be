@@ -239,7 +239,7 @@ func (u *Uploader) PresignUploadPost(
 
 	expiryMin := u.client.cfg.PresignExpiry
 	if expiryMin <= 0 {
-		expiryMin = 1440
+		expiryMin = 15
 	}
 	expiration := time.Now().Add(time.Duration(expiryMin) * time.Minute)
 	now := time.Now().UTC()
