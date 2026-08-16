@@ -81,6 +81,8 @@ func _GetComplianceRiskIndicators() {}
 // @Accept json
 // @Produce json
 // @Security SessionAuth
+// @Param current_month query string false "Target month e.g. 2026-08, August, or 8 (defaults to current month)"
+// @Param previous_month query string false "Comparison month e.g. 2026-07, July, or 7 (defaults to previous month)"
 // @Success 200 {object} response.Response{data=domain.ThreatTrendsSummary}
 // @Router /events/threat-trends [get]
 func _GetThreatTrends() {}

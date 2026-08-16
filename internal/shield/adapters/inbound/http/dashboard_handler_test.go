@@ -72,8 +72,8 @@ func (m *mockDashboardService) GetComplianceRiskIndicators(ctx context.Context, 
 	return args.Get(0).(*domain.ComplianceRiskIndicators), args.Error(1)
 }
 
-func (m *mockDashboardService) GetThreatTrends(ctx context.Context, orgID uuid.UUID) (*domain.ThreatTrendsSummary, error) {
-	args := m.Called(ctx, orgID)
+func (m *mockDashboardService) GetThreatTrends(ctx context.Context, orgID uuid.UUID, currentMonth, previousMonth string) (*domain.ThreatTrendsSummary, error) {
+	args := m.Called(ctx, orgID, currentMonth, previousMonth)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -98,6 +98,7 @@ func TestDashboardHandler_Endpoints(t *testing.T) {
 	mockService.On("GetSecurityPostureScore", mock.Anything, orgID).Return(&domain.SecurityPostureScore{OverallScore: 94}, nil)
 	mockService.On("GetIdentityHealthSummary", mock.Anything, orgID).Return(&domain.IdentityHealthSummary{CoveragePercentage: 77}, nil)
 	mockService.On("GetAssetProtectionCoverage", mock.Anything, orgID).Return(&domain.AssetProtectionCoverage{CoveragePercentage: 95}, nil)
+	mockService.On("GetThreatTrends", mock.Anything, orgID, "", "2026-06").Return(&domain.ThreatTrendsSummary{CurrentMonth: "August", PreviousMonth: "June 2026"}, nil)
 
 	app.Get("/security-posture/score", func(c *fiber.Ctx) error {
 		c.Locals("orgID", orgID)
@@ -111,6 +112,10 @@ func TestDashboardHandler_Endpoints(t *testing.T) {
 		c.Locals("orgID", orgID)
 		return handler.GetAssetProtectionCoverage(c)
 	})
+	app.Get("/events/threat-trends", func(c *fiber.Ctx) error {
+		c.Locals("orgID", orgID)
+		return handler.GetThreatTrends(c)
+	})
 
 	tests := []struct {
 		url          string
@@ -119,6 +124,7 @@ func TestDashboardHandler_Endpoints(t *testing.T) {
 		{"/security-posture/score", 200},
 		{"/identity-health/summary", 200},
 		{"/assets/protection-coverage", 200},
+		{"/events/threat-trends?previous_month=2026-06", 200},
 	}
 
 	for _, tt := range tests {
