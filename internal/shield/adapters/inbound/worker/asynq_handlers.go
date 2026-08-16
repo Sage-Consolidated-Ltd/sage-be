@@ -119,14 +119,14 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 			}
 			srcID := pl.DataSourceID
 			fileIDStr := pl.FileID.String()
-			sev := types.Severity(pl.Level)
+			sev := types.ParseSeverity(pl.Level)
 			securityEvents = append(securityEvents, &domain.SecurityEvent{
 				OrganizationID:    payload.OrganizationID,
 				SourceID:          srcID,
 				SourceEventID:     &fileIDStr,
 				Source:            string(payload.FileClass),
 				EventType:         "log_upload",
-				Severity:          &sev,
+				Severity:          sev,
 				RawPayload:        pl.RawJSON,
 				NormalizedPayload: map[string]interface{}{"message": pl.Message},
 				ParseStatus:       types.ParseStatusSuccess,

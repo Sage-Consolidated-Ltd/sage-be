@@ -1,5 +1,7 @@
 package types
 
+import "strings"
+
 type Role string
 
 const (
@@ -32,6 +34,27 @@ func (s Severity) IsValid() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// ParseSeverity parses arbitrary log level or severity strings into a valid Severity
+func ParseSeverity(s string) *Severity {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "critical", "fatal", "emergency", "alert", "crit":
+		sev := SeverityCritical
+		return &sev
+	case "high", "error", "err":
+		sev := SeverityHigh
+		return &sev
+	case "medium", "warn", "warning", "notice", "med":
+		sev := SeverityMedium
+		return &sev
+	case "low", "info", "information", "informational", "debug", "trace", "verbose":
+		sev := SeverityLow
+		return &sev
+	default:
+		sev := SeverityLow
+		return &sev
 	}
 }
 
