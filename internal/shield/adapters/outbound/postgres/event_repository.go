@@ -44,7 +44,7 @@ const (
 			ip_address, geo_country, geo_city, raw_payload, normalized_payload,
 			parse_status, parse_errors, occurred_at, ingested_at
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
-		ON CONFLICT (source, source_event_id) 
+		ON CONFLICT (source_id, source_event_id) 
 		DO NOTHING
 	`
 	BULK_INSERT_EVENTS_WITH_RETURNING = `
@@ -55,6 +55,8 @@ const (
 				ip_address, geo_country, geo_city, raw_payload, normalized_payload,
 				parse_status, parse_errors, occurred_at, ingested_at
 			) VALUES %s
+			ON CONFLICT (source_id, source_event_id)
+			DO NOTHING
 			RETURNING id, created_at
 		)
 		SELECT id FROM new_events
