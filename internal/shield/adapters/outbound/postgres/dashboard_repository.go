@@ -2,9 +2,12 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"sage-backend/internal/shared/db"
+	"sage-backend/internal/shield/adapters/outbound/postgres/models"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/outbound"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -182,18 +185,58 @@ func (r *DashboardRepository) GetComplianceRiskIndicators(ctx context.Context, o
 
 // Widget 9: Threat Severity Trends Line Chart
 func (r *DashboardRepository) GetThreatTrends(ctx context.Context, orgID uuid.UUID) (*domain.ThreatTrendsSummary, error) {
-	days := []domain.ThreatDayTrend{
-		{Day: 1, CurrentMonthCount: 3, LastMonthCount: 20},
-		{Day: 5, CurrentMonthCount: 4, LastMonthCount: 10},
-		{Day: 10, CurrentMonthCount: 3, LastMonthCount: 5},
-		{Day: 15, CurrentMonthCount: 10, LastMonthCount: 3},
-		{Day: 20, CurrentMonthCount: 14, LastMonthCount: 2},
-		{Day: 25, CurrentMonthCount: 11, LastMonthCount: 2},
-		{Day: 30, CurrentMonthCount: 5, LastMonthCount: 5},
+	const q = `
+		WITH current_month AS (
+			SELECT 
+				EXTRACT(DAY FROM created_at)::int AS day,
+				COUNT(*)::int AS count
+			FROM (
+				SELECT created_at FROM threats WHERE organization_id = $1
+				UNION ALL
+				SELECT occurred_at AS created_at FROM security_events WHERE organization_id = $1
+			) t
+			WHERE created_at >= date_trunc('month', CURRENT_DATE)
+			  AND created_at < date_trunc('month', CURRENT_DATE) + INTERVAL '1 month'
+			GROUP BY EXTRACT(DAY FROM created_at)
+		),
+		last_month AS (
+			SELECT 
+				EXTRACT(DAY FROM created_at)::int AS day,
+				COUNT(*)::int AS count
+			FROM (
+				SELECT created_at FROM threats WHERE organization_id = $1
+				UNION ALL
+				SELECT occurred_at AS created_at FROM security_events WHERE organization_id = $1
+			) t
+			WHERE created_at >= date_trunc('month', CURRENT_DATE - INTERVAL '1 month')
+			  AND created_at < date_trunc('month', CURRENT_DATE)
+			GROUP BY EXTRACT(DAY FROM created_at)
+		),
+		all_days AS (
+			SELECT generate_series(1, 31) AS day
+		)
+		SELECT 
+			d.day,
+			COALESCE(cm.count, 0) AS current_month_count,
+			COALESCE(lm.count, 0) AS last_month_count
+		FROM all_days d
+		LEFT JOIN current_month cm ON d.day = cm.day
+		LEFT JOIN last_month lm ON d.day = lm.day
+		ORDER BY d.day ASC
+	`
+
+	var dtos []models.ThreatDayTrendDTO
+	if err := r.db.SelectContext(ctx, &dtos, q, orgID); err != nil {
+		return nil, fmt.Errorf("failed to get threat trends: %w", err)
+	}
+
+	days := make([]domain.ThreatDayTrend, 0, len(dtos))
+	for _, dto := range dtos {
+		days = append(days, dto.ToDomain())
 	}
 
 	return &domain.ThreatTrendsSummary{
-		CurrentMonth: "August",
+		CurrentMonth: time.Now().Format("January"),
 		Days:         days,
 	}, nil
 }
