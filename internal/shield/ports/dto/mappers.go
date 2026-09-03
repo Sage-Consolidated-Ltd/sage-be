@@ -17,6 +17,25 @@ func SecurityEventToResponse(s *domain.SecurityEvent) *SecurityEventResponse {
 	if s.Severity != nil {
 		sev = string(*s.Severity)
 	}
+	ingestType := "polled"
+	if s.EventType == "log_upload" {
+		ingestType = "file_upload"
+	}
+	if s.NormalizedPayload != nil {
+		if t, ok := s.NormalizedPayload["_ingest_type"].(string); ok && t != "" {
+			ingestType = t
+		}
+	}
+	var fileID *string
+	if s.NormalizedPayload != nil {
+		if fid, ok := s.NormalizedPayload["file_id"].(string); ok && fid != "" {
+			fileID = &fid
+		}
+	}
+	if fileID == nil && ingestType == "file_upload" && s.SourceEventID != nil {
+		fileID = s.SourceEventID
+	}
+
 	return &SecurityEventResponse{
 		ID:                s.ID.String(),
 		SourceID:          s.SourceID.String(),
@@ -38,6 +57,8 @@ func SecurityEventToResponse(s *domain.SecurityEvent) *SecurityEventResponse {
 		OccurredAt:        s.OccurredAt,
 		IngestedAt:        s.IngestedAt,
 		UpdatedAt:         s.UpdatedAt,
+		IngestionType:     ingestType,
+		FileID:            fileID,
 	}
 }
 

@@ -29,8 +29,8 @@ func NewLogsService(
 	parsedLogRepo outbound.ParsedLogRepository,
 ) inbound.LogsUseCase {
 	var astSearcher *ASTSearchService
-	if parsedLogRepo != nil {
-		astSearcher = NewASTSearchService(parsedLogRepo)
+	if eventRepo != nil {
+		astSearcher = NewASTSearchService(eventRepo)
 	}
 	return &LogsService{
 		eventRepo:      eventRepo,
@@ -40,9 +40,9 @@ func NewLogsService(
 	}
 }
 
-func (s *LogsService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.SearchResult, error) {
+func (s *LogsService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.EventSearchResult, error) {
 	if s.astSearcher == nil {
-		return domain.SearchResult{}, nil
+		return domain.EventSearchResult{}, nil
 	}
 	return s.astSearcher.SearchLogsAST(ctx, orgID, queryString, limit)
 }
@@ -75,7 +75,7 @@ func (s *LogsService) IngestLog(ctx context.Context, orgID uuid.UUID, req *dto.I
 		GeoCountry:        &req.GeoCountry,
 		GeoCity:           &req.GeoCity,
 		RawPayload:        req.RawPayload,
-		NormalizedPayload: make(db.JSONMap),
+		NormalizedPayload: db.JSONMap{"_ingest_type": "api_stream"},
 		ParseStatus:       types.ParseStatusPending,
 		ParseErrors:       make([]db.JSONMap, 0),
 		OccurredAt:        occurredAt,
@@ -121,7 +121,7 @@ func (s *LogsService) BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *
 			GeoCountry:        &e.GeoCountry,
 			GeoCity:           &e.GeoCity,
 			RawPayload:        e.RawPayload,
-			NormalizedPayload: make(db.JSONMap),
+			NormalizedPayload: db.JSONMap{"_ingest_type": "api_stream"},
 			ParseStatus:       types.ParseStatusPending,
 			ParseErrors:       make([]db.JSONMap, 0),
 			OccurredAt:        occurredAt,

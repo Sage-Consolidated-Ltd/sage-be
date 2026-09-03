@@ -23,6 +23,8 @@ type SecurityEventRepository interface {
 	BulkInsertRawEvents(ctx context.Context, orgID uuid.UUID, sourceID *uuid.UUID, events []domain.NormalizedEvent) ([]domain.CreateRawEventResponse, error)
 	GetRawEventByID(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (*domain.RawEvent, error)
 	GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error)
+	SearchAST(ctx context.Context, params domain.EventSearchParams) (domain.EventSearchResult, error)
+	DeleteByFileID(ctx context.Context, fileID uuid.UUID, orgID uuid.UUID) error
 }
 
 type DataQualityRepository interface {

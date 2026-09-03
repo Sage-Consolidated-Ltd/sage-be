@@ -106,6 +106,19 @@ func (m *mockEventRepo) GetThreatsSummary(ctx context.Context, orgID uuid.UUID) 
 	return args.Get(0).(*domain.ThreatsSummary), args.Error(1)
 }
 
+func (m *mockEventRepo) SearchAST(ctx context.Context, params domain.EventSearchParams) (domain.EventSearchResult, error) {
+	args := m.Called(ctx, params)
+	if args.Get(0) == nil {
+		return domain.EventSearchResult{}, args.Error(1)
+	}
+	return args.Get(0).(domain.EventSearchResult), args.Error(1)
+}
+
+func (m *mockEventRepo) DeleteByFileID(ctx context.Context, fileID uuid.UUID, orgID uuid.UUID) error {
+	args := m.Called(ctx, fileID, orgID)
+	return args.Error(0)
+}
+
 type mockDataSourceRepo struct {
 	mock.Mock
 }

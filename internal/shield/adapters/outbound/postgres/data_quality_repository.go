@@ -215,21 +215,13 @@ func (r *DataQualityRepository) UpdateSuggestionStatus(ctx context.Context, id u
 
 func (r *DataQualityRepository) GetSuggestions(ctx context.Context, orgID uuid.UUID, sourceID, parserID *uuid.UUID, status domain.SuggestionStatus) ([]*domain.DataQualitySuggestion, error) {
 	var dtos []*models.DataQualitySuggestionDTO
-	source := ""
-	if sourceID != nil {
-		source = sourceID.String()
-	}
-	parser := ""
-	if parserID != nil {
-		parser = parserID.String()
-	}
-	statusStr := ""
+	var statusVal *string
 	if status != "" {
-		statusStr = string(status)
+		s := string(status)
+		statusVal = &s
 	}
-	// Build query with optional filters using OR conditions
-	query := GET_SUGGESTIONS + " ORDER BY created_at DESC"
-	err := r.db.SelectContext(ctx, &dtos, query, orgID, source, parser, statusStr)
+	query := GET_SUGGESTIONS
+	err := r.db.SelectContext(ctx, &dtos, query, orgID, sourceID, parserID, statusVal)
 	if err != nil {
 		return nil, err
 	}

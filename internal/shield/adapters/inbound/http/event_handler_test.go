@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"net/http/httptest"
 	"sage-backend/internal/shared/types"
-	"sage-backend/internal/shield/ports/mocks"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/dto"
+	"sage-backend/internal/shield/ports/mocks"
 	"strings"
 	"testing"
 	"time"
@@ -55,12 +55,12 @@ func (m *mockLogsService) GetLogByID(ctx context.Context, orgID uuid.UUID, id uu
 	return args.Get(0).(*domain.SecurityEvent), args.Error(1)
 }
 
-func (m *mockLogsService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.SearchResult, error) {
+func (m *mockLogsService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.EventSearchResult, error) {
 	args := m.Called(ctx, orgID, queryString, limit)
 	if args.Get(0) == nil {
-		return domain.SearchResult{}, args.Error(1)
+		return domain.EventSearchResult{}, args.Error(1)
 	}
-	return args.Get(0).(domain.SearchResult), args.Error(1)
+	return args.Get(0).(domain.EventSearchResult), args.Error(1)
 }
 
 func (m *mockLogsService) GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error) {
@@ -527,3 +527,44 @@ func TestEventHandler_GetThreatsSummary_Success(t *testing.T) {
 
 	mockService.AssertExpectations(t)
 }
+
+func TestEventHandler_SearchLogs_WithASTQuery(t *testing.T) {
+	app := fiber.New()
+	mockService := new(mockLogsService)
+	handler := NewEventHandler(mockService)
+
+	orgID := uuid.New()
+	events := mocks.GenerateMockSecurityEvents(orgID, 2)
+	eventPtrs := make([]*domain.SecurityEvent, len(events))
+	for i := range events {
+		eventPtrs[i] = &events[i]
+	}
+
+	astResult := domain.EventSearchResult{
+		Events: eventPtrs,
+		Total:  2,
+	}
+
+	mockService.On("SearchLogsAST", mock.Anything, orgID, `level=error channel=upload`, 25).Return(astResult, nil)
+
+	app.Get("/logs", func(c *fiber.Ctx) error {
+		c.Locals("orgID", orgID)
+		return handler.SearchLogs(c)
+	})
+
+	req := httptest.NewRequest("GET", "/logs?q=level=error+channel=upload", nil)
+	resp, err := app.Test(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+
+	var result map[string]interface{}
+	json.NewDecoder(resp.Body).Decode(&result)
+	assert.Equal(t, "Logs retrieved", result["message"])
+	data := result["data"].(map[string]interface{})
+	assert.Equal(t, float64(2), data["total"])
+	items := data["items"].([]interface{})
+	assert.Len(t, items, 2)
+
+	mockService.AssertExpectations(t)
+}
+

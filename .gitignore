@@ -2,7 +2,9 @@ AGENTS.md
 .env
 .env.*
 Sage_Backend_Documentation.*
+Sage_Shield_API_Documentation.*
 grep
 TODO.md
 system-overview.txt
 docs
+scripts

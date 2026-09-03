@@ -40,7 +40,18 @@ func (h *EventHandler) SearchLogs(c *fiber.Ctx) error {
 		if err != nil {
 			return response.Error(c, fiber.StatusInternalServerError, "FAILED_TO_SEARCH_LOGS", err.Error())
 		}
-		return response.JSON(c, fiber.StatusOK, "Logs retrieved", res)
+		items := make([]*dto.SecurityEventResponse, len(res.Events))
+		for i, ev := range res.Events {
+			items[i] = dto.SecurityEventToResponse(ev)
+		}
+		paginated := map[string]interface{}{
+			"items":       items,
+			"total":       res.Total,
+			"page":        page,
+			"page_size":   pageSize,
+			"next_cursor": res.NextCursor,
+		}
+		return response.JSON(c, fiber.StatusOK, "Logs retrieved", paginated)
 	}
 
 	filters := map[string]interface{}{
@@ -55,11 +66,16 @@ func (h *EventHandler) SearchLogs(c *fiber.Ctx) error {
 		"end_time":       c.Query("end_time"),
 		"search":         c.Query("search"),
 	}
+	if it := c.Query("ingestion_type"); it != "" {
+		filters["ingestion_type"] = it
+	} else if ch := c.Query("channel"); ch != "" {
+		filters["ingestion_type"] = ch
+	}
 	logs, total, err := h.service.SearchLogs(c.Context(), orgID, filters, page, pageSize)
 	if err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "FAILED_TO_SEARCH_LOGS", err.Error())
 	}
-	items := make([]interface{}, len(logs))
+	items := make([]*dto.SecurityEventResponse, len(logs))
 	for i, log := range logs {
 		items[i] = dto.SecurityEventToResponse(log)
 	}

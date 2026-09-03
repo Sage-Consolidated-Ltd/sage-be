@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"path/filepath"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"sage-backend/internal/shield/adapters/outbound/upload_parser"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/dto"
+	"sage-backend/internal/shield/ports/inbound"
 	"sage-backend/internal/shield/ports/outbound"
 
 	"github.com/google/uuid"
@@ -42,6 +44,8 @@ type TaskHandler struct {
 	threatDetector      ai_detector.ThreatDetectorInt
 	s3Uploader          *s3.Uploader
 	parsedLogRepository outbound.ParsedLogRepository
+	qualityEngine       inbound.DataQualityEngine
+	qualityRepo         outbound.DataQualityRepository
 }
 
 func NewTaskHandler(
@@ -55,6 +59,8 @@ func NewTaskHandler(
 	threatDetector ai_detector.ThreatDetectorInt,
 	s3Uploader *s3.Uploader,
 	parsedLogRepository outbound.ParsedLogRepository,
+	qualityEngine inbound.DataQualityEngine,
+	qualityRepo outbound.DataQualityRepository,
 ) *TaskHandler {
 	return &TaskHandler{
 		jobRepo:             jobRepo,
@@ -67,6 +73,8 @@ func NewTaskHandler(
 		threatDetector:      threatDetector,
 		s3Uploader:          s3Uploader,
 		parsedLogRepository: parsedLogRepository,
+		qualityEngine:       qualityEngine,
+		qualityRepo:         qualityRepo,
 	}
 }
 
@@ -104,13 +112,6 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 			return fmt.Errorf("parse file: %w", err)
 		}
 
-		if h.parsedLogRepository != nil {
-			if err := h.parsedLogRepository.StoreParsedLogs(ctx, parsedLogs); err != nil {
-				logger.Error("Error storing parsed logs in HandleProcessLogFile", zap.Error(err))
-				return fmt.Errorf("store parsed logs: %w", err)
-			}
-		}
-
 		var securityEvents []*domain.SecurityEvent
 		for _, pl := range parsedLogs {
 			occurredAt := time.Now()
@@ -121,17 +122,38 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 			fileIDStr := pl.FileID.String()
 			sev := types.ParseSeverity(pl.Level)
 			securityEvents = append(securityEvents, &domain.SecurityEvent{
-				OrganizationID:    payload.OrganizationID,
-				SourceID:          srcID,
-				SourceEventID:     &fileIDStr,
-				Source:            string(payload.FileClass),
-				EventType:         "log_upload",
-				Severity:          sev,
-				RawPayload:        pl.RawJSON,
-				NormalizedPayload: map[string]interface{}{"message": pl.Message},
-				ParseStatus:       types.ParseStatusSuccess,
-				OccurredAt:        occurredAt,
+				OrganizationID: payload.OrganizationID,
+				SourceID:       srcID,
+				SourceEventID:  &fileIDStr,
+				Source:         string(payload.FileClass),
+				EventType:      "log_upload",
+				Severity:       sev,
+				RawPayload:     pl.RawJSON,
+				NormalizedPayload: map[string]interface{}{
+					"message":      pl.Message,
+					"level":        pl.Level,
+					"file_id":      fileIDStr,
+					"_ingest_type": "file_upload",
+				},
+				ParseStatus: types.ParseStatusSuccess,
+				OccurredAt:  occurredAt,
 			})
+		}
+
+		if h.qualityEngine != nil {
+			for _, evt := range securityEvents {
+				if qr, err := h.qualityEngine.EvaluateEvent(ctx, evt); err == nil && qr != nil {
+					if evt.NormalizedPayload == nil {
+						evt.NormalizedPayload = make(map[string]interface{})
+					}
+					evt.NormalizedPayload["_quality_score"] = qr.Score
+					if qr.Status == types.QualityError {
+						evt.ParseStatus = types.ParseStatusFailed
+					} else if qr.Status == types.QualityPartial && evt.ParseStatus == types.ParseStatusSuccess {
+						evt.ParseStatus = types.ParseStatusPartial
+					}
+				}
+			}
 		}
 
 		if len(securityEvents) > 0 {
@@ -140,7 +162,7 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 			}
 		}
 
-		log.Printf("Stored %d parsed logs and security events for file %s", len(parsedLogs), filename)
+		log.Printf("Stored %d security events for file %s", len(securityEvents), filename)
 		return nil
 	})
 
@@ -239,12 +261,17 @@ func (h *TaskHandler) HandleQualityScanJob(ctx context.Context, t *asynq.Task) e
 	}
 
 	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
-		return err
+		return fmt.Errorf("failed to unmarshal quality scan payload: %w", err)
 	}
 
 	job, err := h.jobRepo.GetJobByID(ctx, payload.JobID, payload.OrganizationID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get job failed: %w", err)
+	}
+
+	scan, err := h.qualityRepo.GetScanByID(ctx, payload.ScanID, payload.OrganizationID)
+	if err != nil {
+		return fmt.Errorf("get scan failed: %w", err)
 	}
 
 	now := time.Now()
@@ -254,15 +281,192 @@ func (h *TaskHandler) HandleQualityScanJob(ctx context.Context, t *asynq.Task) e
 		return err
 	}
 
-	job.EventsProcessed = 1
-	job.Status = domain.JobStatusCompleted
-	completedAt := time.Now()
-	job.CompletedAt = &completedAt
-	if err := h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage); err != nil {
+	scan.Status = "running"
+	if err := h.qualityRepo.UpdateScan(ctx, scan); err != nil {
 		return err
 	}
 
-	log.Printf("Completed quality scan job %s", job.ID)
+	if h.qualityEngine == nil || h.qualityRepo == nil {
+		errMsg := "quality engine or repository not configured"
+		_ = h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, domain.JobStatusFailed, 0, 0, &errMsg)
+		scan.Status = "failed"
+		scan.CompletedAt = &now
+		_ = h.qualityRepo.UpdateScan(ctx, scan)
+		return fmt.Errorf("%s", errMsg)
+	}
+
+	events, _, err := h.eventRepo.SearchEvents(ctx, payload.OrganizationID, nil, 1, 1000)
+	if err != nil {
+		errStr := err.Error()
+		_ = h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, domain.JobStatusFailed, 0, 0, &errStr)
+		scan.Status = "failed"
+		scan.CompletedAt = &now
+		_ = h.qualityRepo.UpdateScan(ctx, scan)
+		return fmt.Errorf("failed to search events for quality scan: %w", err)
+	}
+
+	completedAt := time.Now()
+	if len(events) == 0 {
+		qualityScore := 100
+		var zero int64 = 0
+		var zeroFloat float64 = 0.0
+		scan.QualityScore = &qualityScore
+		scan.ParsingErrors = &zero
+		scan.MissingFieldsPercentage = &zeroFloat
+		scan.DuplicateEventsPercentage = &zeroFloat
+		scan.UnmappedLogsCount = &zero
+		scan.Status = "completed"
+		scan.CompletedAt = &completedAt
+		summary := "No events found to evaluate. Quality baseline is 100%."
+		scan.AISummary = &summary
+		if err := h.qualityRepo.UpdateScan(ctx, scan); err != nil {
+			return err
+		}
+
+		job.EventsProcessed = 0
+		job.Status = domain.JobStatusCompleted
+		job.CompletedAt = &completedAt
+		return h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage)
+	}
+
+	results, err := h.qualityEngine.EvaluateBatch(ctx, events)
+	if err != nil {
+		errStr := err.Error()
+		_ = h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, domain.JobStatusFailed, 0, 0, &errStr)
+		scan.Status = "failed"
+		scan.CompletedAt = &completedAt
+		_ = h.qualityRepo.UpdateScan(ctx, scan)
+		return fmt.Errorf("failed to evaluate events batch: %w", err)
+	}
+
+	var totalScore float64 = 0
+	var totalParsingErrors int64 = 0
+	var eventsWithMissingFields int = 0
+	var eventsWithDuplicates int = 0
+	var totalUnmapped int64 = 0
+
+	type sourceStats struct {
+		sourceID           uuid.UUID
+		totalEvents        int
+		totalScore         float64
+		parsingErrors      int64
+		missingFieldsCount int
+		duplicateCount     int
+		unmappedCount      int64
+	}
+	sourceMap := make(map[uuid.UUID]*sourceStats)
+
+	for i, evt := range events {
+		res := results[i]
+		totalScore += res.Score
+
+		hasMissingField := false
+		hasDuplicate := false
+		for _, issue := range res.Issues {
+			if issue.Category == "missing_field" || issue.Category == "missing_metadata" {
+				hasMissingField = true
+			}
+			if issue.Category == "duplicate" {
+				hasDuplicate = true
+			}
+		}
+
+		isParseError := evt.ParseStatus == types.ParseStatusFailed || len(evt.ParseErrors) > 0
+		if isParseError {
+			totalParsingErrors++
+		}
+		if hasMissingField {
+			eventsWithMissingFields++
+		}
+		if hasDuplicate {
+			eventsWithDuplicates++
+		}
+
+		isUnmapped := evt.SourceID == uuid.Nil || evt.EventType == "unmapped" || evt.ParseStatus == types.ParseStatusFailed
+		if isUnmapped {
+			totalUnmapped++
+		}
+
+		if evt.SourceID != uuid.Nil {
+			sID := evt.SourceID
+			stats, exists := sourceMap[sID]
+			if !exists {
+				stats = &sourceStats{sourceID: sID}
+				sourceMap[sID] = stats
+			}
+			stats.totalEvents++
+			stats.totalScore += res.Score
+			if isParseError {
+				stats.parsingErrors++
+			}
+			if hasMissingField {
+				stats.missingFieldsCount++
+			}
+			if hasDuplicate {
+				stats.duplicateCount++
+			}
+			if isUnmapped {
+				stats.unmappedCount++
+			}
+		}
+	}
+
+	n := float64(len(results))
+	avgScore := int(math.Round(totalScore / n))
+	missingFieldsPct := math.Round((float64(eventsWithMissingFields)/n)*10000) / 100
+	duplicatePct := math.Round((float64(eventsWithDuplicates)/n)*10000) / 100
+
+	for _, stats := range sourceMap {
+		sn := float64(stats.totalEvents)
+		srcAvg := stats.totalScore / sn
+		srcStatus := types.QualityGood
+		if srcAvg < 40 {
+			srcStatus = types.QualityError
+		} else if srcAvg < 60 {
+			srcStatus = types.QualityPartial
+		} else if srcAvg < 80 {
+			srcStatus = types.QualityWarning
+		}
+
+		srcMissingPct := math.Round((float64(stats.missingFieldsCount)/sn)*10000) / 100
+		srcDupPct := math.Round((float64(stats.duplicateCount)/sn)*10000) / 100
+
+		metric := &domain.DataQualitySourceMetric{
+			OrganizationID:          payload.OrganizationID,
+			ScanID:                  payload.ScanID,
+			SourceID:                stats.sourceID,
+			ParsingErrors:           stats.parsingErrors,
+			MissingFieldsPercentage: srcMissingPct,
+			UnmappedEvents:          stats.unmappedCount,
+			DuplicatePercentage:     srcDupPct,
+			Status:                  srcStatus,
+		}
+		if err := h.qualityRepo.CreateSourceMetric(ctx, metric); err != nil {
+			logger.Warn("Failed to persist source metric during quality scan", zap.Error(err), zap.String("source_id", stats.sourceID.String()))
+		}
+	}
+
+	scan.QualityScore = &avgScore
+	scan.ParsingErrors = &totalParsingErrors
+	scan.MissingFieldsPercentage = &missingFieldsPct
+	scan.DuplicateEventsPercentage = &duplicatePct
+	scan.UnmappedLogsCount = &totalUnmapped
+	scan.Status = "completed"
+	scan.CompletedAt = &completedAt
+	summary := fmt.Sprintf("Evaluated %d events. Overall quality score: %d/100 across %d sources.", len(events), avgScore, len(sourceMap))
+	scan.AISummary = &summary
+	if err := h.qualityRepo.UpdateScan(ctx, scan); err != nil {
+		return fmt.Errorf("failed to update scan results: %w", err)
+	}
+
+	job.EventsProcessed = int64(len(events))
+	job.Status = domain.JobStatusCompleted
+	job.CompletedAt = &completedAt
+	if err := h.jobRepo.UpdateJobStatus(ctx, job.ID, job.OrganizationID, job.Status, job.EventsProcessed, job.EventsFailed, job.ErrorMessage); err != nil {
+		return fmt.Errorf("failed to update job status: %w", err)
+	}
+
+	log.Printf("Successfully completed quality scan job %s for scan %s (evaluated %d events, score: %d)", job.ID, scan.ID, len(events), avgScore)
 	return nil
 }
 
@@ -341,10 +545,26 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 			IPAddress:         ipCopy,
 			ActorUsername:     userCopy,
 			RawPayload:        re.RawPayload,
-			NormalizedPayload: map[string]interface{}{"user_id": re.UserID},
+			NormalizedPayload: map[string]interface{}{"user_id": re.UserID, "_ingest_type": "polled", "provider": re.Provider},
 			ParseStatus:       types.ParseStatusPending,
 			OccurredAt:        re.EventTimeStamp,
 		})
+	}
+
+	if h.qualityEngine != nil {
+		for _, evt := range security_events {
+			if qr, err := h.qualityEngine.EvaluateEvent(ctx, evt); err == nil && qr != nil {
+				if evt.NormalizedPayload == nil {
+					evt.NormalizedPayload = make(map[string]interface{})
+				}
+				evt.NormalizedPayload["_quality_score"] = qr.Score
+				if qr.Status == types.QualityError {
+					evt.ParseStatus = types.ParseStatusFailed
+				} else if qr.Status == types.QualityPartial && evt.ParseStatus == types.ParseStatusPending {
+					evt.ParseStatus = types.ParseStatusPartial
+				}
+			}
+		}
 	}
 
 	if err := h.eventRepo.BulkCreateEvents(ctx, security_events); err != nil {

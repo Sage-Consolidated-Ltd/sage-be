@@ -79,8 +79,14 @@ const (
 			AND ($9::timestamptz IS NULL OR occurred_at >= $9)
 			AND ($10::timestamptz IS NULL OR occurred_at <= $10)
 			AND ($11::varchar IS NULL OR $11 = '' OR search_vector @@ plainto_tsquery('english', $11))
+			AND (
+				$12::varchar IS NULL OR $12 = ''
+				OR ($12 IN ('upload', 'file_upload', 'file') AND (event_type = 'log_upload' OR normalized_payload->>'_ingest_type' = 'file_upload'))
+				OR ($12 IN ('polled', 'poll', 'provider') AND event_type != 'log_upload' AND (normalized_payload->>'_ingest_type' = 'polled' OR normalized_payload->>'_ingest_type' IS NULL))
+				OR ($12 IN ('stream', 'api', 'api_stream') AND normalized_payload->>'_ingest_type' = 'api_stream')
+			)
 		ORDER BY occurred_at DESC
-		LIMIT $12 OFFSET $13
+		LIMIT $13 OFFSET $14
 	`
 	COUNT_EVENTS = `
 		SELECT COUNT(*) FROM security_events
@@ -95,6 +101,12 @@ const (
 			AND ($9::timestamptz IS NULL OR occurred_at >= $9)
 			AND ($10::timestamptz IS NULL OR occurred_at <= $10)
 			AND ($11::varchar IS NULL OR $11 = '' OR search_vector @@ plainto_tsquery('english', $11))
+			AND (
+				$12::varchar IS NULL OR $12 = ''
+				OR ($12 IN ('upload', 'file_upload', 'file') AND (event_type = 'log_upload' OR normalized_payload->>'_ingest_type' = 'file_upload'))
+				OR ($12 IN ('polled', 'poll', 'provider') AND event_type != 'log_upload' AND (normalized_payload->>'_ingest_type' = 'polled' OR normalized_payload->>'_ingest_type' IS NULL))
+				OR ($12 IN ('stream', 'api', 'api_stream') AND normalized_payload->>'_ingest_type' = 'api_stream')
+			)
 	`
 	GET_EVENTS_BY_SOURCE = `
 		SELECT * FROM security_events
@@ -294,9 +306,18 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 		search = &s
 	}
 
+	var ingestType *string
+	if it, ok := filters["ingestion_type"].(string); ok && it != "" {
+		itLower := strings.ToLower(it)
+		ingestType = &itLower
+	} else if it, ok := filters["channel"].(string); ok && it != "" {
+		itLower := strings.ToLower(it)
+		ingestType = &itLower
+	}
+
 	var total int
 	err := r.db.GetContext(ctx, &total, COUNT_EVENTS,
-		orgID, sourceID, source, eventType, category, severity, actorEmail, ipAddress, startTime, endTime, search)
+		orgID, sourceID, source, eventType, category, severity, actorEmail, ipAddress, startTime, endTime, search, ingestType)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -304,7 +325,7 @@ func (r *SecurityEventRepository) SearchEvents(ctx context.Context, orgID uuid.U
 	var dtos []*models.SecurityEventDTO
 	err = r.db.SelectContext(ctx, &dtos, SEARCH_EVENTS,
 		orgID, sourceID, source, eventType, category, severity, actorEmail, ipAddress,
-		startTime, endTime, search, pageSize, offset)
+		startTime, endTime, search, ingestType, pageSize, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -764,4 +785,137 @@ func (r *SecurityEventRepository) GetThreatsSummary(ctx context.Context, orgID u
 		return nil, fmt.Errorf("failed to get threats summary: %w", err)
 	}
 	return dto.ToDomain(), nil
+}
+
+func (r *SecurityEventRepository) DeleteByFileID(ctx context.Context, fileID uuid.UUID, orgID uuid.UUID) error {
+	fileIDStr := fileID.String()
+	query := `
+		DELETE FROM security_events
+		WHERE organization_id = $1
+		  AND (source_event_id = $2 OR normalized_payload->>'file_id' = $2)
+	`
+	_, err := r.db.ExecContext(ctx, query, orgID, fileIDStr)
+	if err != nil {
+		return fmt.Errorf("delete security events by file id: %w", err)
+	}
+	return nil
+}
+
+func (r *SecurityEventRepository) SearchAST(ctx context.Context, params domain.EventSearchParams) (domain.EventSearchResult, error) {
+	if params.OrganizationID == uuid.Nil {
+		return domain.EventSearchResult{}, fmt.Errorf("organization ID is required")
+	}
+
+	conds := []string{"organization_id = $1"}
+	args := []any{params.OrganizationID}
+	argIdx := 2
+
+	if params.DataSourceID != nil && *params.DataSourceID != uuid.Nil {
+		conds = append(conds, fmt.Sprintf("source_id = $%d", argIdx))
+		args = append(args, *params.DataSourceID)
+		argIdx++
+	}
+
+	if params.Source != nil && *params.Source != "" {
+		conds = append(conds, fmt.Sprintf("source ILIKE $%d", argIdx))
+		args = append(args, "%"+*params.Source+"%")
+		argIdx++
+	}
+
+	if params.Severity != nil && *params.Severity != "" {
+		conds = append(conds, fmt.Sprintf("LOWER(severity) = LOWER($%d)", argIdx))
+		args = append(args, *params.Severity)
+		argIdx++
+	}
+
+	if params.EventType != nil && *params.EventType != "" {
+		conds = append(conds, fmt.Sprintf("event_type ILIKE $%d", argIdx))
+		args = append(args, "%"+*params.EventType+"%")
+		argIdx++
+	}
+
+	if params.IngestionType != nil && *params.IngestionType != "" {
+		switch strings.ToLower(*params.IngestionType) {
+		case "upload", "file_upload", "file":
+			conds = append(conds, "(event_type = 'log_upload' OR normalized_payload->>'_ingest_type' = 'file_upload')")
+		case "polled", "poll", "provider":
+			conds = append(conds, "(event_type != 'log_upload' AND (normalized_payload->>'_ingest_type' = 'polled' OR normalized_payload->>'_ingest_type' IS NULL))")
+		case "stream", "api", "api_stream":
+			conds = append(conds, "(normalized_payload->>'_ingest_type' = 'api_stream')")
+		}
+	}
+
+	if params.From != nil {
+		conds = append(conds, fmt.Sprintf("occurred_at >= $%d", argIdx))
+		args = append(args, *params.From)
+		argIdx++
+	}
+
+	if params.To != nil {
+		conds = append(conds, fmt.Sprintf("occurred_at <= $%d", argIdx))
+		args = append(args, *params.To)
+		argIdx++
+	}
+
+	if params.FreeText != nil && *params.FreeText != "" {
+		conds = append(conds, fmt.Sprintf("search_vector @@ plainto_tsquery('english', $%d)", argIdx))
+		args = append(args, *params.FreeText)
+		argIdx++
+	}
+
+	for k, v := range params.RawFilters {
+		conds = append(conds, fmt.Sprintf("(raw_payload->>$%d = $%d OR normalized_payload->>$%d = $%d)", argIdx, argIdx+1, argIdx, argIdx+1))
+		args = append(args, k, v)
+		argIdx += 2
+	}
+
+	if params.Cursor != nil {
+		conds = append(conds, fmt.Sprintf("occurred_at < $%d", argIdx))
+		args = append(args, *params.Cursor)
+		argIdx++
+	}
+
+	limit := params.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	whereClause := strings.Join(conds, " AND ")
+
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM security_events WHERE %s", whereClause)
+	var total int
+	if err := r.db.GetContext(ctx, &total, countQuery, args...); err != nil {
+		return domain.EventSearchResult{}, fmt.Errorf("count security events: %w", err)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT * FROM security_events
+		WHERE %s
+		ORDER BY occurred_at DESC
+		LIMIT %d`, whereClause, limit)
+
+	var dtos []*models.SecurityEventDTO
+	if err := r.db.SelectContext(ctx, &dtos, query, args...); err != nil {
+		return domain.EventSearchResult{}, fmt.Errorf("search security events AST: %w", err)
+	}
+
+	events := make([]*domain.SecurityEvent, len(dtos))
+	for i, d := range dtos {
+		events[i] = d.ToDomain()
+	}
+
+	var next *time.Time
+	if len(events) > 0 {
+		last := events[len(events)-1].OccurredAt
+		next = &last
+	}
+
+	return domain.EventSearchResult{
+		Events:     events,
+		NextCursor: next,
+		Total:      total,
+	}, nil
 }
