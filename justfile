@@ -43,17 +43,16 @@ psql *args:
 pg_dump *args:
   docker-compose exec postgres pg_dump -U sage_user -d sage_db {{args}}
 
-# Manual migrations (requires migrate CLI)
-# Install: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-migrate *args='up':
-  {{GOBIN}}/migrate -path ./migrations -database "postgres://sage_user:sage_dev_password@localhost:5432/sage_db?sslmode=disable" {{args}}
+# Database migrations and seed runner
+migrate args='up':
+  go run migrations/main.go --{{args}}
 
-migrate-down:
-  {{GOBIN}}/migrate -path ./migrations -database "postgres://sage_user:sage_dev_password@localhost:5432/sage_db?sslmode=disable" down
+migrate-seed:
+  go run migrations/main.go --seed
 
 # Build and run the application locally (outside Docker)
 run-local:
-  go run ./cmd/server/main.go
+  go run ./cmd/api/main.go
 
 # Test suite
 test:
@@ -77,6 +76,13 @@ tidy:
 
 generate:
   go generate ./...
+
+swagger:
+	@echo "Generating Swagger documentation..."
+	@go install github.com/swaggo/swag/cmd/swag@latest
+	swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
+	swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+	@echo "Swagger docs updated successfully."
 
 # Health check
 health:

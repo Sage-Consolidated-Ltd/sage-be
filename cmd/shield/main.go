@@ -1,40 +1,39 @@
 package main
 
+//go:generate swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"sage-backend/internal/shared/config"
-	"sage-backend/internal/shared/db"
-	"sage-backend/internal/shared/logger"
-	"sage-backend/internal/shared/mailer"
-	"sage-backend/internal/shared/middlewares"
-	"sage-backend/internal/shield/handlers"
-	"sage-backend/internal/shield/repositories"
-	"sage-backend/internal/shield/routes"
-	"sage-backend/internal/shield/scheduler"
-	"sage-backend/internal/shield/services"
-	"sage-backend/internal/shield/tasks"
-	"strings"
-	"syscall"
+	shieldApp "sage-backend/internal/app/shield"
 
 	_ "sage-backend/docs/shield"
-	"sage-backend/pkg/crypto"
-
-	"context"
-	"github.com/go-resty/resty/v2"
-	"github.com/gofiber/contrib/swagger"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
-// @title           Sage API (Shield)
+// @title           Sage Shield API
 // @version         1.0
-// @description     Documentation for the Sage API (Shield).
+// @description     ## 🛡️ Sage Shield - Frontend API & Integration Guide
+// @description     
+// @description     ### 🔍 1. Unified AST Log Search API (`GET /api/v1/events/logs`)
+// @description     Searches parsed logs across **both API-polled integrations (Okta, Entra)** and **uploaded log files (CSV, Syslog, EVTX)** using the AST Query Engine.
+// @description     
+// @description     **AST Query Syntax (`q` parameter)**:
+// @description     - **Free-Text Phrase Search**: `q='"unauthorized access"'` or `q='"failed password"'`
+// @description     - **Level Filtering**: `q='level=ERROR'` or `q='level=WARN'`
+// @description     - **Source Filtering**: `q='source=123e4567-e89b-12d3-a456-426614174000'`
+// @description     - **Raw Field Filtering**: `q='raw.ip_address=192.168.1.50'` or `q='raw.user_id=usr_9981'`
+// @description     - **Combined Expressions**: `q='level=ERROR "unauthorized access" raw.ip_address=10.0.0.1'`
+// @description     
+// @description     ---
+// @description     ### 📁 2. S3 Log File Upload Flow
+// @description     1. Request Presigned Upload URL: `POST /api/v1/integrations/logs-data/presign-upload`
+// @description     2. Upload File directly to S3 via returned presigned Form Post data.
+// @description     3. Confirm & Parse File: `POST /api/v1/integrations/logs-data/confirm-upload`. Entries are automatically parsed and immediately AST-searchable!
+// @description     
+// @description     ---
+// @description     ### 🤖 3. AI-Driven Data Quality
+// @description     - `GET /api/v1/integrations/logs-data/data-quality`: Returns overall AI Quality Score & parser health.
+// @description     - `GET /api/v1/integrations/logs-data/data-quality/ai-analysis`: Returns AI-detected unmapped fields & recommended parser fixes.
+// @description     - `POST /api/v1/integrations/logs-data/data-quality/apply-fix`: Applies AI-suggested parser fix directly.
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -45,116 +44,15 @@ import (
 // @in cookie
 // @name session_id
 
-// @host      localhost:3335
+// @host      shield.sageconsolidated.com
 // @BasePath  /api/v1
 func main() {
-	cfg := config.SetupShield()
-	db, err := db.ConnectDB(&cfg.BaseConfig)
+	application, err := shieldApp.New()
 	if err != nil {
-		log.Fatalf("Error connecting to db: %s", err)
-	}
-	defer db.Close()
-
-	config.InitSessionStore(&cfg.BaseConfig)
-
-	restyClient := resty.New()
-
-	redisRef := os.Getenv("REDIS_DB_URL")
-	if redisRef == "" {
-		redisRef = os.Getenv("REDIS_ADDR")
-	}
-	if redisRef == "" {
-		redisRef = "localhost:6379"
-	}
-	taskClient := tasks.NewTaskClient(redisRef)
-	defer taskClient.Close()
-
-	logger.Init(&cfg.BaseConfig)
-
-	_ = mailer.NewEmailClient(&cfg.BaseConfig)
-
-	app := fiber.New(fiber.Config{
-		JSONEncoder: func(v interface{}) ([]byte, error) {
-			buf := &bytes.Buffer{}
-			encoder := json.NewEncoder(buf)
-			encoder.SetEscapeHTML(false)
-			err := encoder.Encode(v)
-			return bytes.TrimRight(buf.Bytes(), "\n"), err
-		},
-		EnableTrustedProxyCheck: true,
-		TrustedProxies:          []string{"0.0.0.0/0"},
-		BodyLimit:               5 * 1024 * 1024,
-	})
-	app.Use(cors.New(cors.Config{
-		AllowOriginsFunc: func(origin string) bool {
-			return true
-		},
-		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS,PATCH",
-		AllowCredentials: true,
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, session_id",
-	}))
-	app.Use(recover.New())
-
-	swaggerConfig := swagger.Config{
-		BasePath: "/api/v1",
-		FilePath: "./docs/shield/swagger.json",
-		Path:     "docs/shield-docs",
-		Title:    "Sage API Documentation",
+		log.Fatalf("failed to initialize shield application: %v", err)
 	}
 
-	app.Use(swagger.New(swaggerConfig))
-
-	app.Options("/*", func(c *fiber.Ctx) error {
-		return c.SendStatus(fiber.StatusNoContent)
-	})
-
-	encryptor, err := crypto.NewAESEncryptor(cfg.AppEncryptionKey)
-	if err != nil {
-		log.Fatalf("Error initializing encryptor: %s", err)
+	if err := application.Run(); err != nil {
+		log.Fatalf("shield application error: %v", err)
 	}
-
-	authMiddleware := &middlewares.AuthMiddleware{}
-
-	integrationRepo := repositories.NewIntegrationRepository(db)
-	dataQualtyRepo := repositories.NewDataQualityRepository(db)
-	dataSourceRepo := repositories.NewDataSourceRepository(db)
-	eventRepo := repositories.NewSecurityEventRepository(db)
-	ingestionRepo := repositories.NewIngestionJobRepository(db)
-	parserRepo := repositories.NewParserRepository(db)
-
-	dataQualityServ := services.NewDataQualityService(dataQualtyRepo, parserRepo, dataSourceRepo, ingestionRepo)
-	logsDataServ := services.NewLogsDataService(dataSourceRepo, eventRepo, ingestionRepo, taskClient)
-	logsServ := services.NewLogsService(eventRepo, dataSourceRepo, ingestionRepo)
-	parserServ := services.NewParserService(parserRepo, eventRepo, dataSourceRepo, ingestionRepo)
-	integrationServ := services.NewDataSourceService(dataSourceRepo, integrationRepo, encryptor, restyClient)
-
-	integrationHandler := handlers.NewIntegrationHandler(integrationServ)
-	eventHandler := handlers.NewEventHandler(logsServ)
-	logsDataHandler := handlers.NewLogsDataHandlerWithService(logsDataServ)
-	parserHandler := handlers.NewParserHandler(parserServ)
-	qualityHandler := handlers.NewQualityHandler(dataQualityServ)
-
-	// Initialize provider scheduler for periodic syncs (300 seconds = 5 minutes)
-	providerScheduler := scheduler.NewProviderScheduler(taskClient, dataSourceRepo, 300)
-
-	routes.Setup(app, integrationHandler, qualityHandler, logsDataHandler, parserHandler, eventHandler, authMiddleware)
-
-	port := strings.TrimSpace(cfg.PORT)
-
-	// Start provider scheduler in background
-	providerScheduler.Start(context.Background())
-
-	go func() {
-		if err := app.Listen(":" + port); err != nil {
-			log.Panic(err)
-		}
-	}()
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-
-	_ = <-c
-	fmt.Println("Gracefully shutting down...")
-	providerScheduler.Stop()
-	_ = app.Shutdown()
 }

@@ -1,0 +1,1559 @@
+basePath: /api/v1
+definitions:
+  domain.CustomRoleResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_system_role:
+        type: boolean
+      name:
+        type: string
+      permission_groups:
+        items:
+          type: string
+        type: array
+      permissions:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+    type: object
+  domain.GetIndustriesResponse:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  domain.GetOrganizationRolesResponse:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  domain.OrganizationProfileBrandingResponse:
+    properties:
+      logo_dark_url:
+        type: string
+      logo_light_url:
+        type: string
+      show_in_reports:
+        type: boolean
+    type: object
+  domain.OrganizationProfileCompanyDetailsResponse:
+    properties:
+      industry:
+        type: string
+      organization_name:
+        type: string
+      primary_contact_email:
+        type: string
+      region:
+        type: string
+      support_email:
+        type: string
+    type: object
+  domain.OrganizationProfileEnvironmentInfoResponse:
+    properties:
+      deployment_mode:
+        type: string
+      organization_id:
+        type: string
+      subscription_id:
+        type: string
+      tenant_id:
+        type: string
+    type: object
+  domain.OrganizationProfileResponse:
+    properties:
+      branding_appearance:
+        $ref: '#/definitions/domain.OrganizationProfileBrandingResponse'
+      company_details:
+        $ref: '#/definitions/domain.OrganizationProfileCompanyDetailsResponse'
+      environment_information:
+        $ref: '#/definitions/domain.OrganizationProfileEnvironmentInfoResponse'
+    type: object
+  domain.Permission:
+    properties:
+      action:
+        type: string
+      category:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      resource:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  domain.PermissionGroup:
+    properties:
+      category:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.ConfigureBackupEmailRequest:
+    properties:
+      backup_email:
+        type: string
+    required:
+    - backup_email
+    type: object
+  dto.DeleteAccountRequest:
+    properties:
+      confirmation:
+        type: string
+    required:
+    - confirmation
+    type: object
+  dto.GetOrganizationResponse:
+    properties:
+      country:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      id:
+        type: string
+      industry:
+        type: string
+      name:
+        type: string
+      owner_id:
+        type: string
+      risk_threshold_default:
+        type: integer
+      role:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      timezone:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  dto.GetUserResponse:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      id:
+        type: string
+      is_verified:
+        type: boolean
+      last_name:
+        type: string
+      organization:
+        items:
+          $ref: '#/definitions/dto.GetOrganizationResponse'
+        type: array
+      role:
+        type: string
+      time_zone:
+        type: string
+      two_factor_enabled:
+        type: boolean
+    type: object
+  dto.ProfileResponse:
+    properties:
+      avatar_url:
+        type: string
+      backup_email:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      job_title:
+        type: string
+      last_login_at:
+        type: string
+      organization_id:
+        type: string
+      organization_name:
+        type: string
+      password_changed_at:
+        type: string
+      phone_number:
+        type: string
+      role:
+        type: string
+    type: object
+  dto.UpdateCompanyDetailsRequest:
+    properties:
+      industry:
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      primary_contact_email:
+        type: string
+      support_email:
+        type: string
+    type: object
+  dto.UpdateOrganizationBrandingRequest:
+    properties:
+      logo_dark_url:
+        type: string
+      logo_light_url:
+        type: string
+      show_in_reports:
+        type: boolean
+    type: object
+  dto.UserSessionResponse:
+    properties:
+      created_at:
+        type: string
+      ip_address:
+        type: string
+      is_current:
+        type: boolean
+      last_active_at:
+        type: string
+      location:
+        type: string
+      session_id:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  http.AuditLogDoc:
+    properties:
+      action_category:
+        type: string
+      action_type:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      ip_address:
+        type: string
+      metadata:
+        type: string
+      organization_id:
+        type: string
+      resource_id:
+        type: string
+      resource_target:
+        type: string
+      resource_type:
+        type: string
+      status:
+        type: string
+      user_agent:
+        type: string
+      user_id:
+        type: string
+    type: object
+  http.CustomRoleResponse:
+    properties:
+      data:
+        $ref: '#/definitions/domain.CustomRoleResponse'
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  http.CustomRolesResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.CustomRoleResponse'
+        type: array
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  http.Generate2FAResponse:
+    properties:
+      qr_code:
+        example: data:image/png;base64,...
+        type: string
+      secret:
+        example: JBSWY3DPEHPK3PXP.....
+        type: string
+    type: object
+  http.GetActivityResponse:
+    properties:
+      data:
+        $ref: '#/definitions/http.GetActivityResponseData'
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  http.GetActivityResponseData:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/http.AuditLogDoc'
+        type: array
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
+  http.IndustriesResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.GetIndustriesResponse'
+        type: array
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  http.PermissionGroupsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.PermissionGroup'
+        type: array
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  http.PermissionsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/domain.Permission'
+        type: array
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  http.UpdateProfileResponse:
+    properties:
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  http.UploadAvatarResponse:
+    properties:
+      data:
+        $ref: '#/definitions/http.UploadAvatarResponseData'
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  http.UploadAvatarResponseData:
+    properties:
+      avatar_url:
+        type: string
+    type: object
+  http.UserNotificationsDoc:
+    properties:
+      alert_severity_threshold:
+        type: string
+      created_at:
+        type: string
+      critical_alerts_only:
+        type: boolean
+      email_enabled:
+        type: boolean
+      id:
+        type: string
+      notify_on_incident_update:
+        type: boolean
+      notify_on_new_alert:
+        type: boolean
+      notify_on_playbook_execution:
+        type: boolean
+      organization_id:
+        type: string
+      push_enabled:
+        type: boolean
+      security_alerts_format:
+        type: string
+      slack_enabled:
+        type: boolean
+      updated_at:
+        type: string
+      user_id:
+        type: string
+      weekly_report_enabled:
+        type: boolean
+    type: object
+  http.UserPreferencesDoc:
+    properties:
+      auto_refresh_interval:
+        type: integer
+      created_at:
+        type: string
+      dashboard_default_view:
+        type: string
+      id:
+        type: string
+      language:
+        type: string
+      organization_id:
+        type: string
+      table_page_size:
+        type: integer
+      theme:
+        type: string
+      timezone:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  http.UserUpdateIdentityRequest:
+    properties:
+      full_name:
+        type: string
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  sage-backend_internal_identity_usecase_dto.ChangePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        minLength: 12
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
+  sage-backend_internal_identity_usecase_dto.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  sage-backend_internal_identity_usecase_dto.GoogleAuthenticatorRequest:
+    properties:
+      code:
+        type: string
+    required:
+    - code
+    type: object
+  sage-backend_internal_identity_usecase_dto.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  sage-backend_internal_identity_usecase_dto.OnboardingRequest:
+    properties:
+      company_name:
+        type: string
+      email:
+        type: string
+      first_name:
+        type: string
+      industry_id:
+        type: string
+      last_name:
+        type: string
+      password:
+        type: string
+      time_zone:
+        type: string
+    required:
+    - company_name
+    - email
+    - first_name
+    - industry_id
+    - last_name
+    - password
+    type: object
+  sage-backend_internal_identity_usecase_dto.ResetPasswordRequest:
+    properties:
+      confirm_password:
+        type: string
+      password:
+        type: string
+    required:
+    - confirm_password
+    - password
+    type: object
+  sage-backend_internal_identity_usecase_dto.SendVerificationEmailRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  sage-backend_internal_identity_usecase_dto.UpdateNotificationsRequest:
+    properties:
+      alert_severity_threshold:
+        enum:
+        - low
+        - medium
+        - high
+        - critical
+        type: string
+      email_enabled:
+        type: boolean
+      notify_on_incident_update:
+        type: boolean
+      notify_on_new_alert:
+        type: boolean
+      notify_on_playbook_execution:
+        type: boolean
+      product_updates:
+        type: boolean
+      push_enabled:
+        type: boolean
+      slack_enabled:
+        type: boolean
+      weekly_summary:
+        type: boolean
+    type: object
+  sage-backend_internal_identity_usecase_dto.UpdatePreferencesRequest:
+    properties:
+      auto_refresh_interval:
+        type: integer
+      dashboard_default_view:
+        type: string
+      date_format:
+        type: string
+      language:
+        type: string
+      table_page_size:
+        type: integer
+      theme:
+        enum:
+        - light
+        - dark
+        - system
+        - auto
+        type: string
+      timezone:
+        type: string
+    type: object
+  sage-backend_internal_identity_usecase_dto.VerifyEmailRequest:
+    properties:
+      token:
+        type: string
+    required:
+    - token
+    type: object
+  sage-backend_internal_identity_usecase_dto.VerifyResetTokenRequest:
+    properties:
+      token:
+        type: string
+    required:
+    - token
+    type: object
+  sage-backend_internal_organization_usecase_dto.BulkInviteMembersRequest:
+    properties:
+      invites:
+        items:
+          $ref: '#/definitions/sage-backend_internal_organization_usecase_dto.InviteMemberRequest'
+        type: array
+    required:
+    - invites
+    type: object
+  sage-backend_internal_organization_usecase_dto.CreateCustomRoleRequest:
+    properties:
+      description:
+        maxLength: 500
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      permission_groups:
+        items:
+          type: string
+        type: array
+      permissions:
+        items:
+          type: string
+        type: array
+    required:
+    - name
+    type: object
+  sage-backend_internal_organization_usecase_dto.InviteMemberRequest:
+    properties:
+      email:
+        type: string
+      role_id:
+        type: string
+    required:
+    - email
+    - role_id
+    type: object
+  sage-backend_internal_organization_usecase_dto.UpdateCustomRoleRequest:
+    properties:
+      description:
+        maxLength: 500
+        type: string
+      name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      permission_groups:
+        items:
+          type: string
+        type: array
+      permissions:
+        items:
+          type: string
+        type: array
+    type: object
+  sage-backend_internal_organization_usecase_dto.UpdateMemberStatusRequest:
+    properties:
+      status:
+        enum:
+        - active
+        - suspended
+        - pending
+        type: string
+    required:
+    - status
+    type: object
+host: backend.sageconsolidated.com
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: Documentation for the Sage API (Users).
+  termsOfService: http://swagger.io/terms/
+  title: Sage API
+  version: "1.0"
+paths:
+  /auth/enable-2fa:
+    post:
+      consumes:
+      - application/json
+      description: Enables 2FA for the user after verifying the provided TOTP code
+      parameters:
+      - description: TOTP Code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.GoogleAuthenticatorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      security:
+      - SessionAuth: []
+      summary: Enable 2FA
+      tags:
+      - Auth
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Initiates the password reset process for a user
+      parameters:
+      - description: Email Address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Forgot Password
+      tags:
+      - Auth
+  /auth/generate-2fa:
+    get:
+      consumes:
+      - application/json
+      description: Generates a 2FA secret for the user and returns the otpauth URL
+        and the base32 secret
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.Generate2FAResponse'
+      security:
+      - SessionAuth: []
+      summary: Generate 2FA Secret
+      tags:
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Logs in a user using email and password
+      parameters:
+      - description: Login Credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetUserResponse'
+      summary: Login User
+      tags:
+      - Auth
+  /auth/login/{provider}:
+    get:
+      consumes:
+      - application/json
+      description: Logs in a user using OAUTH (Google, Github)
+      parameters:
+      - description: OAuth Provider (e.g. google, github)
+        in: path
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Login User with OAUTH
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidates current session and clears authentication cookies
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Logout User
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user
+      parameters:
+      - description: User Details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.OnboardingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+      summary: Create User
+      tags:
+      - Auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets the user's password
+      parameters:
+      - description: New Password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Reset Password
+      tags:
+      - Auth
+  /auth/send-verification-email:
+    post:
+      consumes:
+      - application/json
+      description: Sends an email with a verification code to the user's email address
+      parameters:
+      - description: Email Address
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.SendVerificationEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Send Verification Email
+      tags:
+      - Auth
+  /auth/verify-2fa:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the provided TOTP code for the user
+      parameters:
+      - description: TOTP Code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.GoogleAuthenticatorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      security:
+      - SessionAuth: []
+      summary: Verify 2FA
+      tags:
+      - Auth
+  /auth/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the user's email address
+      parameters:
+      - description: Verification Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Verify Email
+      tags:
+      - Auth
+  /auth/verify-reset-token:
+    post:
+      consumes:
+      - application/json
+      description: Verifies the password reset token
+      parameters:
+      - description: Reset Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.VerifyResetTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+      summary: Verify Reset Token
+      tags:
+      - Auth
+  /company/industries:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of industries for company profiles.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.IndustriesResponse'
+      summary: Get Industries
+      tags:
+      - Company
+  /company/invitations/accept:
+    post:
+      consumes:
+      - application/json
+      description: Accept an invitation to join an organization using the invite ID
+        and token sent via email.
+      parameters:
+      - description: Invitation ID
+        in: query
+        name: invite_id
+        required: true
+        type: string
+      - description: Invitation Token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Accept Organization Invitation
+      tags:
+      - Company
+  /company/invite:
+    post:
+      consumes:
+      - application/json
+      description: Invite a member to the organization by email. Only organization
+        owners can invite members.
+      parameters:
+      - description: Bulk Invite Members Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_organization_usecase_dto.BulkInviteMembersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Invite Member to Organization
+      tags:
+      - Company
+  /company/organization-roles:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a list of organization roles for company profiles.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.GetOrganizationRolesResponse'
+      summary: Get Organization Roles
+      tags:
+      - Company
+  /organization/branding:
+    patch:
+      consumes:
+      - application/json
+      description: Update logo URLs (light & dark mode) and report display settings.
+        Requires owner or admin role.
+      parameters:
+      - description: Update Organization Branding Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateOrganizationBrandingRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update Organization Branding
+      tags:
+      - Organization
+  /organization/custom-roles:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all custom roles for the current organization.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.CustomRolesResponse'
+      security:
+      - BearerAuth: []
+      summary: List Custom Roles
+      tags:
+      - Organization
+    post:
+      consumes:
+      - application/json
+      description: Create a new custom role for the organization. Only owners and
+        admins can create custom roles.
+      parameters:
+      - description: Create Custom Role Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_organization_usecase_dto.CreateCustomRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.CustomRoleResponse'
+      security:
+      - BearerAuth: []
+      summary: Create Custom Role
+      tags:
+      - Organization
+  /organization/custom-roles/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a custom role. Only owners and admins can delete custom
+        roles. System roles cannot be deleted.
+      parameters:
+      - description: Custom Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Delete Custom Role
+      tags:
+      - Organization
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific custom role by ID.
+      parameters:
+      - description: Custom Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.CustomRoleResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Custom Role
+      tags:
+      - Organization
+    patch:
+      consumes:
+      - application/json
+      description: Update an existing custom role. Only owners and admins can update
+        custom roles.
+      parameters:
+      - description: Custom Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Custom Role Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_organization_usecase_dto.UpdateCustomRoleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update Custom Role
+      tags:
+      - Organization
+  /organization/members/{id}/reset-mfa:
+    post:
+      consumes:
+      - application/json
+      description: Reset a member's 2FA setup. Only owners and admins can reset member
+        MFA.
+      parameters:
+      - description: Member ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Reset Member MFA
+      tags:
+      - Organization
+  /organization/members/{id}/status:
+    patch:
+      consumes:
+      - application/json
+      description: Update a member's status (active, suspended, pending). Only owners
+        and admins can update member status.
+      parameters:
+      - description: Member ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Member Status Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_organization_usecase_dto.UpdateMemberStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update Member Status
+      tags:
+      - Organization
+  /organization/permission-groups:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all available permission groups in the system.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PermissionGroupsResponse'
+      security:
+      - BearerAuth: []
+      summary: List Permission Groups
+      tags:
+      - Organization
+  /organization/permissions:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all available permissions in the system.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.PermissionsResponse'
+      security:
+      - BearerAuth: []
+      summary: List Permissions
+      tags:
+      - Organization
+  /organization/profile:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve complete organization profile including company details,
+        system environment metadata, and branding/appearance settings.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.OrganizationProfileResponse'
+      security:
+      - BearerAuth: []
+      summary: Get Organization Profile
+      tags:
+      - Organization
+  /organization/profile/details:
+    patch:
+      consumes:
+      - application/json
+      description: Update user-editable company details (organization name, industry,
+        primary contact email, support email). Requires owner or admin role.
+      parameters:
+      - description: Update Company Details Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateCompanyDetailsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Update Company Details
+      tags:
+      - Organization
+  /profile:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the comprehensive identity profile of the currently authenticated
+        user, including personal details and organizational information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ProfileResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get User Profile
+      tags:
+      - User Profile
+    patch:
+      consumes:
+      - application/json
+      description: Updates the user's profile information such as name, email, and
+        other personal details.
+      parameters:
+      - description: Avatar image file
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      - description: Update Profile Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.UserUpdateIdentityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.UpdateProfileResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update User Profile
+      tags:
+      - User Profile
+  /profile/activity:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a log of the user's recent activities within the application,
+        such as logins, profile updates, and other significant actions.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.GetActivityResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get User Activity
+      tags:
+      - User Profile
+  /profile/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads and sets the authenticated user's avatar. Expects multipart/form-data
+        with the `avatar` file field.
+      parameters:
+      - description: Avatar image file
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.UploadAvatarResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Upload User Avatar
+      tags:
+      - User Profile
+  /profile/backup-email:
+    post:
+      consumes:
+      - application/json
+      description: Configures a backup email address for account recovery. Backup
+        email must be different from primary email.
+      parameters:
+      - description: Configure Backup Email Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ConfigureBackupEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Configure Backup Email
+      tags:
+      - User Profile
+  /profile/change-password:
+    post:
+      consumes:
+      - application/json
+      description: Changes the authenticated user's password after verifying the current
+        password and ensuring password complexity.
+      parameters:
+      - description: Change Password Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Change Password
+      tags:
+      - User Profile
+  /profile/me:
+    delete:
+      consumes:
+      - application/json
+      description: Soft-deletes the authenticated user's account upon confirmation.
+        User must type 'DELETE' to confirm.
+      parameters:
+      - description: Delete Account Confirmation Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DeleteAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete Account
+      tags:
+      - User Profile
+  /profile/notifications:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the user's notification settings and history.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.UserNotificationsDoc'
+      security:
+      - ApiKeyAuth: []
+      summary: Get User Notifications
+      tags:
+      - User Profile
+    patch:
+      consumes:
+      - application/json
+      description: Updates the user's notification settings.
+      parameters:
+      - description: Update Notifications Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.UpdateNotificationsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Update User Notifications
+      tags:
+      - User Profile
+  /profile/preferences:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the user's preferences for notifications, theme, and
+        other customizable settings.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.UserPreferencesDoc'
+      security:
+      - ApiKeyAuth: []
+      summary: Get User Preferences
+      tags:
+      - User Profile
+    patch:
+      consumes:
+      - application/json
+      description: Updates the user's preferences for notifications, theme, and other
+        customizable settings.
+      parameters:
+      - description: Update Preferences Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/sage-backend_internal_identity_usecase_dto.UpdatePreferencesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Update User Preferences
+      tags:
+      - User Profile
+  /profile/session:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves details about the user's current session, including login
+        time, IP address, and device information.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.UserSessionResponse'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Get User Session
+      tags:
+      - User Profile
+  /profile/session/revoke:
+    post:
+      consumes:
+      - application/json
+      description: Revokes the user's current session, effectively logging them out
+        from the current device.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Revoke User Session
+      tags:
+      - User Profile
+securityDefinitions:
+  SessionAuth:
+    in: cookie
+    name: session_id
+    type: apiKey
+swagger: "2.0"

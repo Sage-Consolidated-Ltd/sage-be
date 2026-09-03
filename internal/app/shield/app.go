@@ -1,0 +1,112 @@
+package shield
+
+import (
+	"context"
+	"fmt"
+
+	"sage-backend/internal/app"
+	"sage-backend/internal/shared/config"
+	"sage-backend/internal/shared/db"
+	shared_redis "sage-backend/internal/shared/db/redis"
+	"sage-backend/internal/shared/logger"
+	"sage-backend/internal/shared/middlewares"
+	"sage-backend/internal/shared/response"
+	"sage-backend/internal/shared/storage/s3"
+	"sage-backend/internal/shield"
+	shield_http "sage-backend/internal/shield/adapters/inbound/http"
+	"sage-backend/internal/shield/adapters/outbound/queue"
+	"sage-backend/pkg/crypto"
+
+	"github.com/go-resty/resty/v2"
+	"github.com/gofiber/contrib/swagger"
+	"github.com/gofiber/fiber/v2"
+)
+
+// New initializes and constructs the Shield API application.
+func New() (*app.App, error) {
+	cfg := config.SetupShield()
+	config.InitSessionStore(&cfg.BaseConfig)
+
+	database, err := db.ConnectDB(&cfg.BaseConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %w", err)
+	}
+
+	redisClient, err := shared_redis.LaunchRedis(&cfg.BaseConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to redis: %w", err)
+	}
+
+	logger.Init(&cfg.BaseConfig)
+
+	encryptor, err := crypto.NewAESEncryptor(cfg.AppEncryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize encryptor: %w", err)
+	}
+
+	s3Client, err := s3.NewClientWithConfig(context.Background(), s3.S3Config{
+		Bucket:          cfg.S3Bucket,
+		Region:          cfg.S3Region,
+		AccessKeyID:     cfg.S3AccessKey,
+		SecretAccessKey: cfg.S3SecretKey,
+		SessionToken:    cfg.S3SessionToken,
+		PresignExpiry:   1440,
+		MaxFileSizeMB:   100,
+	})
+	var s3Uploader *s3.Uploader
+	if err == nil && s3Client != nil {
+		s3Uploader = s3.NewUploader(s3Client)
+	}
+
+	taskClient := queue.NewTaskClient(cfg.RedisDbUrl)
+
+	restyClient := resty.New()
+	authMiddleware := &middlewares.AuthMiddleware{}
+
+	shieldMod := shield.NewModuleWithServices(
+		database,
+		&config.APIConfig{BaseConfig: cfg.BaseConfig},
+		encryptor,
+		restyClient,
+		redisClient,
+		s3Uploader,
+		taskClient,
+	)
+
+	fiberApp := app.NewFiberApp()
+
+	swaggerConfig := swagger.Config{
+		BasePath: "/api/v1",
+		FilePath: "./docs/shield/swagger.json",
+		Path:     "/docs/shield-docs",
+		Title:    "Sage Shield API Documentation",
+		CacheAge: 0,
+	}
+	fiberApp.Use(swagger.New(swaggerConfig))
+
+	v1 := fiberApp.Group("/api/v1")
+	v1.Get("/health", func(c *fiber.Ctx) error {
+		return response.JSON(c, fiber.StatusOK, "Shield API is Healthy", nil)
+	})
+
+	shield_http.SetUpRouter(
+		v1,
+		shieldMod.IntegrationHandler,
+		shieldMod.QualityHandler,
+		shieldMod.LogsDataHandler,
+		shieldMod.ParserHandler,
+		shieldMod.EventHandler,
+		shieldMod.DashboardHandler,
+		shieldMod.UploadHandler,
+		authMiddleware,
+	)
+
+	fiberApp.Use(func(c *fiber.Ctx) error {
+		return response.Error(c, fiber.StatusNotFound, "route not found", nil)
+	})
+
+	return &app.App{
+		Port:  cfg.PORT,
+		Fiber: fiberApp,
+	}, nil
+}

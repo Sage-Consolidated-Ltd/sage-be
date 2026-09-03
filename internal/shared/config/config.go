@@ -22,6 +22,12 @@ type BaseConfig struct {
 	ResendApiKey     string
 	ResendFromEmail  string
 	FrontendBaseURL  string
+	CookieDomain     string
+	S3Bucket         string
+	S3Region         string
+	S3AccessKey      string
+	S3SecretKey      string
+	S3SessionToken   string
 }
 
 type APIConfig struct {
@@ -42,6 +48,7 @@ type APIConfig struct {
 	S3Bucket           string
 	S3AccessKey        string
 	S3SecretKey        string
+	S3SessionToken     string
 }
 
 type OffenseConfig struct {
@@ -60,6 +67,11 @@ type VisionConfig struct {
 	BaseConfig
 	PORT             string
 	GomniSecurityKey string
+}
+
+type WorkerConfig struct {
+	BaseConfig
+	Concurrency int
 }
 
 type Level = zapcore.Level
@@ -124,13 +136,20 @@ func loadBase() BaseConfig {
 		ResendApiKey:     requireEnv("RESEND_API_KEY"),
 		ResendFromEmail:  requireEnv("RESEND_FROM_EMAIL"),
 		FrontendBaseURL:  requireEnv("FRONTEND_BASE_URL"),
+		CookieDomain:     getEnv("COOKIE_DOMAIN", ".sageconsolidated.com"),
+		S3Bucket:         getEnv("S3_BUCKET", "sage-uploads"),
+		S3Region:         getEnv("S3_REGION", getEnv("AWS_REGION", getEnv("AWS_DEFAULT_REGION", "us-east-1"))),
+		S3AccessKey:      getEnv("AWS_ACCESS_KEY_ID", getEnv("S3_ACCESS_KEY", "")),
+		S3SecretKey:      getEnv("AWS_SECRET_ACCESS_KEY", getEnv("S3_SECRET_KEY", "")),
+		S3SessionToken:   getEnv("AWS_SESSION_TOKEN", getEnv("AWS_SECURITY_TOKEN", "")),
 	}
 }
 
 func SetupAPI() *APIConfig {
 	_ = godotenv.Load(".env")
+	base := loadBase()
 	return &APIConfig{
-		BaseConfig:         loadBase(),
+		BaseConfig:         base,
 		JWTSecret:          requireEnv("JWT_SECRET"),
 		PORT:               getEnv("PORT", "3333"),
 		GomniSecurityKey:   requireEnv("GOMNI_SECURITY_KEY"),
@@ -143,10 +162,11 @@ func SetupAPI() *APIConfig {
 		AzureClientId:      requireEnv("AZURE_CLIENT_ID"),
 		AzureClientSecret:  requireEnv("AZURE_CLIENT_SECRET"),
 		AzureRedirectUrl:   requireEnv("AZURE_REDIRECT_URL"),
-		S3Region:           requireEnv("S3_REGION"),
-		S3AccessKey:        requireEnv("AWS_ACCESS_KEY_ID"),
-		S3SecretKey:        requireEnv("AWS_SECRET_ACCESS_KEY"),
-		S3Bucket:           requireEnv("S3_BUCKET"),
+		S3Region:           base.S3Region,
+		S3Bucket:           base.S3Bucket,
+		S3AccessKey:        base.S3AccessKey,
+		S3SecretKey:        base.S3SecretKey,
+		S3SessionToken:     base.S3SessionToken,
 	}
 }
 
@@ -171,5 +191,13 @@ func SetupVision() *VisionConfig {
 	return &VisionConfig{
 		BaseConfig: loadBase(),
 		PORT:       getEnv("VISION_PORT", "3336"),
+	}
+}
+
+func SetupWorker() *WorkerConfig {
+	_ = godotenv.Load(".env")
+	return &WorkerConfig{
+		BaseConfig:  loadBase(),
+		Concurrency: getEnvInt("WORKER_CONCURRENCY", 10),
 	}
 }

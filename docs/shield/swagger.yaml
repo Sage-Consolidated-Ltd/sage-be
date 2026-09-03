@@ -1,0 +1,1817 @@
+basePath: /api/v1
+definitions:
+  domain.ActiveIncident:
+    properties:
+      id:
+        type: string
+      incident_name:
+        type: string
+      last_activity:
+        type: string
+      severity:
+        type: string
+      status:
+        type: string
+    type: object
+  domain.AssetProtectionCoverage:
+    properties:
+      coverage_percentage:
+        type: integer
+      protected_count:
+        type: integer
+      unprotected_count:
+        type: integer
+    type: object
+  domain.AssetRiskDistribution:
+    properties:
+      breakdown:
+        items:
+          $ref: '#/definitions/domain.AssetRiskItem'
+        type: array
+      overall_risk_percentage:
+        type: integer
+    type: object
+  domain.AssetRiskItem:
+    properties:
+      asset_name:
+        type: string
+      percentage:
+        type: integer
+    type: object
+  domain.ComplianceRiskIndicators:
+    properties:
+      detection_action_result:
+        type: string
+      dormant_accounts:
+        type: integer
+      encryption_vulnerabilities:
+        type: integer
+      excessive_user_permissions:
+        type: integer
+      overly_trusted_users:
+        type: integer
+      physical_security:
+        type: integer
+      unencrypted_devices:
+        type: integer
+      vulnerabilities_email:
+        type: integer
+    type: object
+  domain.DetectedType:
+    enum:
+    - windows_event_log
+    - linux_syslog
+    - csv_structured
+    - xlsx_structured
+    - unknown
+    type: string
+    x-enum-varnames:
+    - DetectedWindowsEventLog
+    - DetectedLinuxSyslog
+    - DetectedCSVStructured
+    - DetectedXLSXStructured
+    - DetectedUnknown
+  domain.FileClass:
+    enum:
+    - csv
+    - xlsx
+    - log
+    - json
+    - pcap
+    type: string
+    x-enum-varnames:
+    - FileClassCSV
+    - FileClassXLSX
+    - FileClassLog
+    - FileClassJSON
+    - FileClassPCAP
+  domain.GeoThreatOrigin:
+    properties:
+      count:
+        type: integer
+      country:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+    type: object
+  domain.GeoThreatsSummary:
+    properties:
+      high_threat_region:
+        type: string
+      most_targeted_asset:
+        type: string
+      origins:
+        items:
+          $ref: '#/definitions/domain.GeoThreatOrigin'
+        type: array
+      total_threats:
+        type: integer
+    type: object
+  domain.IdentityHealthSummary:
+    properties:
+      accounts_without_mfa:
+        type: integer
+      coverage_percentage:
+        type: integer
+      dormant_accounts:
+        type: integer
+      elevated_privileges:
+        type: integer
+    type: object
+  domain.SecurityPosturePillars:
+    properties:
+      config_health:
+        type: integer
+      response_readiness:
+        type: integer
+      threat_coverage:
+        type: integer
+      vulnerabilities:
+        type: integer
+    type: object
+  domain.SecurityPostureScore:
+    properties:
+      description:
+        type: string
+      overall_score:
+        type: integer
+      pending_recommendations:
+        type: integer
+      pillars:
+        $ref: '#/definitions/domain.SecurityPosturePillars'
+      weekly_delta:
+        type: integer
+    type: object
+  domain.ThreatDayTrend:
+    properties:
+      current_month_count:
+        type: integer
+      day:
+        type: integer
+      last_month_count:
+        type: integer
+    type: object
+  domain.ThreatIntelFeedsSummary:
+    properties:
+      active_feeds:
+        type: integer
+      inactive_feeds:
+        type: integer
+      indicators_processed_24h:
+        type: integer
+    type: object
+  domain.ThreatTrendsSummary:
+    properties:
+      current_month:
+        type: string
+      days:
+        items:
+          $ref: '#/definitions/domain.ThreatDayTrend'
+        type: array
+    type: object
+  domain.ThreatsSummary:
+    properties:
+      critical:
+        format: int64
+        type: integer
+      high:
+        format: int64
+        type: integer
+      low:
+        format: int64
+        type: integer
+      medium:
+        format: int64
+        type: integer
+      newInLast7Days:
+        format: int64
+        type: integer
+      totalThreats:
+        format: int64
+        type: integer
+    type: object
+  dto.ApplySuggestedFixRequest:
+    properties:
+      parser_id:
+        type: string
+      source_id:
+        type: string
+      suggestion_id:
+        type: string
+    required:
+    - suggestion_id
+    type: object
+  dto.CreateIntegrationRequest:
+    properties:
+      connection_type:
+        type: string
+      entra:
+        $ref: '#/definitions/dto.EntraParams'
+      name:
+        type: string
+      okta:
+        $ref: '#/definitions/dto.OktaParams'
+      provider:
+        enum:
+        - okta
+        - entra
+        type: string
+    required:
+    - connection_type
+    - name
+    - provider
+    type: object
+  dto.CreateParserRequest:
+    properties:
+      auto_generate:
+        type: boolean
+      data_source_id:
+        type: string
+      description:
+        type: string
+      logic:
+        additionalProperties: true
+        type: object
+      mappings:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      parser_type:
+        allOf:
+        - $ref: '#/definitions/types.ParserType'
+        enum:
+        - regex
+        - json
+        - csv
+        - key_value
+        - ai_nlp
+      tags:
+        items:
+          type: string
+        type: array
+    required:
+    - logic
+    - name
+    - parser_type
+    type: object
+  dto.EntraParams:
+    properties:
+      client_id:
+        type: string
+      client_secret:
+        type: string
+      tenant_id:
+        type: string
+    required:
+    - client_id
+    - client_secret
+    - tenant_id
+    type: object
+  dto.ImportParserRequest:
+    properties:
+      data_source_id:
+        type: string
+      description:
+        type: string
+      logic:
+        additionalProperties: true
+        type: object
+      mappings:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      name:
+        type: string
+      parser_type:
+        $ref: '#/definitions/types.ParserType'
+      status:
+        $ref: '#/definitions/types.ParserStatus'
+      tags:
+        items:
+          type: string
+        type: array
+    required:
+    - name
+    - parser_type
+    type: object
+  dto.LogUploadMetadata:
+    properties:
+      app_or_context:
+        example: windows
+        type: string
+      category:
+        example: windows
+        type: string
+      description:
+        example: Windows security event logs
+        type: string
+      host:
+        example: DESKTOP-1234567
+        type: string
+      index_name:
+        example: windows_security
+        type: string
+      source_id:
+        description: Optional ID of an existing data source to link this log file
+          to
+        example: a1b2c3d4-...
+        type: string
+      source_type:
+        description: Log source type e.g. firewall, nginx, windows_security
+        example: windows_security
+        type: string
+    required:
+    - source_type
+    type: object
+  dto.OktaParams:
+    properties:
+      domain:
+        type: string
+      token:
+        type: string
+    required:
+    - domain
+    - token
+    type: object
+  dto.PreviewParserRequest:
+    properties:
+      logic:
+        additionalProperties: true
+        type: object
+      mappings:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      parser_type:
+        $ref: '#/definitions/types.ParserType'
+      raw_payload:
+        additionalProperties: true
+        type: object
+      sample_log:
+        type: string
+    required:
+    - logic
+    - parser_type
+    type: object
+  dto.TestParserRequest:
+    properties:
+      raw_payload:
+        additionalProperties: true
+        type: object
+      sample_log:
+        type: string
+    type: object
+  dto.UpdateParserRequest:
+    properties:
+      data_source_id:
+        type: string
+      description:
+        type: string
+      logic:
+        additionalProperties: true
+        type: object
+      mappings:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      name:
+        type: string
+      parser_type:
+        $ref: '#/definitions/types.ParserType'
+      status:
+        $ref: '#/definitions/types.ParserStatus'
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
+  dto.UploadCompleteRequest:
+    properties:
+      etag:
+        description: ETag header value from the S3 POST response — include surrounding
+          quotes
+        example: '"7f5d37276b649790cfd8f11ee5946e02"'
+        type: string
+      key:
+        description: S3 object key returned by the presign endpoint
+        example: uploads/pending/csv/428d4fcc-.../abc-123.csv
+        type: string
+      metadata:
+        $ref: '#/definitions/dto.LogUploadMetadata'
+    required:
+    - etag
+    - key
+    - metadata
+    type: object
+  dto.UploadLogRequest:
+    properties:
+      contentType:
+        description: MIME type of the file e.g. text/csv
+        type: string
+      filename:
+        description: Original filename including extension e.g. windows_security.csv
+        type: string
+      size:
+        description: File size in bytes — must match the actual file size uploaded
+          to S3
+        type: integer
+    required:
+    - contentType
+    - filename
+    - size
+    type: object
+  http.ConfirmUploadResponse:
+    properties:
+      appOrContext:
+        type: string
+      category:
+        type: string
+      createdAt:
+        type: string
+      description:
+        type: string
+      detectedType:
+        $ref: '#/definitions/domain.DetectedType'
+      errorMessage:
+        type: string
+      eventCount:
+        type: integer
+      fileClass:
+        $ref: '#/definitions/domain.FileClass'
+      id:
+        type: string
+      organizationID:
+        type: string
+      processedAt:
+        type: string
+      s3Key:
+        type: string
+      sourceID:
+        type: string
+      sourceType:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      userID:
+        type: string
+      userSelectedType:
+        $ref: '#/definitions/domain.DetectedType'
+    type: object
+  http.UploadPresignResponse:
+    properties:
+      expires_at:
+        type: string
+      key:
+        type: string
+      post:
+        $ref: '#/definitions/s3.PresignedPost'
+    type: object
+  response.Response:
+    properties:
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+  s3.PresignedPost:
+    properties:
+      fields:
+        $ref: '#/definitions/s3.PresignedPostFields'
+      url:
+        type: string
+    type: object
+  s3.PresignedPostFields:
+    properties:
+      Content-Type:
+        type: string
+      key:
+        type: string
+      policy:
+        type: string
+      x-amz-algorithm:
+        type: string
+      x-amz-credential:
+        type: string
+      x-amz-date:
+        type: string
+      x-amz-meta-expected-class:
+        type: string
+      x-amz-meta-original-name:
+        type: string
+      x-amz-meta-upload-source:
+        type: string
+      x-amz-signature:
+        type: string
+    type: object
+  types.ParserStatus:
+    enum:
+    - active
+    - warning
+    - error
+    - disabled
+    type: string
+    x-enum-varnames:
+    - ParserStatusActive
+    - ParserStatusWarning
+    - ParserStatusError
+    - ParserStatusDisabled
+  types.ParserType:
+    enum:
+    - regex
+    - json
+    - csv
+    - key_value
+    - ai_nlp
+    type: string
+    x-enum-varnames:
+    - ParserTypeRegex
+    - ParserTypeJSON
+    - ParserTypeCSV
+    - ParserTypeKeyValue
+    - ParserTypeAINLP
+host: shield.sageconsolidated.com
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: "## \U0001F6E1️ Sage Shield - Frontend API & Integration Guide\n\n###
+    \U0001F50D 1. Unified AST Log Search API (`GET /api/v1/events/logs`)\nSearches
+    parsed logs across **both API-polled integrations (Okta, Entra)** and **uploaded
+    log files (CSV, Syslog, EVTX)** using the AST Query Engine.\n\n**AST Query Syntax
+    (`q` parameter)**:\n- **Free-Text Phrase Search**: `q='\"unauthorized access\"'`
+    or `q='\"failed password\"'`\n- **Level Filtering**: `q='level=ERROR'` or `q='level=WARN'`\n-
+    **Source Filtering**: `q='source=123e4567-e89b-12d3-a456-426614174000'`\n- **Raw
+    Field Filtering**: `q='raw.ip_address=192.168.1.50'` or `q='raw.user_id=usr_9981'`\n-
+    **Combined Expressions**: `q='level=ERROR \"unauthorized access\" raw.ip_address=10.0.0.1'`\n\n---\n###
+    \U0001F4C1 2. S3 Log File Upload Flow\n1. Request Presigned Upload URL: `POST
+    /api/v1/integrations/logs-data/presign-upload`\n2. Upload File directly to S3
+    via returned presigned Form Post data.\n3. Confirm & Parse File: `POST /api/v1/integrations/logs-data/confirm-upload`.
+    Entries are automatically parsed and immediately AST-searchable!\n\n---\n### \U0001F916
+    3. AI-Driven Data Quality\n- `GET /api/v1/integrations/logs-data/data-quality`:
+    Returns overall AI Quality Score & parser health.\n- `GET /api/v1/integrations/logs-data/data-quality/ai-analysis`:
+    Returns AI-detected unmapped fields & recommended parser fixes.\n- `POST /api/v1/integrations/logs-data/data-quality/apply-fix`:
+    Applies AI-suggested parser fix directly."
+  termsOfService: http://swagger.io/terms/
+  title: Sage Shield API
+  version: "1.0"
+paths:
+  /assets/protection-coverage:
+    get:
+      consumes:
+      - application/json
+      description: Returns asset protection coverage percentage, protected count,
+        and unprotected count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.AssetProtectionCoverage'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Endpoint Protection Coverage
+      tags:
+      - Endpoint Protection & Assets
+  /compliance/risk-indicators:
+    get:
+      consumes:
+      - application/json
+      description: Returns itemized compliance risk indicator counts (encryption vulns,
+        dormant accounts, unencrypted devices).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.ComplianceRiskIndicators'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Compliance Risk Indicators
+      tags:
+      - Compliance & Risk Indicators
+  /events/geo-threats:
+    get:
+      consumes:
+      - application/json
+      description: Returns live Geo-IP threat origins with latitude/longitude coordinates
+        and top threat region.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.GeoThreatsSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Geo Threat Origins
+      tags:
+      - Geo Threat Intelligence
+  /events/logs:
+    get:
+      consumes:
+      - application/json
+      description: Searches parsed logs across API-polled integrations (Okta, Entra)
+        and S3 uploaded files. Supports AST query syntax using parameter 'q' (e.g.,
+        q='level=ERROR "unauthorized access" raw.ip=192.168.1.1').
+      parameters:
+      - description: AST Search Query string (e.g., level=ERROR 'failed login' raw.user=johndoe)
+        in: query
+        name: q
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Page size (default: 25, max: 200)'
+        in: query
+        name: page_size
+        type: integer
+      - description: Filter by Data source ID
+        in: query
+        name: source_id
+        type: string
+      - description: Filter by Event type
+        in: query
+        name: event_type
+        type: string
+      - description: Filter by Severity (low, medium, high, critical)
+        in: query
+        name: severity
+        type: string
+      - description: Filter by Actor email
+        in: query
+        name: actor_email
+        type: string
+      - description: Filter by IP address
+        in: query
+        name: ip_address
+        type: string
+      - description: Start timestamp (RFC3339 format)
+        in: query
+        name: start_time
+        type: string
+      - description: End timestamp (RFC3339 format)
+        in: query
+        name: end_time
+        type: string
+      - description: Free text fallback search
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Search Logs (AST & Filtering)
+      tags:
+      - Logs & Data
+  /events/logs/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Returns full raw and normalized payload for one security event.
+      parameters:
+      - description: Log Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Log Detail
+      tags:
+      - Logs & Data
+  /events/threat-trends:
+    get:
+      consumes:
+      - application/json
+      description: Returns time-series threat severity counts comparing current month
+        to baseline period.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.ThreatTrendsSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Threat Severity Trends
+      tags:
+      - Threats & Vulnerabilities
+  /events/threats/asset-risk-distribution:
+    get:
+      consumes:
+      - application/json
+      description: Returns overall risk percentage and asset breakdown for dangerous
+        threats donut chart.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.AssetRiskDistribution'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Asset Risk Distribution
+      tags:
+      - Threats & Vulnerabilities
+  /events/threats/summary:
+    get:
+      consumes:
+      - application/json
+      description: Returns aggregate counts of threats and vulnerabilities grouped
+        by severity (critical, high, medium, low) and 7-day trend count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.ThreatsSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Known Vulnerabilities & Threats Summary
+      tags:
+      - Logs & Data
+  /identity-health/summary:
+    get:
+      consumes:
+      - application/json
+      description: Returns MFA coverage percentage, dormant account count, and elevated
+        privilege counts.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.IdentityHealthSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Identity & Access Health Summary
+      tags:
+      - Identity & Access Risk
+  /incidents:
+    get:
+      consumes:
+      - application/json
+      description: Returns active security incidents with severity, last activity
+        timestamp, and status.
+      parameters:
+      - description: 'Limit (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/domain.ActiveIncident'
+                  type: array
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Active Incidents
+      tags:
+      - Incident Response
+  /integrations:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new integration with the specified provider and configuration.
+      parameters:
+      - description: Integration creation payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateIntegrationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Create Integration
+      tags:
+      - Integrations
+  /integrations/logs-data/data-quality:
+    get:
+      consumes:
+      - application/json
+      description: Returns overall data quality metrics including score, parsing errors,
+        missing fields, unmapped logs, and duplicate events.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Data Quality Summary
+      tags:
+      - Logs & Data
+  /integrations/logs-data/data-quality/ai-analysis:
+    get:
+      consumes:
+      - application/json
+      description: Returns AI-generated analysis and suggested fixes for data quality
+        issues.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Data Quality AI Analysis
+      tags:
+      - Logs & Data
+  /integrations/logs-data/data-quality/apply-suggested-fix:
+    post:
+      consumes:
+      - application/json
+      description: Applies an AI-suggested parser or field mapping fix to improve
+        data quality.
+      parameters:
+      - description: Apply Suggested Fix Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ApplySuggestedFixRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Apply Suggested Data Quality Fix
+      tags:
+      - Logs & Data
+  /integrations/logs-data/data-quality/breakdown:
+    get:
+      consumes:
+      - application/json
+      description: Returns data quality metrics per data source.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Quality status
+        in: query
+        name: status
+        type: string
+      - description: Data source ID
+        in: query
+        name: source_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Data Quality Breakdown
+      tags:
+      - Logs & Data
+  /integrations/logs-data/data-quality/diff:
+    get:
+      consumes:
+      - application/json
+      description: Returns before and after diff for an AI-suggested parser or mapping
+        fix.
+      parameters:
+      - description: Suggestion ID
+        in: query
+        name: suggestion_id
+        required: true
+        type: string
+      - description: Parser ID
+        in: query
+        name: parser_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Preview Suggested Fix Diff
+      tags:
+      - Logs & Data
+  /integrations/logs-data/data-quality/report:
+    get:
+      consumes:
+      - application/json
+      description: Downloads data quality report in csv, pdf, or json format.
+      parameters:
+      - description: Report format
+        in: query
+        name: format
+        type: string
+      - description: Start time
+        in: query
+        name: start_time
+        type: string
+      - description: End time
+        in: query
+        name: end_time
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - SessionAuth: []
+      summary: Download Data Quality Report
+      tags:
+      - Logs & Data
+  /integrations/logs-data/data-quality/scan:
+    post:
+      consumes:
+      - application/json
+      description: Queues a data quality scan to detect parsing errors, missing fields,
+        duplicates, and unmapped logs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Run Data Quality Scan
+      tags:
+      - Logs & Data
+  /integrations/logs-data/ingestion-health:
+    get:
+      consumes:
+      - application/json
+      description: Returns ingestion health metrics including total events ingested,
+        active sources, delayed sources, and ingestion errors.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Ingestion Health Summary
+      tags:
+      - Logs & Data
+  /integrations/logs-data/ingestion-health/notifications:
+    get:
+      consumes:
+      - application/json
+      description: Returns ingestion warnings and AI insights related to source delays,
+        drops, parsing errors, and schema changes.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Ingestion Notifications
+      tags:
+      - Logs & Data
+  /integrations/logs-data/ingestion-health/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Queues a background job to refresh ingestion health metrics.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Refresh Ingestion Health
+      tags:
+      - Logs & Data
+  /integrations/logs-data/ingestion-health/report:
+    get:
+      consumes:
+      - application/json
+      description: Downloads ingestion health report in csv, pdf, or json format.
+      parameters:
+      - description: Report format
+        in: query
+        name: format
+        type: string
+      - description: Start time
+        in: query
+        name: start_time
+        type: string
+      - description: End time
+        in: query
+        name: end_time
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - SessionAuth: []
+      summary: Download Ingestion Health Report
+      tags:
+      - Logs & Data
+  /integrations/logs-data/ingestion-health/volume:
+    get:
+      consumes:
+      - application/json
+      description: Returns time-series ingestion volume for charts, optionally filtered
+        by source.
+      parameters:
+      - description: Start time
+        in: query
+        name: start_time
+        type: string
+      - description: End time
+        in: query
+        name: end_time
+        type: string
+      - description: Aggregation interval
+        in: query
+        name: interval
+        type: string
+      - description: Data source ID
+        in: query
+        name: source_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Ingestion Volume Over Time
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers:
+    get:
+      consumes:
+      - application/json
+      description: Returns custom parsers with status, parsed event count, error rate,
+        owner, and last updated time.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Search parser name
+        in: query
+        name: search
+        type: string
+      - description: Parser status
+        in: query
+        name: status
+        type: string
+      - description: Data source
+        in: query
+        name: data_source
+        type: string
+      - description: Parser type
+        in: query
+        name: parser_type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: List Custom Parsers
+      tags:
+      - Logs & Data
+    post:
+      consumes:
+      - application/json
+      description: Creates a custom parser for extracting, structuring, and normalizing
+        raw logs.
+      parameters:
+      - description: Create Parser Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateParserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Create Custom Parser
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Updates parser configuration, logic, mappings, tags, or status.
+        Creates a parser version before saving changes.
+      parameters:
+      - description: Parser ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update Parser Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateParserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Update Custom Parser
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/{id}/disable:
+    post:
+      consumes:
+      - application/json
+      description: Disables a custom parser without deleting it.
+      parameters:
+      - description: Parser ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Disable Parser
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/{id}/enable:
+    post:
+      consumes:
+      - application/json
+      description: Enables a custom parser for future log ingestion.
+      parameters:
+      - description: Parser ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Enable Parser
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/{id}/export:
+    get:
+      consumes:
+      - application/json
+      description: Exports a parser definition as JSON.
+      parameters:
+      - description: Parser ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Export Parser
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/{id}/test:
+    post:
+      consumes:
+      - application/json
+      description: Tests a parser against a sample log and returns parsed output,
+        normalized output, errors, and field mappings.
+      parameters:
+      - description: Parser ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Test Parser Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.TestParserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Test Parser
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/{id}/validate:
+    post:
+      consumes:
+      - application/json
+      description: Queues validation for a parser against recent logs.
+      parameters:
+      - description: Parser ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Validate Parser
+      tags:
+      - Lmiddlewares.Ggs & Data
+  /integrations/logs-data/parsers/import:
+    post:
+      consumes:
+      - application/json
+      description: Imports a custom parser definition from JSON payload or uploaded
+        parser configuration.
+      parameters:
+      - description: Import Parser Request
+        in: body
+        name: middlewares.Gequest
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ImportParserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Import Parser
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/preview:
+    post:
+      consumes:
+      - application/json
+      description: Previews parser output before saving a new parser.
+      parameters:
+      - description: Preview Parser Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PreviewParserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Preview Parser
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/sample-logs:
+    get:
+      consumes:
+      - application/json
+      description: Returns sample raw logs for parser testing and preview.
+      parameters:
+      - description: Data source ID
+        in: query
+        name: source_id
+        type: string
+      - description: Parser ID
+        in: query
+        name: parser_id
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: List Sample Logs
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/summary:
+    get:
+      consumes:
+      - application/json
+      description: Returns parser library summary metrics including total parsers,
+        active parsers, error rate, and last updated timestamp.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Parser Summary
+      tags:
+      - Logs & Data
+  /integrations/logs-data/parsers/validate:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Validate All Parsers
+      tags:
+      - Logs & Data
+  /integrations/logs-data/sources:
+    get:
+      consumes:
+      - application/json
+      description: Returns connected data sources with ingestion status, events today,
+        last event time, and health status.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Search by source name or description
+        in: query
+        name: search
+        type: string
+      - description: Source type
+        in: query
+        name: type
+        type: string
+      - description: Source status
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: List Data Sources
+      tags:
+      - Logs & Data
+  /integrations/logs-data/sources/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Returns detailed health and metadata for a single data source.
+      parameters:
+      - description: Data Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Get Data Source Detail
+      tags:
+      - Logs & Data
+  /integrations/logs-data/sources/{id}/disconnect:
+    post:
+      consumes:
+      - application/json
+      description: Disconnects a data source and stops future ingestion while preserving
+        historical logs.
+      parameters:
+      - description: Data Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Disconnect Data Source
+      tags:
+      - Logs & Data
+  /integrations/logs-data/sources/{id}/logs:
+    get:
+      consumes:
+      - application/json
+      description: Returns logs ingested from a specific data source.
+      parameters:
+      - description: Data Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: page_size
+        type: integer
+      - description: Event type
+        in: query
+        name: event_type
+        type: string
+      - description: Severity
+        in: query
+        name: severity
+        type: string
+      - description: Start time
+        in: query
+        name: start_time
+        type: string
+      - description: End time
+        in: query
+        name: end_time
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: View Source Logs
+      tags:
+      - Logs & Data
+  /integrations/logs-data/sources/{id}/sync:
+    post:
+      consumes:
+      - application/json
+      description: Manually queues a sync job for a data source.
+      parameters:
+      - description: Data Source ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Sync Data Source
+      tags:
+      - Logs & Data
+  /integrations/logs-data/upload/complete:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Confirms a direct S3 upload by verifying the file exists in S3 and storing the log file record.
+
+        ## Flow
+        Call this endpoint after receiving HTTP 204 from the S3 POST upload.
+
+        ## Rules
+        - `key` must match exactly what was returned by `/upload/presign`
+        - `etag` must match the `ETag` response header from the S3 POST — include surrounding quotes e.g. `"abc123"`
+        - The file must exist in S3 at the given key or the request will fail with 404
+        - `metadata.source_type` is required — describes the log source e.g. `firewall`, `nginx`, `windows_security`
+        - The upload can only be confirmed once — subsequent calls with the same key will fail
+        - `source_id` is optional — links the log file to an existing data source in the system
+      parameters:
+      - description: Upload complete request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UploadCompleteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Confirmed log file record
+          schema:
+            $ref: '#/definitions/http.ConfirmUploadResponse'
+        "400":
+          description: Invalid request body or ETag mismatch
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: File not found in S3
+          schema:
+            $ref: '#/definitions/response.Response'
+        "409":
+          description: Upload already confirmed
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Complete Upload
+      tags:
+      - Logs & Data
+  /integrations/logs-data/upload/presign:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Initiates a direct-to-S3 upload flow by generating a presigned POST URL.
+
+        ## Flow
+        1. Call this endpoint with the file metadata (name, size, content type)
+        2. Use the returned `post.url` and `post.fields` to upload the file directly to S3 as `multipart/form-data`
+        3. The `file` field must be the **last** field in the multipart body
+        4. On S3 success (HTTP 204), call `/upload/complete` with the `key` and `ETag` from the S3 response headers
+
+        ## Rules
+        - Supported extensions: `.json`, `.csv`, `.xml`, `.gz`, `.zip`, `.tar`, `.pcap`, `.log`, `.evt`, `.evtx`, `.txt`, `.yml`, `.yaml`
+        - Maximum file size is enforced via the `content-length-range` condition in the policy
+        - The presign URL expires in 24 hours — complete the upload before expiry
+        - The returned `key` must be passed exactly as-is to the complete endpoint
+        - Do not modify or add extra fields to the S3 POST — the policy will reject the request with HTTP 403
+      parameters:
+      - description: File metadata
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UploadLogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Presign response containing S3 POST URL, fields, key and expiry
+          schema:
+            $ref: '#/definitions/http.UploadPresignResponse'
+        "400":
+          description: Invalid request body or unsupported file type
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "413":
+          description: File size exceeds maximum allowed
+          schema:
+            $ref: '#/definitions/response.Response'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - SessionAuth: []
+      summary: Create Upload Presign
+      tags:
+      - Logs & Data
+  /security-posture/score:
+    get:
+      consumes:
+      - application/json
+      description: Returns multi-pillar security posture score, weekly delta trend,
+        and pillar breakdown.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.SecurityPostureScore'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Overall Security Posture Score
+      tags:
+      - Security Posture & Quality
+  /threat-intel/feeds/summary:
+    get:
+      consumes:
+      - application/json
+      description: Returns total indicators processed in 24h, active feeds count,
+        and inactive feeds count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/domain.ThreatIntelFeedsSummary'
+              type: object
+      security:
+      - SessionAuth: []
+      summary: Get Threat Intelligence Feeds Summary
+      tags:
+      - Threat Intelligence Feeds
+securityDefinitions:
+  SessionAuth:
+    in: cookie
+    name: session_id
+    type: apiKey
+swagger: "2.0"

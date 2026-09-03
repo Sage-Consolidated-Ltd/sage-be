@@ -1,70 +1,122 @@
+name: sage
 
 services:
   postgres:
-    image: postgres:17
+    image: postgres:16-alpine
     container_name: sage-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: sage_user
-      POSTGRES_PASSWORD: sage_dev_password
-      POSTGRES_DB: sage_db
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-sage_db}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5435}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sage_user -d sage_db"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-sage_db}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
-    networks:
-      - sage-network
+      retries: 10
+    networks: [sage-net]
 
   redis:
-    image: docker.io/redis:7.2
+    image: redis:7-alpine
     container_name: sage-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
+      - "${REDIS_PORT:-6381}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-    networks:
-      - sage-network
+      retries: 10
+    networks: [sage-net]
 
-  worker:
+  migrate:
+    image: ${GHCR_IMAGE_PREFIX:-sage}/migrate:${TAG:-latest}
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: sage-worker
-    restart: unless-stopped
-    command: ["go", "run", "cmd/worker/main.go"]
+      dockerfile: docker/Dockerfile
+      args:
+        BUILD_PATH: ./migrations
+    command: ["--up", "--seed"]
+    env_file: .env
     environment:
-      APP_ENV: development
-      DATABASE_URL: postgres://sage_user:sage_dev_password@postgres:5432/sage_db?sslmode=disable
-      REDIS_ADDR: redis:6379
-      APP_ENCRYPTION_KEY: dev-encryption-key-32-bytes-long
-      REDIS_DB_URL: redis://redis:6379
-      RESEND_API_KEY: test
-      RESEND_FROM_EMAIL: test@example.com
-      FRONTEND_BASE_URL: http://localhost:3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
+      REDIS_DB_URL: redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
+    networks: [sage-net]
+    restart: "no"
+
+  api:
+    image: ${GHCR_IMAGE_PREFIX:-sage}/api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        BUILD_PATH: ./cmd/api
+    env_file: .env
+    environment:
+      PORT: ${PORT:-4000}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
+      REDIS_DB_URL: redis://redis:6379/0
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+    ports:
+      - "${PORT:-4000}:${PORT:-4000}"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
-    networks:
-      - sage-network
+    networks: [sage-net]
+
+  shield:
+    image: ${GHCR_IMAGE_PREFIX:-sage}/shield:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        BUILD_PATH: ./cmd/shield
+    env_file: .env
+    environment:
+      SHIELD_PORT: ${SHIELD_PORT:-3335}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
+      REDIS_DB_URL: redis://redis:6379/0
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+    ports:
+      - "${SHIELD_PORT:-3335}:${SHIELD_PORT:-3335}"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks: [sage-net]
+
+  worker:
+    image: ${GHCR_IMAGE_PREFIX:-sage}/worker:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        BUILD_PATH: ./cmd/worker
+    command: ["start", "--redis-addr", "redis:6379", "--concurrency", "10"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
+      REDIS_DB_URL: redis://redis:6379/0
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks: [sage-net]
 
 volumes:
-  postgres_data:
-  redis_data:
+  pgdata:
 
 networks:
-  sage-network:
+  sage-net:
     driver: bridge
