@@ -14,7 +14,7 @@ type LogsUseCase interface {
 	IngestLog(ctx context.Context, orgID uuid.UUID, req *dto.IngestLogRequest) (*domain.SecurityEvent, error)
 	BulkIngestLogs(ctx context.Context, orgID uuid.UUID, req *dto.BulkIngestLogsRequest) (map[string]interface{}, error)
 	SearchLogs(ctx context.Context, orgID uuid.UUID, filters map[string]interface{}, page, pageSize int) ([]*domain.SecurityEvent, int, error)
-	SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.SearchResult, error)
+	SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.EventSearchResult, error)
 	GetLogByID(ctx context.Context, orgID uuid.UUID, id uuid.UUID) (*domain.SecurityEvent, error)
 	GetThreatsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatsSummary, error)
 }

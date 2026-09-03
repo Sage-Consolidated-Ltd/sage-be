@@ -9,6 +9,8 @@ import (
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/domain"
 	"sage-backend/internal/shield/ports/inbound"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // DataQualityEngine implements ports.inbound.DataQualityEngine for evaluating log event quality.
@@ -19,6 +21,11 @@ type DataQualityEngine struct {
 
 // NewDataQualityEngine initializes a DataQualityEngine pre-loaded with default Windows quality rules.
 func NewDataQualityEngine() inbound.DataQualityEngine {
+	return NewDataQualityEngineWithRedis(nil)
+}
+
+// NewDataQualityEngineWithRedis initializes a DataQualityEngine with optional Redis distributed deduplication.
+func NewDataQualityEngineWithRedis(redisClient *redis.Client) inbound.DataQualityEngine {
 	engine := &DataQualityEngine{
 		rules: make([]QualityRule, 0),
 	}
@@ -30,7 +37,7 @@ func NewDataQualityEngine() inbound.DataQualityEngine {
 	engine.RegisterRule(&WinInvalidTimestampRule{})
 	engine.RegisterRule(&WinMissingMetadataRule{})
 	engine.RegisterRule(&WinParseStatusRule{})
-	engine.RegisterRule(NewWinDuplicateEventRule(10 * time.Minute))
+	engine.RegisterRule(NewWinDuplicateEventRuleWithRedis(10*time.Minute, redisClient))
 	engine.RegisterRule(&WinPartialPopulationRule{})
 
 	return engine
@@ -68,8 +75,13 @@ func (e *DataQualityEngine) EvaluateEvent(ctx context.Context, event *domain.Sec
 
 	var allIssues []domain.QualityIssue
 	passedCount := 0
+	applicableRulesCount := 0
 
 	for _, r := range rules {
+		if !r.AppliesTo(event) {
+			continue
+		}
+		applicableRulesCount++
 		issues := r.Evaluate(event)
 		if len(issues) == 0 {
 			passedCount++
@@ -93,13 +105,14 @@ func (e *DataQualityEngine) EvaluateEvent(ctx context.Context, event *domain.Sec
 		OrganizationID: event.OrganizationID.String(),
 		Score:          score,
 		Status:         status,
-		TotalChecks:    len(rules),
+		TotalChecks:    applicableRulesCount,
 		PassedChecks:   passedCount,
 		Issues:         allIssues,
 		EvaluatedAt:    time.Now(),
 		Metadata: map[string]any{
-			"rule_count": len(rules),
-			"source":     event.Source,
+			"rule_count":       len(rules),
+			"applicable_rules": applicableRulesCount,
+			"source":           event.Source,
 		},
 	}
 

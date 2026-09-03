@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"regexp"
@@ -10,6 +11,8 @@ import (
 
 	"sage-backend/internal/shared/types"
 	"sage-backend/internal/shield/domain"
+
+	"github.com/redis/go-redis/v9"
 )
 
 var (
@@ -17,11 +20,32 @@ var (
 	sidRegex = regexp.MustCompile(`^S-1-[0-59]-\d{2,}(-\d+)+$`)
 )
 
+// isWindowsEvent detects whether a security event originated from a Windows log source.
+func isWindowsEvent(event *domain.SecurityEvent) bool {
+	if event == nil {
+		return false
+	}
+	src := strings.ToLower(event.Source)
+	if src == "" || strings.Contains(src, "win") || strings.Contains(src, "eventlog") || strings.Contains(src, "security") || strings.Contains(src, "system") {
+		return true
+	}
+	if event.NormalizedPayload != nil {
+		if _, ok := event.NormalizedPayload["channel"]; ok {
+			return true
+		}
+		if _, ok := event.NormalizedPayload["event_id"]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 // QualityRule defines the interface for an individual quality check rule.
 type QualityRule interface {
 	ID() string
 	Name() string
 	Description() string
+	AppliesTo(event *domain.SecurityEvent) bool
 	Evaluate(event *domain.SecurityEvent) []domain.QualityIssue
 }
 
@@ -32,6 +56,9 @@ func (r *WinMissingRequiredFieldsRule) ID() string   { return "win_quality_missi
 func (r *WinMissingRequiredFieldsRule) Name() string { return "Missing Required Windows Log Fields" }
 func (r *WinMissingRequiredFieldsRule) Description() string {
 	return "Verifies essential Windows log fields (Event ID, OccurredAt, Source/Computer, Actor) are present"
+}
+func (r *WinMissingRequiredFieldsRule) AppliesTo(event *domain.SecurityEvent) bool {
+	return isWindowsEvent(event)
 }
 
 func (r *WinMissingRequiredFieldsRule) Evaluate(event *domain.SecurityEvent) []domain.QualityIssue {
@@ -91,6 +118,9 @@ func (r *WinInvalidFieldsRule) Name() string { return "Invalid Field Values and 
 func (r *WinInvalidFieldsRule) Description() string {
 	return "Detects invalid category names, event types, or severe type mismatches"
 }
+func (r *WinInvalidFieldsRule) AppliesTo(event *domain.SecurityEvent) bool {
+	return true
+}
 
 func (r *WinInvalidFieldsRule) Evaluate(event *domain.SecurityEvent) []domain.QualityIssue {
 	var issues []domain.QualityIssue
@@ -125,6 +155,9 @@ func (r *WinMalformedValuesRule) ID() string   { return "win_quality_malformed_v
 func (r *WinMalformedValuesRule) Name() string { return "Malformed Value Formats" }
 func (r *WinMalformedValuesRule) Description() string {
 	return "Checks format validity for IP addresses, Windows Security Identifiers (SIDs), and GUIDs"
+}
+func (r *WinMalformedValuesRule) AppliesTo(event *domain.SecurityEvent) bool {
+	return true
 }
 
 func (r *WinMalformedValuesRule) Evaluate(event *domain.SecurityEvent) []domain.QualityIssue {
@@ -171,6 +204,9 @@ func (r *WinInvalidTimestampRule) Name() string { return "Invalid or Out-of-Boun
 func (r *WinInvalidTimestampRule) Description() string {
 	return "Detects timestamps in the future (>5m), zero timestamps, or stale events older than 365 days"
 }
+func (r *WinInvalidTimestampRule) AppliesTo(event *domain.SecurityEvent) bool {
+	return true
+}
 
 func (r *WinInvalidTimestampRule) Evaluate(event *domain.SecurityEvent) []domain.QualityIssue {
 	var issues []domain.QualityIssue
@@ -210,6 +246,9 @@ func (r *WinMissingMetadataRule) ID() string   { return "win_quality_missing_met
 func (r *WinMissingMetadataRule) Name() string { return "Missing Windows Event Metadata" }
 func (r *WinMissingMetadataRule) Description() string {
 	return "Checks for Windows Event Log metadata like Channel, ProviderName, and Task Category"
+}
+func (r *WinMissingMetadataRule) AppliesTo(event *domain.SecurityEvent) bool {
+	return isWindowsEvent(event)
 }
 
 func (r *WinMissingMetadataRule) Evaluate(event *domain.SecurityEvent) []domain.QualityIssue {
@@ -266,6 +305,9 @@ func (r *WinParseStatusRule) Name() string { return "Parsing & Normalization Qua
 func (r *WinParseStatusRule) Description() string {
 	return "Identifies failed parsing status or embedded parse errors in normalized payload"
 }
+func (r *WinParseStatusRule) AppliesTo(event *domain.SecurityEvent) bool {
+	return true
+}
 
 func (r *WinParseStatusRule) Evaluate(event *domain.SecurityEvent) []domain.QualityIssue {
 	var issues []domain.QualityIssue
@@ -306,15 +348,21 @@ type WinDuplicateEventRule struct {
 	mu           sync.Mutex
 	seenHashes   map[string]time.Time
 	windowPeriod time.Duration
+	redisClient  *redis.Client
 }
 
 func NewWinDuplicateEventRule(windowPeriod time.Duration) *WinDuplicateEventRule {
+	return NewWinDuplicateEventRuleWithRedis(windowPeriod, nil)
+}
+
+func NewWinDuplicateEventRuleWithRedis(windowPeriod time.Duration, redisClient *redis.Client) *WinDuplicateEventRule {
 	if windowPeriod <= 0 {
 		windowPeriod = 10 * time.Minute
 	}
 	return &WinDuplicateEventRule{
 		seenHashes:   make(map[string]time.Time),
 		windowPeriod: windowPeriod,
+		redisClient:  redisClient,
 	}
 }
 
@@ -322,6 +370,9 @@ func (r *WinDuplicateEventRule) ID() string   { return "win_quality_duplicate_ev
 func (r *WinDuplicateEventRule) Name() string { return "Duplicate Windows Event Check" }
 func (r *WinDuplicateEventRule) Description() string {
 	return "Detects duplicate events arriving within a sliding deduplication time window"
+}
+func (r *WinDuplicateEventRule) AppliesTo(event *domain.SecurityEvent) bool {
+	return true
 }
 
 func (r *WinDuplicateEventRule) Evaluate(event *domain.SecurityEvent) []domain.QualityIssue {
@@ -337,6 +388,21 @@ func (r *WinDuplicateEventRule) Evaluate(event *domain.SecurityEvent) []domain.Q
 		event.Source,
 		event.OccurredAt.UnixNano(),
 	)
+
+	if r.redisClient != nil {
+		key := fmt.Sprintf("quality:seen:%s", hashKey)
+		set, err := r.redisClient.SetNX(context.Background(), key, "1", r.windowPeriod).Result()
+		if err == nil && !set {
+			issues = append(issues, domain.QualityIssue{
+				Code:           "DUPLICATE_EVENT_DETECTED",
+				Message:        fmt.Sprintf("Event with duplicate key '%s' was already processed within %s", hashKey, r.windowPeriod),
+				Severity:       domain.QualitySeverityError,
+				Category:       "duplicate",
+				AffectedFields: []string{"source_event_id", "occurred_at"},
+			})
+		}
+		return issues
+	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -372,6 +438,9 @@ func (r *WinPartialPopulationRule) ID() string   { return "win_quality_partial_p
 func (r *WinPartialPopulationRule) Name() string { return "Partially Populated Event Field Check" }
 func (r *WinPartialPopulationRule) Description() string {
 	return "Verifies payload populated field ratio against standard Windows event expectations"
+}
+func (r *WinPartialPopulationRule) AppliesTo(event *domain.SecurityEvent) bool {
+	return isWindowsEvent(event)
 }
 
 func (r *WinPartialPopulationRule) Evaluate(event *domain.SecurityEvent) []domain.QualityIssue {

@@ -29,6 +29,7 @@ type DataQualityService struct {
 	parserRepo outbound.ParserRepository
 	sourceRepo outbound.DataSourceRepository
 	jobRepo    outbound.IngestionJobRepository
+	taskClient outbound.TaskPublisherInt
 }
 
 func NewDataQualityService(
@@ -36,12 +37,14 @@ func NewDataQualityService(
 	parserRepo outbound.ParserRepository,
 	sourceRepo outbound.DataSourceRepository,
 	jobRepo outbound.IngestionJobRepository,
+	taskClient outbound.TaskPublisherInt,
 ) DataQualityUseCase {
 	return &DataQualityService{
 		scanRepo:   scanRepo,
 		parserRepo: parserRepo,
 		sourceRepo: sourceRepo,
 		jobRepo:    jobRepo,
+		taskClient: taskClient,
 	}
 }
 
@@ -84,6 +87,19 @@ func (s *DataQualityService) RunScan(ctx context.Context, orgID uuid.UUID) (map[
 	if err := s.jobRepo.CreateJob(ctx, job); err != nil {
 		return nil, err
 	}
+
+	if s.taskClient != nil {
+		if err := s.taskClient.EnqueueQualityScanJob(ctx, job.ID, orgID, scan.ID); err != nil {
+			errMsg := err.Error()
+			_ = s.jobRepo.UpdateJobStatus(ctx, job.ID, orgID, domain.JobStatusFailed, 0, 0, &errMsg)
+			scan.Status = "failed"
+			now := time.Now()
+			scan.CompletedAt = &now
+			_ = s.scanRepo.UpdateScan(ctx, scan)
+			return nil, fmt.Errorf("failed to enqueue quality scan task: %w", err)
+		}
+	}
+
 	return map[string]interface{}{
 		"scan_id":    scan.ID.String(),
 		"job_id":     job.ID.String(),

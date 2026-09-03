@@ -13,6 +13,7 @@ import (
 	"sage-backend/internal/shield/adapters/outbound/ai_detector"
 	"sage-backend/internal/shield/adapters/outbound/postgres"
 	"sage-backend/internal/shield/adapters/outbound/queue"
+	"sage-backend/internal/shield/usecase"
 	"sage-backend/pkg/crypto"
 
 	"github.com/go-resty/resty/v2"
@@ -70,6 +71,14 @@ func New() (*Worker, error) {
 	logUploadRepo := postgres.NewLogUploadRepository(database)
 	parsedLogRepo := postgres.NewParsedLogRepository(database)
 	analysisRepo := postgres.NewAnalysisRepository(database)
+	qualityRepo := postgres.NewDataQualityRepository(database)
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     redisOpt.Addr,
+		Password: redisOpt.Password,
+		DB:       redisOpt.DB,
+	})
+	qualityEngine := usecase.NewDataQualityEngineWithRedis(redisClient)
 
 	aiDetectorBaseURL := os.Getenv("DETECTOR_AI_BASE_URL")
 	aiDetectorToken := os.Getenv("DETECTOR_AI_AUTH_TOKEN")
@@ -88,6 +97,8 @@ func New() (*Worker, error) {
 		threatDetector,
 		s3Uploader,
 		parsedLogRepo,
+		qualityEngine,
+		qualityRepo,
 	)
 
 	server := asynq.NewServer(

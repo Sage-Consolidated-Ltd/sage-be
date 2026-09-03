@@ -82,7 +82,7 @@ func NewModuleWithServices(
 		correlationStore = memory.NewCorrelationStore()
 	}
 
-	dataQualityEngine := usecase.NewDataQualityEngine()
+	dataQualityEngine := usecase.NewDataQualityEngineWithRedis(redisClient)
 	incidentEngine := usecase.NewIncidentEngine(correlationStore)
 	_ = usecase.RegisterDefaultWindowsRules(incidentEngine, correlationStore)
 
@@ -105,6 +105,7 @@ func NewModuleWithServices(
 		parserRepo,
 		dataSourceRepo,
 		jobRepo,
+		taskPublisher,
 	)
 
 	parserUseCase := usecase.NewParserService(

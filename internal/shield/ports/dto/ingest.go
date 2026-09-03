@@ -57,6 +57,8 @@ type SecurityEventResponse struct {
 	OccurredAt        time.Time       `json:"occurred_at"`
 	IngestedAt        time.Time       `json:"ingested_at"`
 	UpdatedAt         time.Time       `json:"updated_at"`
+	IngestionType     string          `json:"ingestion_type,omitempty"`
+	FileID            *string         `json:"file_id,omitempty"`
 }
 
 type IngestionJobResponse struct {

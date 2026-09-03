@@ -2,7 +2,6 @@ package usecase
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"sage-backend/internal/shared/errors/apperrors"
@@ -13,14 +12,14 @@ import (
 )
 
 type ASTSearchService struct {
-	repo outbound.ParsedLogRepository
+	repo outbound.SecurityEventRepository
 }
 
-func NewASTSearchService(repo outbound.ParsedLogRepository) *ASTSearchService {
+func NewASTSearchService(repo outbound.SecurityEventRepository) *ASTSearchService {
 	return &ASTSearchService{repo: repo}
 }
 
-func (s *ASTSearchService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.SearchResult, error) {
+func (s *ASTSearchService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, queryString string, limit int) (domain.EventSearchResult, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -31,29 +30,58 @@ func (s *ASTSearchService) SearchLogsAST(ctx context.Context, orgID uuid.UUID, q
 	ast := s.ParseQueryString(queryString)
 	params, err := s.ASTToSearchParams(ast)
 	if err != nil {
-		return domain.SearchResult{}, apperrors.BadException(err.Error())
+		return domain.EventSearchResult{}, apperrors.BadException(err.Error())
 	}
 	params.OrganizationID = orgID
 	params.Limit = limit
 
-	return s.repo.Search(ctx, params)
+	return s.repo.SearchAST(ctx, params)
 }
 
-func (s *ASTSearchService) ASTToSearchParams(ast domain.QueryAST) (domain.SearchParams, error) {
-	params := domain.SearchParams{
+func (s *ASTSearchService) ASTToSearchParams(ast domain.QueryAST) (domain.EventSearchParams, error) {
+	params := domain.EventSearchParams{
 		RawFilters: ast.RawFilters,
 	}
 
 	if ast.Level != nil {
+		lvl := strings.ToLower(strings.TrimSpace(*ast.Level))
+		switch lvl {
+		case "critical", "fatal":
+			sev := "critical"
+			params.Severity = &sev
+		case "error", "err":
+			sev := "high"
+			params.Severity = &sev
+		case "warn", "warning":
+			sev := "medium"
+			params.Severity = &sev
+		case "info", "debug", "trace":
+			sev := "low"
+			params.Severity = &sev
+		default:
+			params.Severity = ast.Level
+		}
 		params.Level = ast.Level
 	}
 
 	if ast.DataSourceID != nil {
 		id, err := uuid.Parse(*ast.DataSourceID)
-		if err != nil {
-			return params, fmt.Errorf("invalid source id %q: %w", *ast.DataSourceID, err)
+		if err == nil {
+			params.DataSourceID = &id
+		} else {
+			// If not a UUID, treat as source name
+			params.Source = ast.DataSourceID
 		}
-		params.DataSourceID = &id
+	} else if ast.Source != nil {
+		params.Source = ast.Source
+	}
+
+	if ast.EventType != nil {
+		params.EventType = ast.EventType
+	}
+
+	if ast.Channel != nil {
+		params.IngestionType = ast.Channel
 	}
 
 	if len(ast.Phrases) > 0 {
@@ -83,10 +111,14 @@ func (s *ASTSearchService) ParseQueryString(input string) domain.QueryAST {
 			value = strings.Trim(strings.TrimSpace(value), `"`)
 
 			switch {
-			case key == "level":
+			case key == "level" || key == "severity":
 				ast.Level = &value
-			case key == "source":
+			case key == "source" || key == "data_source":
 				ast.DataSourceID = &value
+			case key == "type" || key == "event_type":
+				ast.EventType = &value
+			case key == "channel" || key == "ingest" || key == "mode":
+				ast.Channel = &value
 			case strings.HasPrefix(key, "raw."):
 				field := strings.TrimPrefix(key, "raw.")
 				if field != "" {
