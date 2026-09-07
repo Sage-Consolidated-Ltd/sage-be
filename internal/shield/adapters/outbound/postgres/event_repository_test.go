@@ -32,6 +32,14 @@ func TestSecurityEventRepository_StructScanMapping(t *testing.T) {
 	repo := NewSecurityEventRepository(database)
 	ctx := context.Background()
 
+	// Check if test database is migrated
+	var tableExists bool
+	err = database.GetContext(ctx, &tableExists, "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')")
+	if err != nil || !tableExists {
+		t.Skip("Test database not migrated with 'users' table, skipping integration test")
+		return
+	}
+
 	orgID := uuid.New()
 	sourceID := uuid.New()
 	userID := uuid.New()
