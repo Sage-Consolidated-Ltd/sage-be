@@ -29,6 +29,11 @@ type Evidence struct {
 	SourceIP           string                     `json:"source_ip,omitempty"`
 	HostName           string                     `json:"host_name,omitempty"`
 	OccurredAt         time.Time                  `json:"occurred_at"`
+	Score              int                        `json:"score,omitempty"`
+	Priority           string                     `json:"priority,omitempty"`
+	EntityKey          string                     `json:"entity_key,omitempty"`
+	MITRETechniques    []string                   `json:"mitre_techniques,omitempty"`
+	ContributingThreats []string                  `json:"contributing_threats,omitempty"`
 	AttemptCount       int                        `json:"attempt_count,omitempty"`
 	TimeWindowSeconds  int                        `json:"time_window_seconds,omitempty"`
 	ContributingEvents []ContributingEventSummary `json:"contributing_events,omitempty"`
