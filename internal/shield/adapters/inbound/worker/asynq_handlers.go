@@ -48,11 +48,16 @@ type TaskHandler struct {
 	qualityRepo         outbound.DataQualityRepository
 	incidentEngine      inbound.IncidentEngine
 	incidentRepo        outbound.IncidentRepository
+	alertRepo           outbound.AlertRepository
 }
 
-func (h *TaskHandler) SetIncidentEngine(engine inbound.IncidentEngine, repo outbound.IncidentRepository) {
+func (h *TaskHandler) SetIncidentEngine(engine inbound.IncidentEngine, repo outbound.IncidentRepository, alertRepo outbound.AlertRepository) {
 	h.incidentEngine = engine
 	h.incidentRepo = repo
+	h.alertRepo = alertRepo
+	if setter, ok := engine.(interface{ SetAlertRepository(outbound.AlertRepository) }); ok && alertRepo != nil {
+		setter.SetAlertRepository(alertRepo)
+	}
 }
 
 func NewTaskHandler(

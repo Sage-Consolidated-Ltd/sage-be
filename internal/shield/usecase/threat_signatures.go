@@ -41,7 +41,10 @@ func (d *ThreatSignaturesDetector) DetectAlerts(evt *domain.SecurityEvent) []*do
 		alerts = append(alerts, d.detectSecurityAlerts(evt, eventID, host, account, ip)...)
 		alerts = append(alerts, d.detectSysmonAlerts(evt, eventID, host, account, ip)...)
 		alerts = append(alerts, d.detectSystemAlerts(evt, eventID, host, account, ip)...)
-		alerts = append(alerts, d.detectApplicationAlerts(evt, eventID, host, account, ip)...)
+	}
+
+	for _, a := range alerts {
+		a.OrganizationID = evt.OrganizationID
 	}
 
 	return alerts

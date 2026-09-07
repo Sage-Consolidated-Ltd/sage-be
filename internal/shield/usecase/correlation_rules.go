@@ -1,8 +1,11 @@
 package usecase
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -10,14 +13,18 @@ import (
 	"sage-backend/internal/shield/domain"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
-// CorrelationStore holds active alert sliding windows, host watchlists, and anti-forensics tracking in memory.
+// CorrelationStore holds active alert sliding windows, host watchlists, and anti-forensics tracking.
+// Supports Redis-backed distributed state with in-memory fallback for local dev and tests.
 type CorrelationStore struct {
 	mu            sync.RWMutex
 	alerts        []*domain.Alert
 	hostWatchlist map[string]time.Time // host -> watchlist expiration time (4h from INC-004)
 	antiForensics map[string]time.Time // host -> crash/time change occurred
+	redisClient   redis.Cmdable
+	prefix        string
 }
 
 func NewCorrelationStore() *CorrelationStore {
@@ -25,30 +32,79 @@ func NewCorrelationStore() *CorrelationStore {
 		alerts:        make([]*domain.Alert, 0),
 		hostWatchlist: make(map[string]time.Time),
 		antiForensics: make(map[string]time.Time),
+		prefix:        "corr:",
 	}
 }
 
+func NewCorrelationStoreWithRedis(client redis.Cmdable) *CorrelationStore {
+	store := NewCorrelationStore()
+	store.redisClient = client
+	return store
+}
+
 func (s *CorrelationStore) AddAlert(alert *domain.Alert) {
+	if alert == nil {
+		return
+	}
+
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.alerts = append(s.alerts, alert)
-
-	// Check anti-forensics tracking
 	if alert.ThreatLabel == "System_Crash_AntiForensics" || alert.ThreatLabel == "System_Time_Changed" {
 		if alert.EntityHost != "" {
 			s.antiForensics[alert.EntityHost] = alert.DetectedAt
+		}
+	}
+	s.mu.Unlock()
+
+	if s.redisClient != nil {
+		ctx := context.Background()
+		orgKey := "global"
+		if alert.OrganizationID != uuid.Nil {
+			orgKey = alert.OrganizationID.String()
+		}
+		redisKey := fmt.Sprintf("%salerts:%s", s.prefix, orgKey)
+		score := float64(alert.DetectedAt.UnixNano())
+		b, err := json.Marshal(alert)
+		if err == nil {
+			pipe := s.redisClient.TxPipeline()
+			pipe.ZAdd(ctx, redisKey, redis.Z{Score: score, Member: string(b)})
+			cutoff := float64(time.Now().Add(-24 * time.Hour).UnixNano())
+			pipe.ZRemRangeByScore(ctx, redisKey, "-inf", fmt.Sprintf("(%f", cutoff))
+			pipe.Expire(ctx, redisKey, 24*time.Hour)
+			_, _ = pipe.Exec(ctx)
+		}
+
+		if alert.ThreatLabel == "System_Crash_AntiForensics" || alert.ThreatLabel == "System_Time_Changed" {
+			if alert.EntityHost != "" {
+				antiKey := fmt.Sprintf("%santiforensics:%s:%s", s.prefix, orgKey, alert.EntityHost)
+				_ = s.redisClient.Set(ctx, antiKey, "1", 4*time.Hour).Err()
+			}
 		}
 	}
 }
 
 func (s *CorrelationStore) AddToHostWatchlist(host string, duration time.Duration) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.hostWatchlist[host] = time.Now().Add(duration)
+	s.mu.Unlock()
+
+	if s.redisClient != nil {
+		ctx := context.Background()
+		key := fmt.Sprintf("%swatchlist:%s", s.prefix, host)
+		_ = s.redisClient.Set(ctx, key, "1", duration).Err()
+	}
 }
 
 func (s *CorrelationStore) IsHostOnWatchlist(host string) bool {
+	if s.redisClient != nil {
+		ctx := context.Background()
+		key := fmt.Sprintf("%swatchlist:%s", s.prefix, host)
+		val, err := s.redisClient.Exists(ctx, key).Result()
+		if err == nil && val > 0 {
+			return true
+		}
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if exp, ok := s.hostWatchlist[host]; ok {
@@ -58,6 +114,14 @@ func (s *CorrelationStore) IsHostOnWatchlist(host string) bool {
 }
 
 func (s *CorrelationStore) HasAntiForensicsContext(host string, window time.Duration) bool {
+	if s.redisClient != nil {
+		ctx := context.Background()
+		keys, err := s.redisClient.Keys(ctx, fmt.Sprintf("%santiforensics:*:%s", s.prefix, host)).Result()
+		if err == nil && len(keys) > 0 {
+			return true
+		}
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if ts, ok := s.antiForensics[host]; ok {
@@ -67,6 +131,32 @@ func (s *CorrelationStore) HasAntiForensicsContext(host string, window time.Dura
 }
 
 func (s *CorrelationStore) GetAlertsInWindow(since time.Time) []*domain.Alert {
+	if s.redisClient != nil {
+		ctx := context.Background()
+		minScore := strconv.FormatInt(since.UnixNano(), 10)
+		keys, err := s.redisClient.Keys(ctx, fmt.Sprintf("%salerts:*", s.prefix)).Result()
+		if err == nil && len(keys) > 0 {
+			var result []*domain.Alert
+			for _, k := range keys {
+				rawAlerts, zErr := s.redisClient.ZRangeByScore(ctx, k, &redis.ZRangeBy{
+					Min: minScore,
+					Max: "+inf",
+				}).Result()
+				if zErr == nil {
+					for _, raw := range rawAlerts {
+						var a domain.Alert
+						if json.Unmarshal([]byte(raw), &a) == nil {
+							result = append(result, &a)
+						}
+					}
+				}
+			}
+			if len(result) > 0 {
+				return result
+			}
+		}
+	}
+
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

@@ -53,17 +53,18 @@ const (
 
 // Alert represents an atomic detected threat signature before correlation.
 type Alert struct {
-	ID            uuid.UUID              `json:"id"`
-	ThreatLabel   string                 `json:"threat_label"`
-	MITRE         string                 `json:"mitre"`
-	LogSource     string                 `json:"log_source"` // Security, Sysmon, System, Application
-	EventID       string                 `json:"event_id"`
-	EntityHost    string                 `json:"entity_host,omitempty"`
-	EntityAccount string                 `json:"entity_account,omitempty"`
-	EntityIP      string                 `json:"entity_ip,omitempty"`
-	RawEvent      *SecurityEvent         `json:"raw_event,omitempty"`
-	Context       map[string]interface{} `json:"context,omitempty"`
-	DetectedAt    time.Time              `json:"detected_at"`
+	ID             uuid.UUID              `json:"id"`
+	OrganizationID uuid.UUID              `json:"organization_id"`
+	ThreatLabel    string                 `json:"threat_label"`
+	MITRE          string                 `json:"mitre"`
+	LogSource      string                 `json:"log_source"` // Security, Sysmon, System, Application
+	EventID        string                 `json:"event_id"`
+	EntityHost     string                 `json:"entity_host,omitempty"`
+	EntityAccount  string                 `json:"entity_account,omitempty"`
+	EntityIP       string                 `json:"entity_ip,omitempty"`
+	RawEvent       *SecurityEvent         `json:"raw_event,omitempty"`
+	Context        map[string]interface{} `json:"context,omitempty"`
+	DetectedAt     time.Time              `json:"detected_at"`
 }
 
 // RuleMetadata holds declarative information about a detection rule.

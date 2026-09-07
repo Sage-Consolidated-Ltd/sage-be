@@ -12,6 +12,7 @@ import (
 	"sage-backend/internal/shield/ports/outbound"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 // IncidentEngine implements ports.inbound.IncidentEngine for security event detection.
@@ -21,11 +22,29 @@ type IncidentEngine struct {
 	correlationStore  outbound.CorrelationStore
 	signatureDetector *ThreatSignaturesDetector
 	correlationEngine *CorrelationEngine
+	alertRepo         outbound.AlertRepository
+}
+
+func (e *IncidentEngine) SetAlertRepository(repo outbound.AlertRepository) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.alertRepo = repo
 }
 
 // NewIncidentEngine initializes an IncidentEngine instance with a correlation state store and detectors.
 func NewIncidentEngine(store outbound.CorrelationStore) inbound.IncidentEngine {
 	corrStore := NewCorrelationStore()
+	return &IncidentEngine{
+		rules:             make([]DetectionRule, 0),
+		correlationStore:  store,
+		signatureDetector: NewThreatSignaturesDetector(),
+		correlationEngine: NewCorrelationEngine(corrStore),
+	}
+}
+
+// NewIncidentEngineWithRedis initializes an IncidentEngine instance backed by Redis for distributed alert sliding windows.
+func NewIncidentEngineWithRedis(store outbound.CorrelationStore, redisClient redis.Cmdable) inbound.IncidentEngine {
+	corrStore := NewCorrelationStoreWithRedis(redisClient)
 	return &IncidentEngine{
 		rules:             make([]DetectionRule, 0),
 		correlationStore:  store,
@@ -188,6 +207,11 @@ func (e *IncidentEngine) EvaluateEvent(ctx context.Context, event *domain.Securi
 	// 1. Dual-Inspection Threat Signature Detection
 	alerts := e.signatureDetector.DetectAlerts(event)
 
+	// Persist detected alerts to PostgreSQL
+	if e.alertRepo != nil && len(alerts) > 0 {
+		_ = e.alertRepo.BulkSaveAlerts(ctx, alerts)
+	}
+
 	// 2. Correlation Engine (INC-001 through INC-009)
 	incidents := e.correlationEngine.EvaluateRules(event.OrganizationID, alerts)
 
@@ -224,6 +248,11 @@ func (e *IncidentEngine) EvaluateBatch(ctx context.Context, events []*domain.Sec
 	for _, event := range events {
 		alerts := e.signatureDetector.DetectAlerts(event)
 		allAlerts = append(allAlerts, alerts...)
+	}
+
+	// Persist detected alerts to PostgreSQL
+	if e.alertRepo != nil && len(allAlerts) > 0 {
+		_ = e.alertRepo.BulkSaveAlerts(ctx, allAlerts)
 	}
 
 	// 2. Correlation rules evaluation
