@@ -38,7 +38,34 @@ const (
 	RuleCategoryAccount        RuleCategory = "account_activity"
 	RuleCategoryPrivilege      RuleCategory = "privilege_security"
 	RuleCategoryProcessService RuleCategory = "process_service"
+	RuleCategoryInitialAccess  RuleCategory = "initial_access"
+	RuleCategoryExecution      RuleCategory = "execution"
+	RuleCategoryPersistence    RuleCategory = "persistence"
+	RuleCategoryDefenseEvasion RuleCategory = "defense_evasion"
+	RuleCategoryCredentialAccess RuleCategory = "credential_access"
+	RuleCategoryDiscovery      RuleCategory = "discovery"
+	RuleCategoryLateralMovement RuleCategory = "lateral_movement"
+	RuleCategoryCollection     RuleCategory = "collection"
+	RuleCategoryExfiltration   RuleCategory = "exfiltration"
+	RuleCategoryImpact         RuleCategory = "impact"
+	RuleCategoryMetaBreach     RuleCategory = "meta_breach"
 )
+
+// Alert represents an atomic detected threat signature before correlation.
+type Alert struct {
+	ID             uuid.UUID              `json:"id"`
+	OrganizationID uuid.UUID              `json:"organization_id"`
+	ThreatLabel    string                 `json:"threat_label"`
+	MITRE          string                 `json:"mitre"`
+	LogSource      string                 `json:"log_source"` // Security, Sysmon, System, Application
+	EventID        string                 `json:"event_id"`
+	EntityHost     string                 `json:"entity_host,omitempty"`
+	EntityAccount  string                 `json:"entity_account,omitempty"`
+	EntityIP       string                 `json:"entity_ip,omitempty"`
+	RawEvent       *SecurityEvent         `json:"raw_event,omitempty"`
+	Context        map[string]interface{} `json:"context,omitempty"`
+	DetectedAt     time.Time              `json:"detected_at"`
+}
 
 // RuleMetadata holds declarative information about a detection rule.
 type RuleMetadata struct {
@@ -70,6 +97,9 @@ type Incident struct {
 	RuleName       string         `json:"rule_name"`
 	Category       RuleCategory   `json:"category"`
 	Severity       types.Severity `json:"severity"`
+	Score          int            `json:"score"`
+	Priority       string         `json:"priority"`
+	EntityKey      string         `json:"entity_key"`
 	Status         IncidentStatus `json:"status"`
 	Title          string         `json:"title"`
 	Summary        string         `json:"summary"`

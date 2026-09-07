@@ -46,6 +46,18 @@ type TaskHandler struct {
 	parsedLogRepository outbound.ParsedLogRepository
 	qualityEngine       inbound.DataQualityEngine
 	qualityRepo         outbound.DataQualityRepository
+	incidentEngine      inbound.IncidentEngine
+	incidentRepo        outbound.IncidentRepository
+	alertRepo           outbound.AlertRepository
+}
+
+func (h *TaskHandler) SetIncidentEngine(engine inbound.IncidentEngine, repo outbound.IncidentRepository, alertRepo outbound.AlertRepository) {
+	h.incidentEngine = engine
+	h.incidentRepo = repo
+	h.alertRepo = alertRepo
+	if setter, ok := engine.(interface{ SetAlertRepository(outbound.AlertRepository) }); ok && alertRepo != nil {
+		setter.SetAlertRepository(alertRepo)
+	}
 }
 
 func NewTaskHandler(
@@ -159,6 +171,20 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 		if len(securityEvents) > 0 {
 			if err := h.eventRepo.BulkCreateEvents(ctx, securityEvents); err != nil {
 				logger.Error("Error creating security events for log file", zap.Error(err))
+			}
+
+			if h.incidentEngine != nil && h.incidentRepo != nil {
+				if incidents, err := h.incidentEngine.EvaluateBatch(ctx, securityEvents); err == nil {
+					for _, inc := range incidents {
+						if saveErr := h.incidentRepo.SaveIncident(ctx, inc); saveErr != nil {
+							logger.Error("Failed to save correlated incident", zap.Error(saveErr))
+						} else {
+							log.Printf("Persisted correlated incident %s: %s (score=%d priority=%s)", inc.RuleID, inc.Title, inc.Score, inc.Priority)
+						}
+					}
+				} else {
+					logger.Error("Error evaluating incidents for log file", zap.Error(err))
+				}
 			}
 		}
 
@@ -569,6 +595,20 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 
 	if err := h.eventRepo.BulkCreateEvents(ctx, security_events); err != nil {
 		return err
+	}
+
+	if h.incidentEngine != nil && h.incidentRepo != nil && len(security_events) > 0 {
+		if incidents, err := h.incidentEngine.EvaluateBatch(ctx, security_events); err == nil {
+			for _, inc := range incidents {
+				if saveErr := h.incidentRepo.SaveIncident(ctx, inc); saveErr != nil {
+					log.Printf("Failed to save correlated incident %s: %v", inc.RuleID, saveErr)
+				} else {
+					log.Printf("Persisted correlated incident %s: %s (score=%d priority=%s)", inc.RuleID, inc.Title, inc.Score, inc.Priority)
+				}
+			}
+		} else {
+			log.Printf("Error evaluating incidents for provider batch: %v", err)
+		}
 	}
 
 	now := time.Now()

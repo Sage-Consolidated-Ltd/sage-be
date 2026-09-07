@@ -101,6 +101,11 @@ func New() (*Worker, error) {
 		qualityRepo,
 	)
 
+	incidentRepo := postgres.NewIncidentRepository(database)
+	alertRepo := postgres.NewAlertRepository(database)
+	incidentEngine := usecase.NewIncidentEngineWithRedis(nil, redisClient)
+	taskHandler.SetIncidentEngine(incidentEngine, incidentRepo, alertRepo)
+
 	server := asynq.NewServer(
 		redisOpt,
 		asynq.Config{

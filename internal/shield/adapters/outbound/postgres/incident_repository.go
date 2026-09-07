@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"sage-backend/internal/shared/db"
 	"sage-backend/internal/shared/types"
@@ -148,6 +149,10 @@ func toDomainIncident(row *incidentDB) (*domain.Incident, error) {
 		}
 	}
 
+	occurredAt, _ := time.Parse(time.RFC3339, row.OccurredAt)
+	createdAt, _ := time.Parse(time.RFC3339, row.CreatedAt)
+	updatedAt, _ := time.Parse(time.RFC3339, row.UpdatedAt)
+
 	return &domain.Incident{
 		ID:             row.ID,
 		OrganizationID: row.OrganizationID,
@@ -155,9 +160,15 @@ func toDomainIncident(row *incidentDB) (*domain.Incident, error) {
 		RuleName:       row.RuleName,
 		Category:       row.Category,
 		Severity:       types.Severity(row.Severity),
+		Score:          evidence.Score,
+		Priority:       evidence.Priority,
+		EntityKey:      evidence.EntityKey,
 		Status:         row.Status,
 		Title:          row.Title,
 		Summary:        row.Summary,
 		Evidence:       evidence,
+		OccurredAt:     occurredAt,
+		CreatedAt:      createdAt,
+		UpdatedAt:      updatedAt,
 	}, nil
 }
