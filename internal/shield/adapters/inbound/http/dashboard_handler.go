@@ -115,8 +115,9 @@ func (h *DashboardHandler) GetThreatTrends(c *fiber.Ctx) error {
 	}
 	currentMonthQuery := c.Query("current_month", c.Query("month", ""))
 	prevMonthQuery := c.Query("previous_month", c.Query("prev_month", c.Query("compare_month", "")))
+	severityQuery := c.Query("severity", "")
 
-	res, err := h.service.GetThreatTrends(c.Context(), orgID, currentMonthQuery, prevMonthQuery)
+	res, err := h.service.GetThreatTrends(c.Context(), orgID, currentMonthQuery, prevMonthQuery, severityQuery)
 	if err != nil {
 		return response.Error(c, fiber.StatusInternalServerError, "FAILED_TO_GET_THREAT_TRENDS", err.Error())
 	}

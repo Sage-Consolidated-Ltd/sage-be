@@ -48,8 +48,8 @@ func (s *DashboardService) GetComplianceRiskIndicators(ctx context.Context, orgI
 	return s.repo.GetComplianceRiskIndicators(ctx, orgID)
 }
 
-func (s *DashboardService) GetThreatTrends(ctx context.Context, orgID uuid.UUID, currentMonth, previousMonth string) (*domain.ThreatTrendsSummary, error) {
-	return s.repo.GetThreatTrends(ctx, orgID, currentMonth, previousMonth)
+func (s *DashboardService) GetThreatTrends(ctx context.Context, orgID uuid.UUID, currentMonth, previousMonth, severity string) (*domain.ThreatTrendsSummary, error) {
+	return s.repo.GetThreatTrends(ctx, orgID, currentMonth, previousMonth, severity)
 }
 
 func (s *DashboardService) GetGeoThreats(ctx context.Context, orgID uuid.UUID) (*domain.GeoThreatsSummary, error) {

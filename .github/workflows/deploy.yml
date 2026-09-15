@@ -146,6 +146,21 @@ jobs:
             ghcr.io/${{ env.REPO_LOWER }}/worker:${{ github.sha }}
 
       # ========================================================
+      # ADMIN
+      # ========================================================
+      - name: Build Admin Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          build-args: |
+            BUILD_PATH=./cmd/admin
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+          tags: |
+            ghcr.io/${{ env.REPO_LOWER }}/admin:latest
+            ghcr.io/${{ env.REPO_LOWER }}/admin:${{ github.sha }}
+
+      # ========================================================
       # MIGRATION
       # ========================================================
       - name: Build Migration Image

@@ -50,14 +50,6 @@ func NewOrgMemberRole(value string) (OrgMemberRole, error) {
 	return OrgMemberRole{value: value}, nil
 }
 
-func MustNewOrgMemberRole(value string) OrgMemberRole {
-	role, err := NewOrgMemberRole(value)
-	if err != nil {
-		panic(err)
-	}
-	return role
-}
-
 func (r OrgMemberRole) String() string {
 	return r.value
 }

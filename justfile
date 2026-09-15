@@ -82,6 +82,7 @@ swagger:
 	@go install github.com/swaggo/swag/cmd/swag@latest
 	swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
 	swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+	swag init -g main.go -d ./cmd/admin,./internal/admin,./internal/shared --parseInternal -o ./docs/admin
 	@echo "Swagger docs updated successfully."
 
 # Health check

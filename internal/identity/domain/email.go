@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/mail"
-	"sage-backend/internal/shared/errors/apperrors"
+	"regexp"
 	"strings"
+
+	"sage-backend/internal/shared/errors/apperrors"
 )
+
+var emailPattern = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$`)
 
 type Email struct {
 	value string
@@ -18,19 +22,39 @@ func NewEmail(value string) (Email, error) {
 	if trimmed == "" {
 		return Email{}, apperrors.BadException("email cannot be empty")
 	}
+
+	if len(trimmed) > 254 {
+		return Email{}, apperrors.BadException("email exceeds maximum allowed length of 254 characters")
+	}
+
+	parts := strings.Split(trimmed, "@")
+	if len(parts) != 2 {
+		return Email{}, apperrors.BadException("invalid email format: " + value)
+	}
+
+	localPart, domainPart := parts[0], parts[1]
+	if len(localPart) == 0 || len(localPart) > 64 {
+		return Email{}, apperrors.BadException("invalid email format: " + value)
+	}
+
+	if strings.HasPrefix(localPart, ".") || strings.HasSuffix(localPart, ".") || strings.Contains(localPart, "..") {
+		return Email{}, apperrors.BadException("invalid email format: " + value)
+	}
+
+	if strings.HasPrefix(domainPart, ".") || strings.HasSuffix(domainPart, ".") || strings.Contains(domainPart, "..") {
+		return Email{}, apperrors.BadException("invalid email format: " + value)
+	}
+
+	if !emailPattern.MatchString(trimmed) {
+		return Email{}, apperrors.BadException("invalid email format: " + value)
+	}
+
 	addr, err := mail.ParseAddress(trimmed)
 	if err != nil || addr.Address != trimmed {
 		return Email{}, apperrors.BadException("invalid email format: " + value)
 	}
-	return Email{value: strings.ToLower(trimmed)}, nil
-}
 
-func MustNewEmail(value string) Email {
-	email, err := NewEmail(value)
-	if err != nil {
-		panic(err)
-	}
-	return email
+	return Email{value: strings.ToLower(trimmed)}, nil
 }
 
 func (e Email) String() string {

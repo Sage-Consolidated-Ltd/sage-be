@@ -157,3 +157,112 @@ Connects an Okta or Entra ID provider for polling logs.
   }
 }
 ```
+
+---
+
+## 📈 6. Threat Severity Trends (Widget 9)
+
+### `GET /api/v1/events/threat-trends`
+Returns daily time-series threat metrics classified by security/severity levels (`critical`, `high`, `medium`, `low`, `total`) comparing the target month against a baseline/previous month period.
+
+#### **Query Parameters**
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `current_month` | `string` | current month | Target month (e.g. `2026-08`, `August`, or `8`) |
+| `previous_month`| `string` | previous month | Baseline comparison month (e.g. `2026-07`, `July`, or `7`) |
+| `severity`      | `string` | all | Optional filter by security level (`critical`, `high`, `medium`, `low`) |
+
+#### **Sample Response**
+```json
+{
+  "status": 200,
+  "message": "Threat severity trends retrieved",
+  "data": {
+    "current_month": "August",
+    "previous_month": "July",
+    "severity_filter": "",
+    "days": [
+      {
+        "day": 1,
+        "critical": 3,
+        "high": 8,
+        "medium": 12,
+        "low": 4,
+        "total": 27,
+        "current_month_count": 27,
+        "last_month_count": 18
+      },
+      {
+        "day": 2,
+        "critical": 1,
+        "high": 4,
+        "medium": 7,
+        "low": 2,
+        "total": 14,
+        "current_month_count": 14,
+        "last_month_count": 20
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 🌍 7. Live Threat Origins (Geo-IP Map, Widget 10)
+
+### `GET /api/v1/events/geo-threats` (or `GET /api/v1/geo-threats`)
+Returns live Geo-IP threat origins plotted on the interactive world map, ranking top threat regions, identifying the most targeted asset (host, server, account), and summarizing total threat volume.
+
+#### **Sample Response**
+```json
+{
+  "status": 200,
+  "message": "Geo threat origins retrieved",
+  "data": {
+    "total_threats": 154,
+    "high_threat_region": "Russia",
+    "most_targeted_asset": "finance-db-server",
+    "top_targeted_assets": [
+      {
+        "asset": "finance-db-server",
+        "count": 85,
+        "type": "host"
+      },
+      {
+        "asset": "admin-portal",
+        "count": 42,
+        "type": "service"
+      },
+      {
+        "asset": "finance-vm",
+        "count": 27,
+        "type": "host"
+      }
+    ],
+    "origins": [
+      {
+        "country": "Russia",
+        "lat": 55.7558,
+        "lng": 37.6173,
+        "count": 85,
+        "percentage": 55.19
+      },
+      {
+        "country": "China",
+        "lat": 39.9042,
+        "lng": 116.4074,
+        "count": 42,
+        "percentage": 27.27
+      },
+      {
+        "country": "North Korea",
+        "lat": 39.0392,
+        "lng": 125.7625,
+        "count": 27,
+        "percentage": 17.53
+      }
+    ]
+  }
+}
+```

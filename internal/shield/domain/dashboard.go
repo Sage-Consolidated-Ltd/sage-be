@@ -74,28 +74,42 @@ type ComplianceRiskIndicators struct {
 
 // Widget 9: Threat Severity Trends Line Chart
 type ThreatTrendsSummary struct {
-	CurrentMonth  string           `json:"current_month"`
-	PreviousMonth string           `json:"previous_month,omitempty"`
-	Days          []ThreatDayTrend `json:"days"`
+	CurrentMonth   string           `json:"current_month"`
+	PreviousMonth  string           `json:"previous_month,omitempty"`
+	SeverityFilter string           `json:"severity_filter,omitempty"`
+	Days           []ThreatDayTrend `json:"days"`
 }
 
 type ThreatDayTrend struct {
-	Day              int `json:"day"`
+	Day               int `json:"day"`
+	Critical          int `json:"critical"`
+	High              int `json:"high"`
+	Medium            int `json:"medium"`
+	Low               int `json:"low"`
+	Total             int `json:"total"`
 	CurrentMonthCount int `json:"current_month_count"`
 	LastMonthCount    int `json:"last_month_count"`
 }
 
 // Widget 10: Geo-IP Threat Map
 type GeoThreatsSummary struct {
-	TotalThreats       int64             `json:"total_threats"`
-	HighThreatRegion   string            `json:"high_threat_region"`
-	MostTargetedAsset  string            `json:"most_targeted_asset"`
-	Origins            []GeoThreatOrigin `json:"origins"`
+	TotalThreats      int64               `json:"total_threats"`
+	HighThreatRegion  string              `json:"high_threat_region"`
+	MostTargetedAsset string              `json:"most_targeted_asset"`
+	TopTargetedAssets []TargetedAssetInfo `json:"top_targeted_assets,omitempty"`
+	Origins           []GeoThreatOrigin   `json:"origins"`
+}
+
+type TargetedAssetInfo struct {
+	Asset string `json:"asset"`
+	Count int64  `json:"count"`
+	Type  string `json:"type,omitempty"`
 }
 
 type GeoThreatOrigin struct {
-	Country string  `json:"country"`
-	Lat     float64 `json:"lat"`
-	Lng     float64 `json:"lng"`
-	Count   int64   `json:"count"`
+	Country    string  `json:"country"`
+	Lat        float64 `json:"lat"`
+	Lng        float64 `json:"lng"`
+	Count      int64   `json:"count"`
+	Percentage float64 `json:"percentage"`
 }

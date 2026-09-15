@@ -35,7 +35,7 @@ func (m userModel) ToDomain() (*domain.User, error) {
 	}
 	role, err := domain.NewUserRole(m.Role)
 	if err != nil {
-		role = domain.MustNewUserRole("user")
+		return nil, err
 	}
 	hash := domain.NewPasswordHash(m.PasswordHash)
 	return domain.ReconstituteUser(
