@@ -18,7 +18,6 @@ permissions:
   packages: write
 
 jobs:
-
   # ============================================================
   # TEST
   # ============================================================
@@ -52,7 +51,6 @@ jobs:
           --health-retries 5
 
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -65,12 +63,18 @@ jobs:
       - name: Install Dependencies
         run: go mod download
 
+      - name: Install Swag CLI & Generate Docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
+          swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+          swag init -g main.go -d ./cmd/admin,./internal/admin,./internal/shared --parseInternal -o ./docs/admin
+
       - name: Execute Tests
         env:
           DATABASE_URL: "postgres://peterpaul:sage_dev_password@localhost:5432/sage_db_test?sslmode=disable"
           REDIS_DB_URL: "redis://localhost:6379/2"
         run: go test -p 1 -v ./...
-
 
   # ============================================================
   # BUILD & PUSH
@@ -81,9 +85,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Install Swag CLI & Generate Docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
+          swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
+          swag init -g main.go -d ./cmd/admin,./internal/admin,./internal/shared --parseInternal -o ./docs/admin
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -146,6 +162,21 @@ jobs:
             ghcr.io/${{ env.REPO_LOWER }}/worker:${{ github.sha }}
 
       # ========================================================
+      # ADMIN
+      # ========================================================
+      - name: Build Admin Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          build-args: |
+            BUILD_PATH=./cmd/admin
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+          tags: |
+            ghcr.io/${{ env.REPO_LOWER }}/admin:latest
+            ghcr.io/${{ env.REPO_LOWER }}/admin:${{ github.sha }}
+
+      # ========================================================
       # MIGRATION
       # ========================================================
       - name: Build Migration Image
@@ -160,7 +191,6 @@ jobs:
             ghcr.io/${{ env.REPO_LOWER }}/migrate:latest
             ghcr.io/${{ env.REPO_LOWER }}/migrate:${{ github.sha }}
 
-
   # ============================================================
   # DEPLOY
   # ============================================================
@@ -173,7 +203,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
 

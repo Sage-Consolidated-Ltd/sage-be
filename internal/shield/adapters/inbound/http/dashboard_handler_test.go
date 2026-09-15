@@ -72,8 +72,8 @@ func (m *mockDashboardService) GetComplianceRiskIndicators(ctx context.Context, 
 	return args.Get(0).(*domain.ComplianceRiskIndicators), args.Error(1)
 }
 
-func (m *mockDashboardService) GetThreatTrends(ctx context.Context, orgID uuid.UUID, currentMonth, previousMonth string) (*domain.ThreatTrendsSummary, error) {
-	args := m.Called(ctx, orgID, currentMonth, previousMonth)
+func (m *mockDashboardService) GetThreatTrends(ctx context.Context, orgID uuid.UUID, currentMonth, previousMonth, severity string) (*domain.ThreatTrendsSummary, error) {
+	args := m.Called(ctx, orgID, currentMonth, previousMonth, severity)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -98,7 +98,19 @@ func TestDashboardHandler_Endpoints(t *testing.T) {
 	mockService.On("GetSecurityPostureScore", mock.Anything, orgID).Return(&domain.SecurityPostureScore{OverallScore: 94}, nil)
 	mockService.On("GetIdentityHealthSummary", mock.Anything, orgID).Return(&domain.IdentityHealthSummary{CoveragePercentage: 77}, nil)
 	mockService.On("GetAssetProtectionCoverage", mock.Anything, orgID).Return(&domain.AssetProtectionCoverage{CoveragePercentage: 95}, nil)
-	mockService.On("GetThreatTrends", mock.Anything, orgID, "", "2026-06").Return(&domain.ThreatTrendsSummary{CurrentMonth: "August", PreviousMonth: "June 2026"}, nil)
+	mockService.On("GetThreatTrends", mock.Anything, orgID, "", "2026-06", "").Return(&domain.ThreatTrendsSummary{CurrentMonth: "August", PreviousMonth: "June 2026"}, nil)
+	mockService.On("GetThreatTrends", mock.Anything, orgID, "", "", "critical").Return(&domain.ThreatTrendsSummary{CurrentMonth: "August", SeverityFilter: "critical"}, nil)
+	mockService.On("GetGeoThreats", mock.Anything, orgID).Return(&domain.GeoThreatsSummary{
+		TotalThreats:      154,
+		HighThreatRegion:  "Russia",
+		MostTargetedAsset: "finance-db-server",
+		TopTargetedAssets: []domain.TargetedAssetInfo{
+			{Asset: "finance-db-server", Count: 85, Type: "host"},
+		},
+		Origins: []domain.GeoThreatOrigin{
+			{Country: "Russia", Lat: 55.7558, Lng: 37.6173, Count: 85, Percentage: 55.19},
+		},
+	}, nil)
 
 	app.Get("/security-posture/score", func(c *fiber.Ctx) error {
 		c.Locals("orgID", orgID)
@@ -116,6 +128,10 @@ func TestDashboardHandler_Endpoints(t *testing.T) {
 		c.Locals("orgID", orgID)
 		return handler.GetThreatTrends(c)
 	})
+	app.Get("/events/geo-threats", func(c *fiber.Ctx) error {
+		c.Locals("orgID", orgID)
+		return handler.GetGeoThreats(c)
+	})
 
 	tests := []struct {
 		url          string
@@ -125,6 +141,8 @@ func TestDashboardHandler_Endpoints(t *testing.T) {
 		{"/identity-health/summary", 200},
 		{"/assets/protection-coverage", 200},
 		{"/events/threat-trends?previous_month=2026-06", 200},
+		{"/events/threat-trends?severity=critical", 200},
+		{"/events/geo-threats", 200},
 	}
 
 	for _, tt := range tests {

@@ -69,6 +69,13 @@ type VisionConfig struct {
 	GomniSecurityKey string
 }
 
+type AdminConfig struct {
+	BaseConfig
+	PORT               string
+	SuperAdminEmail    string
+	SuperAdminPassword string
+}
+
 type WorkerConfig struct {
 	BaseConfig
 	Concurrency int
@@ -191,6 +198,16 @@ func SetupVision() *VisionConfig {
 	return &VisionConfig{
 		BaseConfig: loadBase(),
 		PORT:       getEnv("VISION_PORT", "3336"),
+	}
+}
+
+func SetupAdmin() *AdminConfig {
+	_ = godotenv.Load(".env")
+	return &AdminConfig{
+		BaseConfig:         loadBase(),
+		PORT:               getEnv("ADMIN_PORT", "3337"),
+		SuperAdminEmail:    requireEnv("SUPER_ADMIN_EMAIL"),
+		SuperAdminPassword: requireEnv("SUPER_ADMIN_PASSWORD"),
 	}
 }
 

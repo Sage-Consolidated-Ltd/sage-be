@@ -76,23 +76,25 @@ func _GetAssetRiskDistribution() {}
 func _GetComplianceRiskIndicators() {}
 
 // @Summary Get Threat Severity Trends
-// @Description Returns time-series threat severity counts comparing current month to baseline period.
+// @Description Returns daily time-series threat counts classified by severity levels (critical, high, medium, low) comparing current month to baseline period.
 // @Tags Threats & Vulnerabilities
 // @Accept json
 // @Produce json
 // @Security SessionAuth
 // @Param current_month query string false "Target month e.g. 2026-08, August, or 8 (defaults to current month)"
 // @Param previous_month query string false "Comparison month e.g. 2026-07, July, or 7 (defaults to previous month)"
+// @Param severity query string false "Filter by severity level (critical, high, medium, low)"
 // @Success 200 {object} response.Response{data=domain.ThreatTrendsSummary}
 // @Router /events/threat-trends [get]
 func _GetThreatTrends() {}
 
 // @Summary Get Geo Threat Origins
-// @Description Returns live Geo-IP threat origins with latitude/longitude coordinates and top threat region.
+// @Description Returns live Geo-IP threat origins with latitude/longitude coordinates, top threat region, and most targeted assets.
 // @Tags Geo Threat Intelligence
 // @Accept json
 // @Produce json
 // @Security SessionAuth
 // @Success 200 {object} response.Response{data=domain.GeoThreatsSummary}
 // @Router /events/geo-threats [get]
+// @Router /geo-threats [get]
 func _GetGeoThreats() {}

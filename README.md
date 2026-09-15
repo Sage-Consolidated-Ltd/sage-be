@@ -19,6 +19,7 @@ The codebase strictly enforces **Clean Architecture** (Separation of Concerns, D
 - `cmd/`: Microservice entry points (Composition Roots)
   - `cmd/api/main.go`: Users API service entrypoint (`app.NewAPIApp()`)
   - `cmd/shield/main.go`: Security/Log Processing service entrypoint (`app.NewShieldApp()`)
+  - `cmd/admin/main.go`: Super Admin / Platform Administration API service entrypoint
   - `cmd/worker/`: Background async worker service
 - `internal/`: Domain modules and application logic
   - `app/`: Modular application bootstrap and lifecycle runners
@@ -26,13 +27,18 @@ The codebase strictly enforces **Clean Architecture** (Separation of Concerns, D
     - `api/app.go`: Assembles dependencies and routes for the Users API service
     - `shield/app.go`: Assembles dependencies and routes for the Shield API service
   - `users/`: Users domain layer (Entities, Use Cases, Ports, Inbound/Outbound Adapters)
+    - `admin/app.go`: Assembles dependencies and routes for the Admin API service
+  - `identity/`: Identity & Authentication domain layer
+  - `organization/`: Organization & Tenancy domain layer
   - `shield/`: Shield domain layer (Entities, Use Cases, Ports, Inbound/Outbound Adapters)
+  - `admin/`: Super Admin domain layer (Entities, Use Cases, Ports, Inbound/Outbound Adapters)
   - `shared/`: Cross-cutting concerns (Config, DB, Logger, Mailer, Storage, Middlewares)
 - `migrations/`: SQL migrations and migration runner
 - `seeds/`: SQL seed scripts
 - `docs/`: Generated Swagger API artifacts
   - `docs/users/`: Swagger documentation for Users API
   - `docs/shield/`: Swagger documentation for Shield API
+  - `docs/admin/`: Swagger documentation for Admin API
 
 ## Features
 
@@ -80,6 +86,16 @@ The codebase strictly enforces **Clean Architecture** (Separation of Concerns, D
   - Overall quality score, error tracking, unmapped logs
   - AI-powered insights & automated fixes with diff preview
   - Export quality reports (CSV, PDF, JSON)
+
+### Super Admin Service (`cmd/admin`)
+
+- **Platform Administration & Security**
+  - Dedicated platform admin identity and authentication domain
+  - Email + Password login with mandatory 6-digit email OTP verification
+  - Automatic idempotent Super Admin account bootstrapping on startup via `SUPER_ADMIN_EMAIL` and `SUPER_ADMIN_PASSWORD`
+  - Progressive lockout state machine (30-minute lock after 5 failed attempts, permanent lock after 10 failed attempts)
+  - IP-bound session tracking with automatic invalidation upon client IP anomaly detection
+  - Swagger documentation UI served at `/docs/admin-docs` (port 3337)
 
 ## Prerequisites
 

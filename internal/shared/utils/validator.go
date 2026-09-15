@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"errors"
 	"net/mail"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -73,9 +75,46 @@ func IsStrongPassword(p string) bool {
 	return hasUpper && hasLower && hasDigit && hasSpecial
 }
 
+var emailPattern = regexp.MustCompile(`^[a-zA-Z0-9.!#$%&'*+/=?^_` + "`" + `{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$`)
+
 func ValidateEmail(email string) error {
-	_, err := mail.ParseAddress(email)
-	return err
+	trimmed := strings.TrimSpace(email)
+	if trimmed == "" {
+		return errors.New("email cannot be empty")
+	}
+
+	if len(trimmed) > 254 {
+		return errors.New("email exceeds maximum allowed length of 254 characters")
+	}
+
+	parts := strings.Split(trimmed, "@")
+	if len(parts) != 2 {
+		return errors.New("invalid email format")
+	}
+
+	localPart, domainPart := parts[0], parts[1]
+	if len(localPart) == 0 || len(localPart) > 64 {
+		return errors.New("invalid email format")
+	}
+
+	if strings.HasPrefix(localPart, ".") || strings.HasSuffix(localPart, ".") || strings.Contains(localPart, "..") {
+		return errors.New("invalid email format")
+	}
+
+	if strings.HasPrefix(domainPart, ".") || strings.HasSuffix(domainPart, ".") || strings.Contains(domainPart, "..") {
+		return errors.New("invalid email format")
+	}
+
+	if !emailPattern.MatchString(trimmed) {
+		return errors.New("invalid email format")
+	}
+
+	addr, err := mail.ParseAddress(trimmed)
+	if err != nil || addr.Address != trimmed {
+		return errors.New("invalid email format")
+	}
+
+	return nil
 }
 
 var Validate = validator.New()

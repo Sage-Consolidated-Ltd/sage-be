@@ -134,13 +134,18 @@ func TestUserServices_GetProfile_Success(t *testing.T) {
 	profileRepo := &mockProfileRepo{}
 	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{}, nil)
 
+	email, err := domain.NewEmail("john@example.com")
+	assert.NoError(t, err)
+	role, err := domain.NewUserRole("user")
+	assert.NoError(t, err)
+
 	mockUser := domain.NewUser(
 		"user-123",
 		"John",
 		"Doe",
-		domain.MustNewEmail("john@example.com"),
+		email,
 		domain.NewPasswordHash("hash"),
-		domain.MustNewUserRole("user"),
+		role,
 		time.Now(),
 	)
 
@@ -191,13 +196,18 @@ func TestUserServices_GetProfile_OrgsError(t *testing.T) {
 	profileRepo := &mockProfileRepo{}
 	svc := NewUsersServices(mockRepo, profileRepo, &redis.Client{}, nil)
 
+	email, err := domain.NewEmail("john@example.com")
+	assert.NoError(t, err)
+	role, err := domain.NewUserRole("user")
+	assert.NoError(t, err)
+
 	mockUser := domain.NewUser(
 		"user-123",
 		"John",
 		"Doe",
-		domain.MustNewEmail("john@example.com"),
+		email,
 		domain.NewPasswordHash("hash"),
-		domain.MustNewUserRole("user"),
+		role,
 		time.Now(),
 	)
 

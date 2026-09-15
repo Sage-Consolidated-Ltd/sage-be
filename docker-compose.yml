@@ -114,6 +114,30 @@ services:
         condition: service_healthy
     networks: [sage-net]
 
+  admin:
+    image: ${GHCR_IMAGE_PREFIX:-sage}/admin:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        BUILD_PATH: ./cmd/admin
+    env_file: .env
+    environment:
+      ADMIN_PORT: ${ADMIN_PORT:-3337}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sage_db}?sslmode=disable
+      REDIS_DB_URL: redis://redis:6379/0
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-admin@sageconsolidated.com}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-}
+    ports:
+      - "${ADMIN_PORT:-3337}:${ADMIN_PORT:-3337}"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    networks: [sage-net]
+
 volumes:
   pgdata:
 

@@ -34,14 +34,6 @@ func NewUserRole(value string) (UserRole, error) {
 	return UserRole{}, apperrors.BadException("invalid user role: " + value)
 }
 
-func MustNewUserRole(value string) UserRole {
-	role, err := NewUserRole(value)
-	if err != nil {
-		panic(err)
-	}
-	return role
-}
-
 func (r UserRole) String() string {
 	return r.value
 }

@@ -108,6 +108,8 @@ func RegisterDashboardRoutes(router fiber.Router, dh *DashboardHandler, m *middl
 		router.Get("/incidents", m.RequireAuth, dh.GetActiveIncidents)
 		router.Get("/compliance/risk-indicators", m.RequireAuth, dh.GetComplianceRiskIndicators)
 
+		router.Get("/geo-threats", m.RequireAuth, dh.GetGeoThreats)
+
 		events := router.Group("/events")
 		events.Get("/threats/asset-risk-distribution", m.RequireAuth, dh.GetAssetRiskDistribution)
 		events.Get("/threat-trends", m.RequireAuth, dh.GetThreatTrends)
