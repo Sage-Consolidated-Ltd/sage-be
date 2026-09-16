@@ -58,7 +58,6 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context, limit int) ([]SignInE
 		return nil, err
 	}
 
-	// checkpointJSON := p.RedisClient.Get(ctx, p.CheckpointKey).Val()
 	var lastCreatedTime string
 
 	if p.Checkpoint == nil || p.Checkpoint.LastCheckpoint == nil {
