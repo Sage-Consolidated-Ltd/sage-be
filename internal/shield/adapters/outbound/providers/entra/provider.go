@@ -6,16 +6,13 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/redis/go-redis/v9"
 )
 
 type EntraProvider struct {
-	RestyClient     *resty.Client
-	TenantID        string
-	ClientID        string
-	ClientSecret    string
-	RedisClient     *redis.Client
-	PollIntervalSec int
+	RestyClient  *resty.Client
+	TenantID     string
+	ClientID     string
+	ClientSecret string
 
 	// Rate limiting
 	BackoffSec     int
@@ -27,10 +24,7 @@ type EntraProvider struct {
 	TokenExpiresAt time.Time
 	TokenMutex     sync.RWMutex
 
-	QueueKey      string
-	CheckpointKey string
-	DlqKey        string
-
 	BaseUrl    string
 	Checkpoint *domain.Checkpoint
 }
+

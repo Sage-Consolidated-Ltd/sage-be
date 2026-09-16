@@ -67,18 +67,13 @@ func NewProvider(
 			return nil, fmt.Errorf("missing entra config")
 		}
 
-		entraProvider, err := entra.NewEntraProvider(
+		entraProvider := entra.NewEntraProvider(
 			creds.TenantID,
 			creds.ClientID,
 			creds.ClientSecret,
 			client,
-			"redis://localhost:6379/0",
-			300,
 			creds.Checkpoint,
 		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create entra provider: %w", err)
-		}
 
 		return entraProvider, nil
 

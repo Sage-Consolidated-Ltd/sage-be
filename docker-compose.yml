@@ -75,6 +75,7 @@ services:
 
   shield:
     image: ${GHCR_IMAGE_PREFIX:-sage}/shield:${TAG:-latest}
+    container_name: sage-shield
     build:
       context: .
       dockerfile: docker/Dockerfile
