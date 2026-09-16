@@ -2,11 +2,16 @@ package http
 
 import (
 	"sage-backend/internal/shared/middlewares"
+
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 )
 
-func SetUpRouter(router fiber.Router, ch *CompanyHandler, m *middlewares.AuthMiddleware) {
+func SetUpRouter(router fiber.Router, ch *CompanyHandler, dh *DashboardHandler, m *middlewares.AuthMiddleware) {
 	RegisterCompanyRoutes(router, ch, m)
+	if dh != nil {
+		RegisterDashboardRoutes(router, dh, m)
+	}
 }
 
 func RegisterCompanyRoutes(router fiber.Router, ch *CompanyHandler, m *middlewares.AuthMiddleware) {
@@ -45,4 +50,17 @@ func RegisterCompanyRoutes(router fiber.Router, ch *CompanyHandler, m *middlewar
 	customRoles.Get("/:id", ch.GetCustomRole)
 	customRoles.Patch("/:id", ch.UpdateCustomRole)
 	customRoles.Delete("/:id", ch.DeleteCustomRole)
+}
+
+func RegisterDashboardRoutes(router fiber.Router, dh *DashboardHandler, m *middlewares.AuthMiddleware) {
+	org := router.Group("/organization")
+	org.Get("/dashboard", m.RequireAuth, dh.GetDashboard)
+	org.Post("/dashboard/refresh", m.RequireAuth, dh.RefreshDashboard)
+	org.Get("/dashboard/ws", dh.UpgradeWebSocket, websocket.New(dh.HandleWebSocket))
+
+	// Plural route aliases
+	orgs := router.Group("/organizations")
+	orgs.Get("/dashboard", m.RequireAuth, dh.GetDashboard)
+	orgs.Post("/dashboard/refresh", m.RequireAuth, dh.RefreshDashboard)
+	orgs.Get("/dashboard/ws", dh.UpgradeWebSocket, websocket.New(dh.HandleWebSocket))
 }

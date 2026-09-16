@@ -16,9 +16,13 @@ import (
 )
 
 type Module struct {
-	CompanyRepo    outbound.CompanyRepository
-	CompanyUseCase inbound.CompanyUseCase
-	CompanyHandler *http.CompanyHandler
+	CompanyRepo      outbound.CompanyRepository
+	CompanyUseCase   inbound.CompanyUseCase
+	CompanyHandler   *http.CompanyHandler
+	DashboardRepo    outbound.DashboardRepository
+	DashboardUseCase inbound.DashboardUseCase
+	DashboardHandler *http.DashboardHandler
+	DashboardHub     *http.DashboardHub
 }
 
 func NewModule(
@@ -33,9 +37,18 @@ func NewModule(
 	companyUseCase := usecase.NewCompanyServices(companyRepo, userRepo, mailer, redisClient, config, uploader)
 	companyHandler := http.NewCompanyHandler(companyUseCase)
 
+	dashboardRepo := postgres.NewDashboardSnapshotRepository(database)
+	dashboardHub := http.NewDashboardHub()
+	dashboardUseCase := usecase.NewDashboardService(dashboardRepo, redisClient, dashboardHub.Broadcast)
+	dashboardHandler := http.NewDashboardHandler(dashboardUseCase, dashboardHub)
+
 	return &Module{
-		CompanyRepo:    companyRepo,
-		CompanyUseCase: companyUseCase,
-		CompanyHandler: companyHandler,
+		CompanyRepo:      companyRepo,
+		CompanyUseCase:   companyUseCase,
+		CompanyHandler:   companyHandler,
+		DashboardRepo:    dashboardRepo,
+		DashboardUseCase: dashboardUseCase,
+		DashboardHandler: dashboardHandler,
+		DashboardHub:     dashboardHub,
 	}
 }

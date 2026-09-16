@@ -1,9 +1,39 @@
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type DashboardTab string
+
+const (
+	TabOverview DashboardTab = "overview"
+	TabAssets   DashboardTab = "assets"
+	TabHealth   DashboardTab = "health"
+	TabIdentity DashboardTab = "identity"
+)
+
+// OrganizationDashboard represents the unified, materialized security and operational dashboard for an organization.
+type OrganizationDashboard struct {
+	OrganizationID   uuid.UUID                 `json:"organization_id"`
+	Tab              DashboardTab              `json:"tab,omitempty"`
+	SecurityScore    *SecurityScore            `json:"security_score,omitempty"`
+	Vulnerabilities  *VulnerabilitiesSummary   `json:"vulnerabilities,omitempty"`
+	IdentityHealth   *IdentityHealthSummary    `json:"identity_health,omitempty"`
+	EndpointCoverage *AssetProtectionCoverage  `json:"endpoint_coverage,omitempty"`
+	ThreatIntel      *ThreatIntelFeedsSummary  `json:"threat_intel,omitempty"`
+	ActiveIncidents  []ActiveIncident          `json:"active_incidents,omitempty"`
+	DangerousThreats *AssetRiskDistribution    `json:"dangerous_threats,omitempty"`
+	ComplianceRisks  *ComplianceRiskIndicators `json:"compliance_risks,omitempty"`
+	ThreatTrends     *ThreatTrendsSummary      `json:"threat_trends,omitempty"`
+	GeoThreats       *GeoThreatsSummary        `json:"geo_threats,omitempty"`
+	UpdatedAt        time.Time                 `json:"updated_at"`
+}
 
 // Widget 1: Overall Security Posture Score
-type SecurityPostureScore struct {
+type SecurityScore struct {
 	OverallScore           int                    `json:"overall_score"`
 	WeeklyDelta            int                    `json:"weekly_delta"`
 	Description            string                 `json:"description"`
@@ -12,10 +42,20 @@ type SecurityPostureScore struct {
 }
 
 type SecurityPosturePillars struct {
-	ConfigHealth     int `json:"config_health"`
-	Vulnerabilities  int `json:"vulnerabilities"`
-	ThreatCoverage   int `json:"threat_coverage"`
+	ConfigHealth      int `json:"config_health"`
+	Vulnerabilities   int `json:"vulnerabilities"`
+	ThreatCoverage    int `json:"threat_coverage"`
 	ResponseReadiness int `json:"response_readiness"`
+}
+
+// Widget 2: Known Vulnerabilities Breakdown
+type VulnerabilitiesSummary struct {
+	Critical     int `json:"critical"`
+	High         int `json:"high"`
+	Medium       int `json:"medium"`
+	Low          int `json:"low"`
+	Total        int `json:"total"`
+	NewLast7Days int `json:"new_last_7_days"`
 }
 
 // Widget 3: Identity & Access Health
@@ -49,7 +89,7 @@ type ActiveIncident struct {
 	Status       string    `json:"status"`
 }
 
-// Widget 7: Dangerous Threats Risk Distribution by Asset
+// Widget 7: Dangerous Threats Risk Distribution
 type AssetRiskDistribution struct {
 	OverallRiskPercentage int             `json:"overall_risk_percentage"`
 	Breakdown             []AssetRiskItem `json:"breakdown"`
@@ -60,19 +100,19 @@ type AssetRiskItem struct {
 	Percentage int    `json:"percentage"`
 }
 
-// Widget 8: Compliance Risk Indicators
+// Widget 8: Compliance Risk Indicators / Recent Activity
 type ComplianceRiskIndicators struct {
-	EncryptionVulnerabilities int     `json:"encryption_vulnerabilities"`
-	ExcessiveUserPermissions  int     `json:"excessive_user_permissions"`
-	OverlyTrustedUsers        int     `json:"overly_trusted_users"`
-	VulnerabilitiesEmail      int     `json:"vulnerabilities_email"`
-	DormantAccounts           int     `json:"dormant_accounts"`
-	PhysicalSecurity          int     `json:"physical_security"`
-	UnencryptedDevices        int     `json:"unencrypted_devices"`
-	DetectionActionResult     string  `json:"detection_action_result"`
+	EncryptionVulnerabilities int    `json:"encryption_vulnerabilities"`
+	ExcessiveUserPermissions  int    `json:"excessive_user_permissions"`
+	OverlyTrustedUsers        int    `json:"overly_trusted_users"`
+	VulnerabilitiesEmail      int    `json:"vulnerabilities_email"`
+	DormantAccounts           int    `json:"dormant_accounts"`
+	PhysicalSecurity          int    `json:"physical_security"`
+	UnencryptedDevices        int    `json:"unencrypted_devices"`
+	DetectionActionResult     string `json:"detection_action_result"`
 }
 
-// Widget 9: Threat Severity Trends Line Chart
+// Widget 9: Threat Severity Trends
 type ThreatTrendsSummary struct {
 	CurrentMonth   string           `json:"current_month"`
 	PreviousMonth  string           `json:"previous_month,omitempty"`
@@ -91,7 +131,7 @@ type ThreatDayTrend struct {
 	LastMonthCount    int `json:"last_month_count"`
 }
 
-// Widget 10: Geo-IP Threat Map
+// Widget 10: Live Geo Threat Origins Map (Embedded)
 type GeoThreatsSummary struct {
 	TotalThreats      int64               `json:"total_threats"`
 	HighThreatRegion  string              `json:"high_threat_region"`

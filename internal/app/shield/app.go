@@ -96,7 +96,6 @@ func New() (*app.App, error) {
 		shieldMod.LogsDataHandler,
 		shieldMod.ParserHandler,
 		shieldMod.EventHandler,
-		shieldMod.DashboardHandler,
 		shieldMod.UploadHandler,
 		authMiddleware,
 	)

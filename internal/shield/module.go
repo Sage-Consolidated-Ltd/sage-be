@@ -23,7 +23,6 @@ type Module struct {
 	DataQualityUseCase inbound.DataQualityUseCase
 	ParserUseCase      inbound.ParserUseCase
 	IntegrationUseCase inbound.IntegrationUseCase
-	DashboardUseCase   inbound.DashboardUseCase
 	UploadUseCase      inbound.UploadUseCase
 	QualityEngine      inbound.DataQualityEngine
 	IncidentEngine     inbound.IncidentEngine
@@ -33,7 +32,6 @@ type Module struct {
 	ParserHandler      *shield_http.ParserHandler
 	IntegrationHandler *shield_http.IntegrationHandler
 	LogsDataHandler    *shield_http.LogsDataHandler
-	DashboardHandler   *shield_http.DashboardHandler
 	UploadHandler      *shield_http.UploadHandler
 }
 
@@ -72,7 +70,6 @@ func NewModuleWithServices(
 	parserRepo := postgres.NewParserRepository(database)
 	integrationRepo := postgres.NewIntegrationRepository(database)
 	parsedLogRepo := postgres.NewParsedLogRepository(database)
-	dashboardRepo := postgres.NewDashboardRepository(database)
 	logUploadRepo := postgres.NewLogUploadRepository(database)
 
 	var correlationStore outbound.CorrelationStore
@@ -122,8 +119,6 @@ func NewModuleWithServices(
 		restyClient,
 	)
 
-	dashboardUseCase := usecase.NewDashboardService(dashboardRepo)
-
 	uploadUseCase := usecase.NewUploadService(
 		uploader,
 		logUploadRepo,
@@ -136,7 +131,6 @@ func NewModuleWithServices(
 	parserHandler := shield_http.NewParserHandler(parserUseCase)
 	integrationHandler := shield_http.NewIntegrationHandler(integrationUseCase)
 	logsDataHandler := shield_http.NewLogsDataHandlerWithService(logsDataUseCase)
-	dashboardHandler := shield_http.NewDashboardHandler(dashboardUseCase)
 	uploadHandler := shield_http.NewUploadHandler(uploadUseCase)
 
 	return &Module{
@@ -145,7 +139,6 @@ func NewModuleWithServices(
 		DataQualityUseCase: dataQualityUseCase,
 		ParserUseCase:      parserUseCase,
 		IntegrationUseCase: integrationUseCase,
-		DashboardUseCase:   dashboardUseCase,
 		UploadUseCase:      uploadUseCase,
 		QualityEngine:      dataQualityEngine,
 		IncidentEngine:     incidentEngine,
@@ -154,7 +147,6 @@ func NewModuleWithServices(
 		ParserHandler:      parserHandler,
 		IntegrationHandler: integrationHandler,
 		LogsDataHandler:    logsDataHandler,
-		DashboardHandler:   dashboardHandler,
 		UploadHandler:      uploadHandler,
 	}
 }
