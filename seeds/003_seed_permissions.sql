@@ -25,11 +25,12 @@ INSERT INTO permissions (name, description, category, resource, action) VALUES
 
 -- Billing permissions
 ('billing.read', 'View billing information', 'billing', 'billing', 'read'),
-('billing.write', 'Edit billing information', 'billing', 'billing', 'write'),
+('billing.manage', 'Manage billing and subscriptions', 'billing', 'billing', 'manage'),
 
 -- Settings permissions
 ('settings.read', 'View system settings', 'settings', 'settings', 'read'),
-('settings.write', 'Edit system settings', 'settings', 'settings', 'write');
+('settings.write', 'Edit system settings', 'settings', 'settings', 'write')
+ON CONFLICT (name) DO NOTHING;
 
 -- Insert default permission groups
 INSERT INTO permission_groups (name, description, category) VALUES
@@ -38,35 +39,42 @@ INSERT INTO permission_groups (name, description, category) VALUES
 ('Organization Management', 'Full access to organization settings', 'Organization'),
 ('Automation', 'Full access to playbooks and automations', 'Automation'),
 ('Billing', 'Full access to billing information', 'Billing'),
-('Settings', 'Full access to system settings', 'Settings');
+('Settings', 'Full access to system settings', 'Settings')
+ON CONFLICT (name) DO NOTHING;
 
 -- Link permissions to groups
 -- Alert Management
 INSERT INTO permission_group_permissions (permission_group_id, permission_id)
 SELECT pg.id, p.id FROM permission_groups pg, permissions p 
-WHERE pg.name = 'Alert Management' AND p.category = 'alerts';
+WHERE pg.name = 'Alert Management' AND p.category = 'alerts'
+ON CONFLICT DO NOTHING;
 
 -- User Management
 INSERT INTO permission_group_permissions (permission_group_id, permission_id)
 SELECT pg.id, p.id FROM permission_groups pg, permissions p 
-WHERE pg.name = 'User Management' AND p.category = 'users';
+WHERE pg.name = 'User Management' AND p.category = 'users'
+ON CONFLICT DO NOTHING;
 
 -- Organization Management
 INSERT INTO permission_group_permissions (permission_group_id, permission_id)
 SELECT pg.id, p.id FROM permission_groups pg, permissions p 
-WHERE pg.name = 'Organization Management' AND p.category = 'org';
+WHERE pg.name = 'Organization Management' AND p.category = 'org'
+ON CONFLICT DO NOTHING;
 
 -- Automation
 INSERT INTO permission_group_permissions (permission_group_id, permission_id)
 SELECT pg.id, p.id FROM permission_groups pg, permissions p 
-WHERE pg.name = 'Automation' AND p.category = 'automation';
+WHERE pg.name = 'Automation' AND p.category = 'automation'
+ON CONFLICT DO NOTHING;
 
 -- Billing
 INSERT INTO permission_group_permissions (permission_group_id, permission_id)
 SELECT pg.id, p.id FROM permission_groups pg, permissions p 
-WHERE pg.name = 'Billing' AND p.category = 'billing';
+WHERE pg.name = 'Billing' AND p.category = 'billing'
+ON CONFLICT DO NOTHING;
 
 -- Settings
 INSERT INTO permission_group_permissions (permission_group_id, permission_id)
 SELECT pg.id, p.id FROM permission_groups pg, permissions p 
-WHERE pg.name = 'Settings' AND p.category = 'settings';
+WHERE pg.name = 'Settings' AND p.category = 'settings'
+ON CONFLICT DO NOTHING;
