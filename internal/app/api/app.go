@@ -97,6 +97,7 @@ func New() (*app.App, error) {
 	org_http.SetUpRouter(
 		v1,
 		orgMod.CompanyHandler,
+		orgMod.DashboardHandler,
 		authMiddleware,
 	)
 

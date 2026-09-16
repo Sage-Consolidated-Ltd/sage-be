@@ -106,14 +106,3 @@ type AnalysisRepository interface {
 	GetThreatsByAnalysisID(ctx context.Context, analysisID uuid.UUID) ([]domain.Threat, error)
 }
 
-type DashboardRepository interface {
-	GetSecurityPostureScore(ctx context.Context, orgID uuid.UUID) (*domain.SecurityPostureScore, error)
-	GetIdentityHealthSummary(ctx context.Context, orgID uuid.UUID) (*domain.IdentityHealthSummary, error)
-	GetAssetProtectionCoverage(ctx context.Context, orgID uuid.UUID) (*domain.AssetProtectionCoverage, error)
-	GetThreatIntelFeedsSummary(ctx context.Context, orgID uuid.UUID) (*domain.ThreatIntelFeedsSummary, error)
-	GetActiveIncidents(ctx context.Context, orgID uuid.UUID, limit int) ([]*domain.ActiveIncident, error)
-	GetAssetRiskDistribution(ctx context.Context, orgID uuid.UUID) (*domain.AssetRiskDistribution, error)
-	GetComplianceRiskIndicators(ctx context.Context, orgID uuid.UUID) (*domain.ComplianceRiskIndicators, error)
-	GetThreatTrends(ctx context.Context, orgID uuid.UUID, currentMonth, previousMonth, severity string) (*domain.ThreatTrendsSummary, error)
-	GetGeoThreats(ctx context.Context, orgID uuid.UUID) (*domain.GeoThreatsSummary, error)
-}

@@ -62,7 +62,7 @@ func setUpOrgApp(t *testing.T) *TestHarness {
 
 	testGroup := app.Group("/test/v1")
 	identity_http.SetUpRouter(testGroup, identityMod.AuthHandler, identityMod.ProfileHandler, middleware)
-	org_http.SetUpRouter(testGroup, orgMod.CompanyHandler, middleware)
+	org_http.SetUpRouter(testGroup, orgMod.CompanyHandler, orgMod.DashboardHandler, middleware)
 
 	return &TestHarness{
 		App:      app,

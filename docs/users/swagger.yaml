@@ -1,5 +1,62 @@
 basePath: /api/v1
 definitions:
+  domain.ActiveIncident:
+    properties:
+      id:
+        type: string
+      incident_name:
+        type: string
+      last_activity:
+        type: string
+      severity:
+        type: string
+      status:
+        type: string
+    type: object
+  domain.AssetProtectionCoverage:
+    properties:
+      coverage_percentage:
+        type: integer
+      protected_count:
+        type: integer
+      unprotected_count:
+        type: integer
+    type: object
+  domain.AssetRiskDistribution:
+    properties:
+      breakdown:
+        items:
+          $ref: '#/definitions/domain.AssetRiskItem'
+        type: array
+      overall_risk_percentage:
+        type: integer
+    type: object
+  domain.AssetRiskItem:
+    properties:
+      asset_name:
+        type: string
+      percentage:
+        type: integer
+    type: object
+  domain.ComplianceRiskIndicators:
+    properties:
+      detection_action_result:
+        type: string
+      dormant_accounts:
+        type: integer
+      encryption_vulnerabilities:
+        type: integer
+      excessive_user_permissions:
+        type: integer
+      overly_trusted_users:
+        type: integer
+      physical_security:
+        type: integer
+      unencrypted_devices:
+        type: integer
+      vulnerabilities_email:
+        type: integer
+    type: object
   domain.CustomRoleResponse:
     properties:
       created_at:
@@ -23,6 +80,48 @@ definitions:
       updated_at:
         type: string
     type: object
+  domain.DashboardTab:
+    enum:
+    - overview
+    - assets
+    - health
+    - identity
+    type: string
+    x-enum-varnames:
+    - TabOverview
+    - TabAssets
+    - TabHealth
+    - TabIdentity
+  domain.GeoThreatOrigin:
+    properties:
+      count:
+        type: integer
+      country:
+        type: string
+      lat:
+        type: number
+      lng:
+        type: number
+      percentage:
+        type: number
+    type: object
+  domain.GeoThreatsSummary:
+    properties:
+      high_threat_region:
+        type: string
+      most_targeted_asset:
+        type: string
+      origins:
+        items:
+          $ref: '#/definitions/domain.GeoThreatOrigin'
+        type: array
+      top_targeted_assets:
+        items:
+          $ref: '#/definitions/domain.TargetedAssetInfo'
+        type: array
+      total_threats:
+        type: integer
+    type: object
   domain.GetIndustriesResponse:
     properties:
       id:
@@ -38,6 +137,48 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  domain.IdentityHealthSummary:
+    properties:
+      accounts_without_mfa:
+        type: integer
+      coverage_percentage:
+        type: integer
+      dormant_accounts:
+        type: integer
+      elevated_privileges:
+        type: integer
+    type: object
+  domain.OrganizationDashboard:
+    properties:
+      active_incidents:
+        items:
+          $ref: '#/definitions/domain.ActiveIncident'
+        type: array
+      compliance_risks:
+        $ref: '#/definitions/domain.ComplianceRiskIndicators'
+      dangerous_threats:
+        $ref: '#/definitions/domain.AssetRiskDistribution'
+      endpoint_coverage:
+        $ref: '#/definitions/domain.AssetProtectionCoverage'
+      geo_threats:
+        $ref: '#/definitions/domain.GeoThreatsSummary'
+      identity_health:
+        $ref: '#/definitions/domain.IdentityHealthSummary'
+      organization_id:
+        type: string
+      security_score:
+        $ref: '#/definitions/domain.SecurityScore'
+      tab:
+        $ref: '#/definitions/domain.DashboardTab'
+      threat_intel:
+        $ref: '#/definitions/domain.ThreatIntelFeedsSummary'
+      threat_trends:
+        $ref: '#/definitions/domain.ThreatTrendsSummary'
+      updated_at:
+        type: string
+      vulnerabilities:
+        $ref: '#/definitions/domain.VulnerabilitiesSummary'
     type: object
   domain.OrganizationProfileBrandingResponse:
     properties:
@@ -114,6 +255,95 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  domain.SecurityPosturePillars:
+    properties:
+      config_health:
+        type: integer
+      response_readiness:
+        type: integer
+      threat_coverage:
+        type: integer
+      vulnerabilities:
+        type: integer
+    type: object
+  domain.SecurityScore:
+    properties:
+      description:
+        type: string
+      overall_score:
+        type: integer
+      pending_recommendations:
+        type: integer
+      pillars:
+        $ref: '#/definitions/domain.SecurityPosturePillars'
+      weekly_delta:
+        type: integer
+    type: object
+  domain.TargetedAssetInfo:
+    properties:
+      asset:
+        type: string
+      count:
+        type: integer
+      type:
+        type: string
+    type: object
+  domain.ThreatDayTrend:
+    properties:
+      critical:
+        type: integer
+      current_month_count:
+        type: integer
+      day:
+        type: integer
+      high:
+        type: integer
+      last_month_count:
+        type: integer
+      low:
+        type: integer
+      medium:
+        type: integer
+      total:
+        type: integer
+    type: object
+  domain.ThreatIntelFeedsSummary:
+    properties:
+      active_feeds:
+        type: integer
+      inactive_feeds:
+        type: integer
+      indicators_processed_24h:
+        type: integer
+    type: object
+  domain.ThreatTrendsSummary:
+    properties:
+      current_month:
+        type: string
+      days:
+        items:
+          $ref: '#/definitions/domain.ThreatDayTrend'
+        type: array
+      previous_month:
+        type: string
+      severity_filter:
+        type: string
+    type: object
+  domain.VulnerabilitiesSummary:
+    properties:
+      critical:
+        type: integer
+      high:
+        type: integer
+      low:
+        type: integer
+      medium:
+        type: integer
+      new_last_7_days:
+        type: integer
+      total:
+        type: integer
     type: object
   dto.ConfigureBackupEmailRequest:
     properties:
@@ -344,6 +574,15 @@ definitions:
       success:
         type: boolean
     type: object
+  http.OrganizationDashboardResponse:
+    properties:
+      data:
+        $ref: '#/definitions/domain.OrganizationDashboard'
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
   http.PermissionGroupsResponse:
     properties:
       data:
@@ -449,6 +688,14 @@ definitions:
     properties:
       full_name:
         type: string
+    type: object
+  response.ErrorResponse:
+    properties:
+      error: {}
+      message:
+        type: string
+      success:
+        type: boolean
     type: object
   response.Response:
     properties:
@@ -1136,6 +1383,91 @@ paths:
       summary: Update Custom Role
       tags:
       - Organization
+  /organization/dashboard:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the unified, materialized security & operational dashboard
+        snapshot for the organization. Returns all 10 widgets in a single optimized
+        payload. Supports pre-filtering by tab (overview, assets, health, identity).
+      parameters:
+      - default: overview
+        description: Dashboard Tab
+        enum:
+        - overview
+        - assets
+        - health
+        - identity
+        in: query
+        name: tab
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Unified dashboard snapshot
+          schema:
+            $ref: '#/definitions/http.OrganizationDashboardResponse'
+        "401":
+          description: 'Unauthorized: Active session or organization required'
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Get Organization Dashboard Snapshot
+      tags:
+      - Organization Dashboard
+  /organization/dashboard/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Forces a fresh OLTP calculation across threats, security events,
+        data sources, members, and alerts, warms the Redis cache, and broadcasts the
+        updated snapshot to all connected WebSocket clients.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Recalculated fresh dashboard snapshot
+          schema:
+            $ref: '#/definitions/http.OrganizationDashboardResponse'
+        "401":
+          description: 'Unauthorized: Active session required'
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      summary: Refresh Organization Dashboard Snapshot
+      tags:
+      - Organization Dashboard
+  /organization/dashboard/ws:
+    get:
+      description: Connect via WebSocket (ws:// or wss://) to receive live streaming
+        updates for the organization's dashboard whenever fresh security events, threat
+        logs, or manual refreshes occur.
+      parameters:
+      - description: Organization UUID (if cookie authentication is not available)
+        in: query
+        name: org_id
+        type: string
+      responses:
+        "101":
+          description: Switching Protocols to WebSocket
+        "401":
+          description: 'Unauthorized: Organization ID required'
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "426":
+          description: 'Upgrade Required: Missing WebSocket headers'
+          schema:
+            type: string
+      summary: Stream Organization Dashboard Real-Time Updates
+      tags:
+      - Organization Dashboard
   /organization/members/{id}/reset-mfa:
     post:
       consumes:

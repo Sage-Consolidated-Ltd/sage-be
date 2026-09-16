@@ -736,6 +736,125 @@ const docTemplate = `{
                 }
             }
         },
+        "/organization/dashboard": {
+            "get": {
+                "description": "Retrieve the unified, materialized security \u0026 operational dashboard snapshot for the organization. Returns all 10 widgets in a single optimized payload. Supports pre-filtering by tab (overview, assets, health, identity).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization Dashboard"
+                ],
+                "summary": "Get Organization Dashboard Snapshot",
+                "parameters": [
+                    {
+                        "enum": [
+                            "overview",
+                            "assets",
+                            "health",
+                            "identity"
+                        ],
+                        "type": "string",
+                        "default": "overview",
+                        "description": "Dashboard Tab",
+                        "name": "tab",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Unified dashboard snapshot",
+                        "schema": {
+                            "$ref": "#/definitions/http.OrganizationDashboardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: Active session or organization required",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/organization/dashboard/refresh": {
+            "post": {
+                "description": "Forces a fresh OLTP calculation across threats, security events, data sources, members, and alerts, warms the Redis cache, and broadcasts the updated snapshot to all connected WebSocket clients.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Organization Dashboard"
+                ],
+                "summary": "Refresh Organization Dashboard Snapshot",
+                "responses": {
+                    "200": {
+                        "description": "Recalculated fresh dashboard snapshot",
+                        "schema": {
+                            "$ref": "#/definitions/http.OrganizationDashboardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized: Active session required",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/organization/dashboard/ws": {
+            "get": {
+                "description": "Connect via WebSocket (ws:// or wss://) to receive live streaming updates for the organization's dashboard whenever fresh security events, threat logs, or manual refreshes occur.",
+                "tags": [
+                    "Organization Dashboard"
+                ],
+                "summary": "Stream Organization Dashboard Real-Time Updates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Organization UUID (if cookie authentication is not available)",
+                        "name": "org_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols to WebSocket"
+                    },
+                    "401": {
+                        "description": "Unauthorized: Organization ID required",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponse"
+                        }
+                    },
+                    "426": {
+                        "description": "Upgrade Required: Missing WebSocket headers",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/organization/members/{id}/reset-mfa": {
             "post": {
                 "security": [
@@ -1387,6 +1506,94 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "domain.ActiveIncident": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "incident_name": {
+                    "type": "string"
+                },
+                "last_activity": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.AssetProtectionCoverage": {
+            "type": "object",
+            "properties": {
+                "coverage_percentage": {
+                    "type": "integer"
+                },
+                "protected_count": {
+                    "type": "integer"
+                },
+                "unprotected_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.AssetRiskDistribution": {
+            "type": "object",
+            "properties": {
+                "breakdown": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.AssetRiskItem"
+                    }
+                },
+                "overall_risk_percentage": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.AssetRiskItem": {
+            "type": "object",
+            "properties": {
+                "asset_name": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ComplianceRiskIndicators": {
+            "type": "object",
+            "properties": {
+                "detection_action_result": {
+                    "type": "string"
+                },
+                "dormant_accounts": {
+                    "type": "integer"
+                },
+                "encryption_vulnerabilities": {
+                    "type": "integer"
+                },
+                "excessive_user_permissions": {
+                    "type": "integer"
+                },
+                "overly_trusted_users": {
+                    "type": "integer"
+                },
+                "physical_security": {
+                    "type": "integer"
+                },
+                "unencrypted_devices": {
+                    "type": "integer"
+                },
+                "vulnerabilities_email": {
+                    "type": "integer"
+                }
+            }
+        },
         "domain.CustomRoleResponse": {
             "type": "object",
             "properties": {
@@ -1422,6 +1629,67 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.DashboardTab": {
+            "type": "string",
+            "enum": [
+                "overview",
+                "assets",
+                "health",
+                "identity"
+            ],
+            "x-enum-varnames": [
+                "TabOverview",
+                "TabAssets",
+                "TabHealth",
+                "TabIdentity"
+            ]
+        },
+        "domain.GeoThreatOrigin": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "country": {
+                    "type": "string"
+                },
+                "lat": {
+                    "type": "number"
+                },
+                "lng": {
+                    "type": "number"
+                },
+                "percentage": {
+                    "type": "number"
+                }
+            }
+        },
+        "domain.GeoThreatsSummary": {
+            "type": "object",
+            "properties": {
+                "high_threat_region": {
+                    "type": "string"
+                },
+                "most_targeted_asset": {
+                    "type": "string"
+                },
+                "origins": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.GeoThreatOrigin"
+                    }
+                },
+                "top_targeted_assets": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.TargetedAssetInfo"
+                    }
+                },
+                "total_threats": {
+                    "type": "integer"
+                }
+            }
+        },
         "domain.GetIndustriesResponse": {
             "type": "object",
             "properties": {
@@ -1444,6 +1712,70 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.IdentityHealthSummary": {
+            "type": "object",
+            "properties": {
+                "accounts_without_mfa": {
+                    "type": "integer"
+                },
+                "coverage_percentage": {
+                    "type": "integer"
+                },
+                "dormant_accounts": {
+                    "type": "integer"
+                },
+                "elevated_privileges": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.OrganizationDashboard": {
+            "type": "object",
+            "properties": {
+                "active_incidents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ActiveIncident"
+                    }
+                },
+                "compliance_risks": {
+                    "$ref": "#/definitions/domain.ComplianceRiskIndicators"
+                },
+                "dangerous_threats": {
+                    "$ref": "#/definitions/domain.AssetRiskDistribution"
+                },
+                "endpoint_coverage": {
+                    "$ref": "#/definitions/domain.AssetProtectionCoverage"
+                },
+                "geo_threats": {
+                    "$ref": "#/definitions/domain.GeoThreatsSummary"
+                },
+                "identity_health": {
+                    "$ref": "#/definitions/domain.IdentityHealthSummary"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "security_score": {
+                    "$ref": "#/definitions/domain.SecurityScore"
+                },
+                "tab": {
+                    "$ref": "#/definitions/domain.DashboardTab"
+                },
+                "threat_intel": {
+                    "$ref": "#/definitions/domain.ThreatIntelFeedsSummary"
+                },
+                "threat_trends": {
+                    "$ref": "#/definitions/domain.ThreatTrendsSummary"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "vulnerabilities": {
+                    "$ref": "#/definitions/domain.VulnerabilitiesSummary"
                 }
             }
         },
@@ -1561,6 +1893,143 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.SecurityPosturePillars": {
+            "type": "object",
+            "properties": {
+                "config_health": {
+                    "type": "integer"
+                },
+                "response_readiness": {
+                    "type": "integer"
+                },
+                "threat_coverage": {
+                    "type": "integer"
+                },
+                "vulnerabilities": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.SecurityScore": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "overall_score": {
+                    "type": "integer"
+                },
+                "pending_recommendations": {
+                    "type": "integer"
+                },
+                "pillars": {
+                    "$ref": "#/definitions/domain.SecurityPosturePillars"
+                },
+                "weekly_delta": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.TargetedAssetInfo": {
+            "type": "object",
+            "properties": {
+                "asset": {
+                    "type": "string"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ThreatDayTrend": {
+            "type": "object",
+            "properties": {
+                "critical": {
+                    "type": "integer"
+                },
+                "current_month_count": {
+                    "type": "integer"
+                },
+                "day": {
+                    "type": "integer"
+                },
+                "high": {
+                    "type": "integer"
+                },
+                "last_month_count": {
+                    "type": "integer"
+                },
+                "low": {
+                    "type": "integer"
+                },
+                "medium": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ThreatIntelFeedsSummary": {
+            "type": "object",
+            "properties": {
+                "active_feeds": {
+                    "type": "integer"
+                },
+                "inactive_feeds": {
+                    "type": "integer"
+                },
+                "indicators_processed_24h": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ThreatTrendsSummary": {
+            "type": "object",
+            "properties": {
+                "current_month": {
+                    "type": "string"
+                },
+                "days": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ThreatDayTrend"
+                    }
+                },
+                "previous_month": {
+                    "type": "string"
+                },
+                "severity_filter": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.VulnerabilitiesSummary": {
+            "type": "object",
+            "properties": {
+                "critical": {
+                    "type": "integer"
+                },
+                "high": {
+                    "type": "integer"
+                },
+                "low": {
+                    "type": "integer"
+                },
+                "medium": {
+                    "type": "integer"
+                },
+                "new_last_7_days": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -1913,6 +2382,20 @@ const docTemplate = `{
                 }
             }
         },
+        "http.OrganizationDashboardResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/domain.OrganizationDashboard"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
         "http.PermissionGroupsResponse": {
             "type": "object",
             "properties": {
@@ -2073,6 +2556,18 @@ const docTemplate = `{
             "properties": {
                 "full_name": {
                     "type": "string"
+                }
+            }
+        },
+        "response.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {},
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
