@@ -70,3 +70,10 @@ func UnauthorizedException(message string) *ErrorResponse {
 		StatusCode: fiber.StatusUnauthorized,
 	}
 }
+
+func ForbiddenError(message string) *ErrorResponse {
+	return &ErrorResponse{
+		Message:    message,
+		StatusCode: fiber.StatusForbidden,
+	}
+}

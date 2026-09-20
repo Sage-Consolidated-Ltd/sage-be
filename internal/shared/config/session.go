@@ -19,26 +19,34 @@ type SessionParam struct {
 var Store *session.Store
 
 func InitSessionStore(cfg *BaseConfig) {
-	storage := redis.New(redis.Config{
-		Host:     "localhost",
-		Port:     6379,
-		Password: "",
-		Database: 0,
-	})
+	storageConfig := redis.Config{}
+	if cfg.RedisDbUrl != "" {
+		storageConfig.URL = cfg.RedisDbUrl
+	} else {
+		storageConfig.Host = "localhost"
+		storageConfig.Port = 6379
+	}
+	storage := redis.New(storageConfig)
 	var sameSite string
-	if cfg.APP_ENV == "production" {
+	if cfg.APP_ENV == "production" || cfg.APP_ENV == "test" || cfg.APP_ENV == "testing" {
 		sameSite = "Lax"
 	} else {
 		sameSite = "None"
 	}
+
+	cookieDomain := cfg.CookieDomain
+	if cookieDomain == "localhost" || cookieDomain == "127.0.0.1" {
+		cookieDomain = ""
+	}
+
 	Store = session.New(session.Config{
 		Storage:        storage,
 		Expiration:     24 * time.Hour,
 		KeyLookup:      "cookie:session_id",
 		CookieHTTPOnly: true,
-		CookieSecure:   cfg.APP_ENV == "production",
+		CookieSecure:   cfg.APP_ENV == "production" || cfg.APP_ENV == "staging",
 		CookieSameSite: sameSite,
-		// CookieDomain: "localhost",
+		CookieDomain:   cookieDomain,
 	})
 }
 
@@ -52,6 +60,9 @@ func SetSession(c *fiber.Ctx, param SessionParam) (*session.Session, error) {
 	sess.Set("role", param.Role)
 	sess.Set("email", param.Email)
 	sess.Set("organizationID", param.OrganizationId)
+	sess.Set("authenticated", true)
+	sess.Delete("pending_email_verification")
+	sess.Delete("pending_2fa")
 
 	if err := sess.Save(); err != nil {
 		return nil, fmt.Errorf("could not save session: %w", err)
