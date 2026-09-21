@@ -31,6 +31,9 @@ type DataSourceDTO struct {
 }
 
 func (dto *DataSourceDTO) ToDomain() *domain.DataSource {
+	if dto == nil {
+		return nil
+	}
 	return &domain.DataSource{
 		ID:               dto.ID,
 		OrganizationID:   dto.OrganizationID,

@@ -95,11 +95,30 @@ func (s *LogsDataService) GetSource(ctx context.Context, id uuid.UUID, orgID uui
 func (s *LogsDataService) SyncSource(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (map[string]interface{}, error) {
 	// Verify source exists and belongs to org
 	_, err := s.dataSourceRepo.GetDataSourceByID(ctx, id, orgID)
+	source, err := s.dataSourceRepo.GetDataSourceByID(ctx, id, orgID)
 	if err != nil {
 		return nil, err
 	}
 	if err := s.taskClient.EnqueueProviderSync(ctx, orgID, id); err != nil {
 		return nil, err
+	if source == nil {
+		return nil, fmt.Errorf("data source not found")
+	}
+	if source.Status == domain.DataSourceStatusDisconnected || source.Status == domain.DataSourceStatusDisabled {
+		return nil, fmt.Errorf("cannot sync %s data source", source.Status)
+	}
+	if source.Provider == nil || strings.TrimSpace(*source.Provider) == "" {
+		return nil, fmt.Errorf("data source has no provider configured")
+	}
+	providerName := strings.ToLower(strings.TrimSpace(*source.Provider))
+	if providerName != "okta" && providerName != "entra" {
+		return nil, fmt.Errorf("unsupported provider: %s", providerName)
+	}
+
+	if s.taskClient != nil {
+		if err := s.taskClient.EnqueueProviderSync(ctx, orgID, id); err != nil {
+			return nil, err
+		}
 	}
 	return map[string]interface{}{
 		"source_id": id.String(),
@@ -127,6 +146,9 @@ func (s *LogsDataService) GetIngestionNotifications(ctx context.Context, orgID u
 	}
 	warnings := make([]map[string]interface{}, 0, len(sources))
 	for _, src := range sources {
+		if src == nil {
+			continue
+		}
 		msg := ""
 		if src.Status == domain.DataSourceStatusError {
 			msg = fmt.Sprintf("Source %s has encountered errors", src.Name)
@@ -208,6 +230,9 @@ func (s *LogsDataService) DownloadIngestionHealthReport(ctx context.Context, org
 		var csv strings.Builder
 		csv.WriteString("Source Name,Type,Status,Events Today,Error Count,Delayed By Minutes\n")
 		for _, src := range sources {
+			if src == nil {
+				continue
+			}
 			csv.WriteString(fmt.Sprintf("%s,%s,%s,%d,%d,%d\n", src.Name, src.Type, src.Status, src.EventsToday, src.ErrorCount, src.DelayedByMinutes))
 		}
 		return []byte(csv.String()), filename, nil

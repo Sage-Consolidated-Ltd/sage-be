@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 func (p *EntraProvider) GetSignInLogs(ctx context.Context, filter string) (*GraphResponse, error) {
@@ -25,6 +27,10 @@ func (p *EntraProvider) GetSignInLogs(ctx context.Context, filter string) (*Grap
 	log.Println("Entra token: ", token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+
+	if p.RestyClient == nil {
+		p.RestyClient = resty.New().SetTimeout(30 * time.Second)
 	}
 
 	resp, err := p.RestyClient.R().
@@ -87,6 +93,9 @@ func (p *EntraProvider) PollAuditLogs(ctx context.Context, limit int) ([]SignInE
 	)
 
 	var graphResp GraphResponse
+	if p.RestyClient == nil {
+		p.RestyClient = resty.New().SetTimeout(30 * time.Second)
+	}
 	resp, err := p.RestyClient.R().
 		SetContext(ctx).
 		SetHeader("Authorization", "Bearer "+token).
@@ -131,6 +140,10 @@ func (p *EntraProvider) HealthCheck(ctx context.Context) error {
 	token, err := p.getToken(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get token: %w", err)
+	}
+
+	if p.RestyClient == nil {
+		p.RestyClient = resty.New().SetTimeout(30 * time.Second)
 	}
 
 	resp, err := p.RestyClient.R().

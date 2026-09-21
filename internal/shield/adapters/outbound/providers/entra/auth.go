@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 func (p *EntraProvider) getToken(ctx context.Context) (string, error) {
@@ -31,6 +33,10 @@ func (p *EntraProvider) getToken(ctx context.Context) (string, error) {
 	var tokenResp struct {
 		AccessToken string `json:"access_token"`
 		ExpiresIn   int    `json:"expires_in"`
+	}
+
+	if p.RestyClient == nil {
+		p.RestyClient = resty.New().SetTimeout(30 * time.Second)
 	}
 
 	resp, err := p.RestyClient.R().

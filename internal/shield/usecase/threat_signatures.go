@@ -20,6 +20,9 @@ func NewThreatSignaturesDetector() *ThreatSignaturesDetector {
 
 // DetectAlerts runs dual-inspection over an incoming SecurityEvent to identify threat alerts.
 func (d *ThreatSignaturesDetector) DetectAlerts(evt *domain.SecurityEvent) []*domain.Alert {
+	if evt == nil {
+		return nil
+	}
 	var alerts []*domain.Alert
 
 	host, account, ip := extractEntities(evt)
@@ -710,6 +713,9 @@ func (d *ThreatSignaturesDetector) detectApplicationAlerts(evt *domain.SecurityE
 // Helper Functions for Dual-Inspection & Entity Extraction
 
 func extractEntities(evt *domain.SecurityEvent) (host, account, ip string) {
+	if evt == nil {
+		return "unknown-host", "", ""
+	}
 	// 1. Host
 	host = getSignaturePayloadString(evt, "Computer", "host", "hostname", "HostName", "ComputerName")
 	if host == "" {
@@ -734,6 +740,9 @@ func extractEntities(evt *domain.SecurityEvent) (host, account, ip string) {
 }
 
 func extractEventID(evt *domain.SecurityEvent) string {
+	if evt == nil {
+		return ""
+	}
 	if id := getSignaturePayloadString(evt, "EventID", "event_id", "EventId"); id != "" {
 		return id
 	}
@@ -751,6 +760,9 @@ func extractEventID(evt *domain.SecurityEvent) string {
 
 // Dual-Inspection payload lookups: Checks top-level / normalized payload first, then raw payload case-insensitively.
 func getSignaturePayloadString(evt *domain.SecurityEvent, keys ...string) string {
+	if evt == nil {
+		return ""
+	}
 	// 1. Check NormalizedPayload
 	if evt.NormalizedPayload != nil {
 		for _, k := range keys {

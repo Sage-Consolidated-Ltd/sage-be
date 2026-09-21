@@ -8,4 +8,5 @@ TODO.md
 system-overview.txt
 docs
 scripts
-*.pdf
+*.pdf
+.qodo
