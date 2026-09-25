@@ -16,6 +16,7 @@ import (
 	shield_http "sage-backend/internal/shield/adapters/inbound/http"
 	"sage-backend/internal/shield/adapters/outbound/queue"
 	"sage-backend/pkg/crypto"
+	"sage-backend/pkg/redoc"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/gofiber/contrib/swagger"
@@ -83,6 +84,15 @@ func New() (*app.App, error) {
 		CacheAge: 0,
 	}
 	fiberApp.Use(swagger.New(swaggerConfig))
+
+	redocConfig := redoc.Config{
+		BasePath:   "/api/v1",
+		FilePath:   "./docs/shield/swagger.json",
+		Path:       "/docs/shield-redoc",
+		Title:      "Sage Shield API Documentation",
+		SwaggerURL: "/api/v1/docs/shield-docs",
+	}
+	fiberApp.Use(redoc.New(redocConfig))
 
 	v1 := fiberApp.Group("/api/v1")
 	v1.Get("/health", func(c *fiber.Ctx) error {

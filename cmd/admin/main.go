@@ -26,8 +26,12 @@ import (
 // @in header
 // @name Authorization
 
+// @tag.name Admin Auth
+// @tag.description Endpoints for platform super administrator authentication, session management, and OTP verification.
+
 // @host      admin.sageconsolidated.com
 // @BasePath  /api/v1
+// @x-tagGroups [{"name":"Admin","tags":["Admin Auth"]}]
 func main() {
 	application, err := adminApp.New()
 	if err != nil {

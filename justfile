@@ -78,12 +78,15 @@ generate:
   go generate ./...
 
 swagger:
-	@echo "Generating Swagger documentation..."
+	@echo "Generating Swagger & Redocly documentation..."
 	@go install github.com/swaggo/swag/cmd/swag@latest
 	swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
 	swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
 	swag init -g main.go -d ./cmd/admin,./internal/admin,./internal/shared --parseInternal -o ./docs/admin
-	@echo "Swagger docs updated successfully."
+	go run cmd/docgen/main.go
+	@echo "Swagger & Redocly docs updated successfully."
+
+docs: swagger
 
 # Health check
 health:

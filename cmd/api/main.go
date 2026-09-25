@@ -22,8 +22,20 @@ import (
 // @in cookie
 // @name session_id
 
+// @tag.name Auth
+// @tag.description Endpoints for user registration, authentication, 2FA, and password recovery.
+// @tag.name User Profile
+// @tag.description Endpoints for user profile, sessions, activity logs, and account preferences.
+// @tag.name Company
+// @tag.description Endpoints for company setup, invitations, and industry selection.
+// @tag.name Organization
+// @tag.description Endpoints for organization management, members, branding, and custom RBAC roles.
+// @tag.name Organization Dashboard
+// @tag.description Endpoints for organization posture score, compliance, and real-time dashboard telemetry.
+
 // @host      backend.sageconsolidated.com
 // @BasePath  /api/v1
+// @x-tagGroups [{"name":"Identity","tags":["Auth","User Profile"]},{"name":"Organization","tags":["Company","Organization","Organization Dashboard"]}]
 func main() {
 	application, err := apiApp.New()
 	if err != nil {

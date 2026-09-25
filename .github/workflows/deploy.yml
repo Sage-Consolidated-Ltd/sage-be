@@ -69,6 +69,7 @@ jobs:
           swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
           swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
           swag init -g main.go -d ./cmd/admin,./internal/admin,./internal/shared --parseInternal -o ./docs/admin
+          go run cmd/docgen/main.go
 
       - name: Execute Tests
         env:
@@ -100,6 +101,7 @@ jobs:
           swag init -g main.go -d ./cmd/api,./internal/identity,./internal/organization,./internal/shared --parseInternal -o ./docs/users
           swag init -g main.go -d ./cmd/shield,./internal/shield,./internal/shared --parseInternal -o ./docs/shield
           swag init -g main.go -d ./cmd/admin,./internal/admin,./internal/shared --parseInternal -o ./docs/admin
+          go run cmd/docgen/main.go
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
