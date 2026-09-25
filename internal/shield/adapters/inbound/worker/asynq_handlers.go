@@ -55,7 +55,9 @@ func (h *TaskHandler) SetIncidentEngine(engine inbound.IncidentEngine, repo outb
 	h.incidentEngine = engine
 	h.incidentRepo = repo
 	h.alertRepo = alertRepo
-	if setter, ok := engine.(interface{ SetAlertRepository(outbound.AlertRepository) }); ok && alertRepo != nil {
+	if setter, ok := engine.(interface {
+		SetAlertRepository(outbound.AlertRepository)
+	}); ok && alertRepo != nil {
 		setter.SetAlertRepository(alertRepo)
 	}
 }
@@ -216,7 +218,6 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 			jobID = result.JobID
 		}
 		log.Printf("Completed analysis submission for log_file_id=%s job_id=%s",
-			payload.LogFileID, result.JobID)
 			payload.LogFileID, jobID)
 
 		return nil
@@ -640,8 +641,6 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 		}
 	}
 
-	now := time.Now()
-	if err := h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, int64(len(security_events)), int64(len(security_events)), 0, &latest, &now); err != nil {
 	now := time.Now().UTC()
 	var latestPtr *time.Time
 	if !latest.IsZero() {
@@ -651,9 +650,6 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 		log.Printf("Failed to update data source metrics: %v", err)
 	}
 
-	lastCheckpoint := latest.UTC().Format(time.RFC3339)
-	if err := h.dataSourceRepo.UpdateCheckpoint(ctx, payload.SourceID, lastCheckpoint); err != nil {
-		return fmt.Errorf("failed to persist checkpoint for source %s: %w", payload.SourceID, err)
 	if latestPtr != nil {
 		lastCheckpoint := latestPtr.UTC().Format(time.RFC3339)
 		if err := h.dataSourceRepo.UpdateCheckpoint(ctx, payload.SourceID, lastCheckpoint); err != nil {
@@ -662,7 +658,6 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 		log.Printf("Persisted checkpoint %s for source %s", lastCheckpoint, payload.SourceID)
 	}
 
-	log.Printf("Persisted checkpoint %s for source %s", lastCheckpoint, payload.SourceID)
 	log.Printf("Persisted %d events for source %s", len(security_events), payload.SourceID)
 	return nil
 }
@@ -764,7 +759,6 @@ func (h *TaskHandler) HandleProviderSync(
 		return nil
 	}
 
-	rawEvents, _, err := h.persistNormalizedEvents(ctx, events, source.OrganizationID, source.ID)
 	rawEvents, latestTime, err := h.persistNormalizedEvents(ctx, events, source.OrganizationID, source.ID)
 	if err != nil {
 		log.Printf("failed to persist events for source %s: %v", source.ID, err)
@@ -774,8 +768,6 @@ func (h *TaskHandler) HandleProviderSync(
 
 	log.Printf("Persisted %d normalized events for source %s", len(events), source.ID)
 
-	if err := h.taskClient.EnqueueProviderEventBatch(ctx, payload.OrganizationID, payload.SourceID, rawEvents); err != nil {
-		return err
 	// Persist checkpoint from full batch
 	if latestTime != nil && !latestTime.IsZero() {
 		lastCheckpoint := latestTime.UTC().Format(time.RFC3339)

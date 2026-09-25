@@ -15,8 +15,6 @@ import (
 	"github.com/google/uuid"
 )
 
-
-
 type LogsDataService struct {
 	dataSourceRepo outbound.DataSourceRepository
 	eventRepo      outbound.SecurityEventRepository
@@ -94,13 +92,10 @@ func (s *LogsDataService) GetSource(ctx context.Context, id uuid.UUID, orgID uui
 
 func (s *LogsDataService) SyncSource(ctx context.Context, id uuid.UUID, orgID uuid.UUID) (map[string]interface{}, error) {
 	// Verify source exists and belongs to org
-	_, err := s.dataSourceRepo.GetDataSourceByID(ctx, id, orgID)
 	source, err := s.dataSourceRepo.GetDataSourceByID(ctx, id, orgID)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.taskClient.EnqueueProviderSync(ctx, orgID, id); err != nil {
-		return nil, err
 	if source == nil {
 		return nil, fmt.Errorf("data source not found")
 	}

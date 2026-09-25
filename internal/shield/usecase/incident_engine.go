@@ -237,11 +237,6 @@ func (e *IncidentEngine) EvaluateEvent(ctx context.Context, event *domain.Securi
 
 // EvaluateBatch evaluates a slice of events against threat signatures and correlation rules.
 func (e *IncidentEngine) EvaluateBatch(ctx context.Context, events []*domain.SecurityEvent) ([]*domain.Incident, error) {
-	if len(events) == 0 {
-		return nil, nil
-	}
-
-	orgID := events[0].OrganizationID
 	var validEvents []*domain.SecurityEvent
 	for _, ev := range events {
 		if ev != nil {
@@ -256,7 +251,6 @@ func (e *IncidentEngine) EvaluateBatch(ctx context.Context, events []*domain.Sec
 
 	// 1. Collect alerts across all events in batch
 	var allAlerts []*domain.Alert
-	for _, event := range events {
 	for _, event := range validEvents {
 		alerts := e.signatureDetector.DetectAlerts(event)
 		allAlerts = append(allAlerts, alerts...)
@@ -271,7 +265,6 @@ func (e *IncidentEngine) EvaluateBatch(ctx context.Context, events []*domain.Sec
 	incidents := e.correlationEngine.EvaluateRules(orgID, allAlerts)
 
 	// 3. Legacy rules evaluation
-	for _, event := range events {
 	for _, event := range validEvents {
 		legacy, _ := e.evaluateLegacyRules(ctx, event)
 		if len(legacy) > 0 {
@@ -284,7 +277,6 @@ func (e *IncidentEngine) EvaluateBatch(ctx context.Context, events []*domain.Sec
 
 	// 5. Dynamic scoring and priority
 	for _, inc := range incidents {
-		e.applyDynamicScoring(inc)
 		if inc != nil {
 			e.applyDynamicScoring(inc)
 		}

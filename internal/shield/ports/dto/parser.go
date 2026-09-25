@@ -25,8 +25,8 @@ type UpdateParserRequest struct {
 	Name         *string                  `json:"name,omitempty"`
 	Description  *string                  `json:"description,omitempty"`
 	DataSourceID *uuid.UUID               `json:"data_source_id,omitempty"`
-	ParserType   *types.ParserType        `json:"parser_type,omitempty,oneof=regex json csv key_value ai_nlp"`
-	Status       *types.ParserStatus      `json:"status,omitempty,oneof=active warning error disabled"`
+	ParserType   *types.ParserType        `json:"parser_type,omitempty" validate:"omitempty,oneof=regex json csv key_value ai_nlp"`
+	Status       *types.ParserStatus      `json:"status,omitempty" validate:"omitempty,oneof=active warning error disabled"`
 	Tags         []string                 `json:"tags,omitempty"`
 	Logic        map[string]interface{}   `json:"logic,omitempty"`
 	Mappings     []map[string]interface{} `json:"mappings,omitempty"`
