@@ -27,6 +27,7 @@ RUN apk add --no-cache ca-certificates tzdata
 COPY --from=builder /app/bin/api /app/api
 COPY --from=builder /app/bin/worker /app/worker
 COPY --from=builder /app/migrations /app/migrations
+COPY --from=builder /app/docs /app/docs
 
 EXPOSE 4000 3333
 

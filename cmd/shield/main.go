@@ -44,8 +44,14 @@ import (
 // @in cookie
 // @name session_id
 
+// @tag.name Integrations
+// @tag.description Endpoints for connecting third-party identity and security data sources (e.g. Okta, Entra).
+// @tag.name Logs & Data
+// @tag.description Endpoints for unified AST log search, parser management, data quality analysis, and log ingestion.
+
 // @host      shield.sageconsolidated.com
 // @BasePath  /api/v1
+// @x-tagGroups [{"name":"Shield","tags":["Integrations","Logs & Data"]}]
 func main() {
 	application, err := shieldApp.New()
 	if err != nil {

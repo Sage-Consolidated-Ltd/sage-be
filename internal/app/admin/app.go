@@ -13,6 +13,7 @@ import (
 	"sage-backend/internal/shared/logger"
 	"sage-backend/internal/shared/mailer"
 	"sage-backend/internal/shared/response"
+	"sage-backend/pkg/redoc"
 
 	"github.com/gofiber/contrib/swagger"
 	"github.com/gofiber/fiber/v2"
@@ -52,6 +53,15 @@ func New() (*app.App, error) {
 		CacheAge: 0,
 	}
 	fiberApp.Use(swagger.New(swaggerConfig))
+
+	redocConfig := redoc.Config{
+		BasePath:   "/api/v1",
+		FilePath:   "./docs/admin/swagger.json",
+		Path:       "/docs/admin-redoc",
+		Title:      "Sage Admin API Documentation",
+		SwaggerURL: "/api/v1/docs/admin-docs",
+	}
+	fiberApp.Use(redoc.New(redocConfig))
 
 	v1 := fiberApp.Group("/api/v1")
 	v1.Get("/health", func(c *fiber.Ctx) error {

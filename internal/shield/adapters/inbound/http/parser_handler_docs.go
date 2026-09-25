@@ -112,7 +112,7 @@ func _DisableParser() {}
 
 // @Summary Validate Parser
 // @Description Queues validation for a parser against recent logs.
-// @Tags Lmiddlewares.Ggs & Data
+// @Tags Logs & Data
 // @Accept json
 // @Produce json
 // @Security SessionAuth
@@ -122,7 +122,7 @@ func _DisableParser() {}
 func _ValidateParser() {}
 
 // @Summary Validate All Parsers
-// @Descrimiddlewares.Gtion Queues validation for all custom parsers.
+// @Description Queues validation for all custom parsers.
 // @Tags Logs & Data
 // @Accept json
 // @Produce json
@@ -137,7 +137,7 @@ func _ValidateAllParsers() {}
 // @Accept json
 // @Produce json
 // @Security SessionAuth
-// @Param middlewares.Gequest body dto.ImportParserRequest true "Import Parser Request"
+// @Param request body dto.ImportParserRequest true "Import Parser Request"
 // @Success 200 {object} response.Response
 // @Router /integrations/logs-data/parsers/import [post]
 func _ImportParser() {}
