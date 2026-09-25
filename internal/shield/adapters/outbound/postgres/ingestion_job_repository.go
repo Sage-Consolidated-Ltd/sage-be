@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"sage-backend/internal/shared/db"
@@ -60,6 +61,9 @@ const (
 )
 
 func (r *IngestionJobRepository) CreateJob(ctx context.Context, job *domain.IngestionJob) error {
+	if job == nil {
+		return fmt.Errorf("job cannot be nil")
+	}
 	var id uuid.UUID
 	var createdAt, updatedAt time.Time
 	meta := job.Metadata
@@ -143,6 +147,9 @@ func (r *IngestionJobRepository) ListJobs(ctx context.Context, orgID uuid.UUID, 
 
 	jobs := make([]*domain.IngestionJob, 0, len(dtos))
 	for _, dto := range dtos {
+		if dto == nil {
+			continue
+		}
 		jobs = append(jobs, dto.ToDomain())
 	}
 	return jobs, total, nil

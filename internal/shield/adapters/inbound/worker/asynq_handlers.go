@@ -55,7 +55,9 @@ func (h *TaskHandler) SetIncidentEngine(engine inbound.IncidentEngine, repo outb
 	h.incidentEngine = engine
 	h.incidentRepo = repo
 	h.alertRepo = alertRepo
-	if setter, ok := engine.(interface{ SetAlertRepository(outbound.AlertRepository) }); ok && alertRepo != nil {
+	if setter, ok := engine.(interface {
+		SetAlertRepository(outbound.AlertRepository)
+	}); ok && alertRepo != nil {
 		setter.SetAlertRepository(alertRepo)
 	}
 }
@@ -176,6 +178,9 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 			if h.incidentEngine != nil && h.incidentRepo != nil {
 				if incidents, err := h.incidentEngine.EvaluateBatch(ctx, securityEvents); err == nil {
 					for _, inc := range incidents {
+						if inc == nil {
+							continue
+						}
 						if saveErr := h.incidentRepo.SaveIncident(ctx, inc); saveErr != nil {
 							logger.Error("Failed to save correlated incident", zap.Error(saveErr))
 						} else {
@@ -208,8 +213,12 @@ func (h *TaskHandler) HandleProcessLogFile(ctx context.Context, t *asynq.Task) e
 			return fmt.Errorf("submit log file for analysis failed: %w", err)
 		}
 
+		jobID := ""
+		if result != nil {
+			jobID = result.JobID
+		}
 		log.Printf("Completed analysis submission for log_file_id=%s job_id=%s",
-			payload.LogFileID, result.JobID)
+			payload.LogFileID, jobID)
 
 		return nil
 	})
@@ -237,6 +246,9 @@ func (h *TaskHandler) HandleIngestJob(ctx context.Context, t *asynq.Task) error 
 	if err != nil {
 		return err
 	}
+	if job == nil {
+		return fmt.Errorf("job not found")
+	}
 
 	now := time.Now()
 	job.Status = domain.JobStatusRunning
@@ -249,6 +261,9 @@ func (h *TaskHandler) HandleIngestJob(ctx context.Context, t *asynq.Task) error 
 		source, err := h.dataSourceRepo.GetDataSourceByID(ctx, *job.SourceID, job.OrganizationID)
 		if err != nil {
 			return err
+		}
+		if source == nil {
+			return fmt.Errorf("data source not found")
 		}
 
 		job.EventsProcessed = 100
@@ -294,10 +309,16 @@ func (h *TaskHandler) HandleQualityScanJob(ctx context.Context, t *asynq.Task) e
 	if err != nil {
 		return fmt.Errorf("get job failed: %w", err)
 	}
+	if job == nil {
+		return fmt.Errorf("job not found")
+	}
 
 	scan, err := h.qualityRepo.GetScanByID(ctx, payload.ScanID, payload.OrganizationID)
 	if err != nil {
 		return fmt.Errorf("get scan failed: %w", err)
+	}
+	if scan == nil {
+		return fmt.Errorf("quality scan not found")
 	}
 
 	now := time.Now()
@@ -512,6 +533,9 @@ func (h *TaskHandler) HandleValidationJob(ctx context.Context, t *asynq.Task) er
 	if err != nil {
 		return err
 	}
+	if job == nil {
+		return fmt.Errorf("job not found")
+	}
 
 	now := time.Now()
 	job.Status = domain.JobStatusRunning
@@ -554,6 +578,9 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 		if err != nil {
 			log.Printf("Failed to fetch raw event for ID %s: %v", ev.ID, err)
 			return err
+		}
+		if re == nil {
+			continue
 		}
 		if re.EventTimeStamp.After(latest) {
 			latest = re.EventTimeStamp
@@ -600,6 +627,9 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 	if h.incidentEngine != nil && h.incidentRepo != nil && len(security_events) > 0 {
 		if incidents, err := h.incidentEngine.EvaluateBatch(ctx, security_events); err == nil {
 			for _, inc := range incidents {
+				if inc == nil {
+					continue
+				}
 				if saveErr := h.incidentRepo.SaveIncident(ctx, inc); saveErr != nil {
 					log.Printf("Failed to save correlated incident %s: %v", inc.RuleID, saveErr)
 				} else {
@@ -611,17 +641,23 @@ func (h *TaskHandler) HandleProviderEventBatch(ctx context.Context, t *asynq.Tas
 		}
 	}
 
-	now := time.Now()
-	if err := h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, int64(len(security_events)), int64(len(security_events)), 0, &latest, &now); err != nil {
+	now := time.Now().UTC()
+	var latestPtr *time.Time
+	if !latest.IsZero() {
+		latestPtr = &latest
+	}
+	if err := h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, int64(len(security_events)), int64(len(security_events)), 0, latestPtr, &now); err != nil {
 		log.Printf("Failed to update data source metrics: %v", err)
 	}
 
-	lastCheckpoint := latest.UTC().Format(time.RFC3339)
-	if err := h.dataSourceRepo.UpdateCheckpoint(ctx, payload.SourceID, lastCheckpoint); err != nil {
-		return fmt.Errorf("failed to persist checkpoint for source %s: %w", payload.SourceID, err)
+	if latestPtr != nil {
+		lastCheckpoint := latestPtr.UTC().Format(time.RFC3339)
+		if err := h.dataSourceRepo.UpdateCheckpoint(ctx, payload.SourceID, lastCheckpoint); err != nil {
+			return fmt.Errorf("failed to persist checkpoint for source %s: %w", payload.SourceID, err)
+		}
+		log.Printf("Persisted checkpoint %s for source %s", lastCheckpoint, payload.SourceID)
 	}
 
-	log.Printf("Persisted checkpoint %s for source %s", lastCheckpoint, payload.SourceID)
 	log.Printf("Persisted %d events for source %s", len(security_events), payload.SourceID)
 	return nil
 }
@@ -649,8 +685,13 @@ func (h *TaskHandler) HandleProviderSync(
 	if err != nil {
 		return err
 	}
+	if source == nil {
+		return fmt.Errorf("source %s not found for org %s", payload.SourceID, payload.OrganizationID)
+	}
 
 	if source.Provider == nil || strings.TrimSpace(*source.Provider) == "" {
+		now := time.Now().UTC()
+		_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 1, nil, &now)
 		return fmt.Errorf("source %s has no provider configured", source.ID)
 	}
 
@@ -661,10 +702,14 @@ func (h *TaskHandler) HandleProviderSync(
 		source.ID.String(),
 	)
 	if err != nil {
+		now := time.Now().UTC()
+		_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 1, nil, &now)
 		return err
 	}
 
 	if len(creds) == 0 {
+		now := time.Now().UTC()
+		_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 1, nil, &now)
 		return fmt.Errorf("no credentials found for source %s (provider=%s)", source.ID, providerName)
 	}
 
@@ -672,6 +717,8 @@ func (h *TaskHandler) HandleProviderSync(
 	for _, cred := range creds {
 		value, err := h.encryptor.Decrypt(cred.EncryptedValue)
 		if err != nil {
+			now := time.Now().UTC()
+			_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 1, nil, &now)
 			return err
 		}
 		decryptedCreds[cred.Key] = value
@@ -690,31 +737,48 @@ func (h *TaskHandler) HandleProviderSync(
 	)
 	if err != nil {
 		log.Printf("Provider sync failed for source %s provider=%s: %v", source.ID, providerName, err)
+		now := time.Now().UTC()
+		_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 1, nil, &now)
 		return err
 	}
 
 	events, err := provider.Collect(ctx, 500)
 	if err != nil {
 		log.Printf("Error collecting logs: %v", err)
+		now := time.Now().UTC()
+		_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 1, nil, &now)
 		return err
 	}
 
 	log.Printf("Collected %d events from %s", len(events), providerName)
 
+	now := time.Now().UTC()
 	if len(events) == 0 {
+		// Update last_sync_at so UI reflects that sync ran successfully and found 0 new events
+		_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 0, nil, &now)
 		return nil
 	}
 
-	rawEvents, _, err := h.persistNormalizedEvents(ctx, events, source.OrganizationID, source.ID)
+	rawEvents, latestTime, err := h.persistNormalizedEvents(ctx, events, source.OrganizationID, source.ID)
 	if err != nil {
 		log.Printf("failed to persist events for source %s: %v", source.ID, err)
+		_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 1, nil, &now)
 		return fmt.Errorf("failed to persist events for source %s: %w", source.ID, err)
 	}
 
 	log.Printf("Persisted %d normalized events for source %s", len(events), source.ID)
 
-	if err := h.taskClient.EnqueueProviderEventBatch(ctx, payload.OrganizationID, payload.SourceID, rawEvents); err != nil {
-		return err
+	// Persist checkpoint from full batch
+	if latestTime != nil && !latestTime.IsZero() {
+		lastCheckpoint := latestTime.UTC().Format(time.RFC3339)
+		_ = h.dataSourceRepo.UpdateCheckpoint(ctx, payload.SourceID, lastCheckpoint)
+	}
+	_ = h.dataSourceRepo.UpdateHealthMetrics(ctx, payload.SourceID, 0, 0, 0, latestTime, &now)
+
+	if h.taskClient != nil {
+		if err := h.taskClient.EnqueueProviderEventBatch(ctx, payload.OrganizationID, payload.SourceID, rawEvents); err != nil {
+			return err
+		}
 	}
 
 	return nil

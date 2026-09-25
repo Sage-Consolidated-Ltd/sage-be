@@ -23,6 +23,9 @@ func NewOktaProvider(domain, token string, checkpoint *domain.Checkpoint) *OktaP
 }
 
 func (o *OktaProvider) Verify(ctx context.Context) error {
+	if o.RestyClient == nil {
+		o.RestyClient = resty.New().SetTimeout(30 * time.Second).SetBaseURL(o.Domain)
+	}
 	resp, err := o.RestyClient.R().
 		SetContext(ctx).
 		SetQueryParam("limit", "1").

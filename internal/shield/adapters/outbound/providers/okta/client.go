@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/go-resty/resty/v2"
 )
 
 func (p *OktaProvider) GetSignInEvents(ctx context.Context, since time.Time) ([]OktaSignInEvent, error) {
@@ -15,6 +17,10 @@ func (p *OktaProvider) GetSignInEvents(ctx context.Context, since time.Time) ([]
 	filter := url.QueryEscape(fmt.Sprintf("after eq \"%s\"", since.Format(time.RFC3339)))
 	// filter := fmt.Sprintf("after=%s", since.Format(time.RFC3339))
 	url := fmt.Sprintf("/api/v1/logs?%s&limit=200", filter)
+
+	if p.RestyClient == nil {
+		p.RestyClient = resty.New().SetTimeout(30 * time.Second).SetBaseURL(p.Domain)
+	}
 
 	resp, err := p.RestyClient.R().
 		SetContext(ctx).
@@ -162,6 +168,9 @@ func (p *OktaProvider) PollAuditLogs(
 	endpoint := "/api/v1/logs?" + params.Encode()
 
 	var events []map[string]interface{}
+	if p.RestyClient == nil {
+		p.RestyClient = resty.New().SetTimeout(30 * time.Second).SetBaseURL(p.Domain)
+	}
 
 	resp, err := p.RestyClient.R().
 		SetContext(ctx).
@@ -189,6 +198,10 @@ func (p *OktaProvider) PollAuditLogs(
 
 func (p *OktaProvider) HealthCheck(ctx context.Context) error {
 	url := fmt.Sprintf("%s/api/v1/user/me", p.Domain)
+
+	if p.RestyClient == nil {
+		p.RestyClient = resty.New().SetTimeout(30 * time.Second).SetBaseURL(p.Domain)
+	}
 
 	resp, err := p.RestyClient.R().
 		SetContext(ctx).

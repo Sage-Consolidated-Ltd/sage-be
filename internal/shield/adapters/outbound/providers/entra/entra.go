@@ -13,6 +13,9 @@ func NewEntraProvider(
 	client *resty.Client,
 	checkpoint *domain.Checkpoint,
 ) *EntraProvider {
+	if client == nil {
+		client = resty.New()
+	}
 	client.SetTimeout(30 * time.Second)
 
 	return &EntraProvider{

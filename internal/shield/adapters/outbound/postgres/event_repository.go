@@ -201,6 +201,9 @@ func (r *SecurityEventRepository) BulkCreateEvents(ctx context.Context, events [
 	defer stmt.Close()
 
 	for _, event := range events {
+		if event == nil {
+			continue
+		}
 		raw := event.RawPayload
 		if raw == nil {
 			raw = make(map[string]interface{})
@@ -441,7 +444,7 @@ func (r *SecurityEventRepository) GetEventVolume(ctx context.Context, orgID uuid
 		query += fmt.Sprintf(" AND occurred_at <= $%d", paramIdx)
 		args = append(args, *endTime)
 	}
-	query += " GROUP BY date_trunc($1, occurred_at), source_id ORDER BY timestamp"
+	query += fmt.Sprintf(" GROUP BY date_trunc('%s', occurred_at), source_id ORDER BY timestamp", trunc)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -484,7 +487,13 @@ func (r *SecurityEventRepository) GetEventCountInWindow(ctx context.Context, org
 }
 
 func (r *SecurityEventRepository) BulkCreateEventsWithReturning(ctx context.Context, events []*domain.SecurityEvent) ([]uuid.UUID, error) {
-	if len(events) == 0 {
+	validEvents := make([]*domain.SecurityEvent, 0, len(events))
+	for _, ev := range events {
+		if ev != nil {
+			validEvents = append(validEvents, ev)
+		}
+	}
+	if len(validEvents) == 0 {
 		return []uuid.UUID{}, nil
 	}
 
@@ -496,10 +505,10 @@ func (r *SecurityEventRepository) BulkCreateEventsWithReturning(ctx context.Cont
 
 	const eventInsertColumnCount = 19
 
-	valueStrings := make([]string, 0, len(events))
-	valueArgs := make([]interface{}, 0, len(events)*eventInsertColumnCount)
+	valueStrings := make([]string, 0, len(validEvents))
+	valueArgs := make([]interface{}, 0, len(validEvents)*eventInsertColumnCount)
 
-	for i, event := range events {
+	for i, event := range validEvents {
 		valueStrings = append(
 			valueStrings,
 			fmt.Sprintf(
@@ -909,8 +918,10 @@ func (r *SecurityEventRepository) SearchAST(ctx context.Context, params domain.E
 
 	var next *time.Time
 	if len(events) > 0 {
-		last := events[len(events)-1].OccurredAt
-		next = &last
+		if lastEvent := events[len(events)-1]; lastEvent != nil {
+			last := lastEvent.OccurredAt
+			next = &last
+		}
 	}
 
 	return domain.EventSearchResult{

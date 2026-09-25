@@ -104,6 +104,10 @@ func (r *DashboardSnapshotRepository) GetSnapshot(ctx context.Context, orgID uui
 
 // SaveSnapshot upserts a materialized dashboard snapshot into the database.
 func (r *DashboardSnapshotRepository) SaveSnapshot(ctx context.Context, snapshot *domain.OrganizationDashboard) error {
+	if snapshot == nil {
+		return nil
+	}
+
 	securityScoreJSON, _ := json.Marshal(snapshot.SecurityScore)
 	vulnsJSON, _ := json.Marshal(snapshot.Vulnerabilities)
 	identityJSON, _ := json.Marshal(snapshot.IdentityHealth)
@@ -236,35 +240,95 @@ func (r *DashboardSnapshotRepository) computeVulnerabilities(ctx context.Context
 		&s.NewLast7Days,
 	)
 	if err != nil {
-		return &domain.VulnerabilitiesSummary{
-			Critical: 8, High: 12, Medium: 27, Low: 63, Total: 110, NewLast7Days: 8,
-		}
+		return &domain.VulnerabilitiesSummary{}
 	}
 	return &s
 }
 
 func (r *DashboardSnapshotRepository) computeSecurityScore(ctx context.Context, orgID uuid.UUID, vulns *domain.VulnerabilitiesSummary) *domain.SecurityScore {
-	baseScore := 100
-	if vulns != nil {
-		penalty := (vulns.Critical * 12) + (vulns.High * 5) + (vulns.Medium * 2)
-		baseScore -= penalty
-		if baseScore < 20 {
-			baseScore = 20
-		}
+	configHealth := 100
+	var dqScore sql.NullInt32
+	const dqQuery = `
+		SELECT quality_score FROM data_quality_scans 
+		WHERE organization_id = $1 AND status = 'completed' AND quality_score IS NOT NULL
+		ORDER BY created_at DESC LIMIT 1
+	`
+	if err := r.Executor(ctx).QueryRowxContext(ctx, dqQuery, orgID).Scan(&dqScore); err == nil && dqScore.Valid {
+		configHealth = int(dqScore.Int32)
 	} else {
-		baseScore = 94
+		var totalSources, activeSources int
+		const dsQuery = `
+			SELECT 
+				COUNT(*)::int AS total,
+				COUNT(*) FILTER (WHERE status = 'active')::int AS active
+			FROM data_sources WHERE organization_id = $1 AND deleted_at IS NULL
+		`
+		if err := r.Executor(ctx).QueryRowxContext(ctx, dsQuery, orgID).Scan(&totalSources, &activeSources); err == nil && totalSources > 0 {
+			configHealth = (activeSources * 100) / totalSources
+		}
 	}
 
+	vulnScore := 100
+	if vulns != nil {
+		penalty := (vulns.Critical * 15) + (vulns.High * 8) + (vulns.Medium * 3) + (vulns.Low * 1)
+		vulnScore -= penalty
+		if vulnScore < 0 {
+			vulnScore = 0
+		}
+	}
+
+	threatCoverage := 100
+	var totalDS, activeDS int
+	const tcQuery = `
+		SELECT 
+			COUNT(*)::int AS total,
+			COUNT(*) FILTER (WHERE status = 'active')::int AS active
+		FROM data_sources WHERE organization_id = $1 AND deleted_at IS NULL
+	`
+	if err := r.Executor(ctx).QueryRowxContext(ctx, tcQuery, orgID).Scan(&totalDS, &activeDS); err == nil {
+		if totalDS > 0 {
+			threatCoverage = (activeDS * 100) / totalDS
+		} else {
+			threatCoverage = 0
+		}
+	}
+
+	responseReadiness := 100
+	var totalInc, resolvedInc int
+	const incQuery = `
+		SELECT 
+			COUNT(*)::int AS total,
+			COUNT(*) FILTER (WHERE LOWER(status) IN ('resolved', 'closed'))::int AS resolved
+		FROM incidents WHERE organization_id = $1
+	`
+	if err := r.Executor(ctx).QueryRowxContext(ctx, incQuery, orgID).Scan(&totalInc, &resolvedInc); err == nil && totalInc > 0 {
+		responseReadiness = (resolvedInc * 100) / totalInc
+	}
+
+	overallScore := (configHealth*20 + vulnScore*35 + threatCoverage*25 + responseReadiness*20) / 100
+	if overallScore < 0 {
+		overallScore = 0
+	} else if overallScore > 100 {
+		overallScore = 100
+	}
+
+	var pendingRecs int
+	const recQuery = `
+		SELECT COUNT(*)::int FROM threats 
+		WHERE organization_id = $1 AND recommendation IS NOT NULL AND TRIM(recommendation) != ''
+	`
+	_ = r.Executor(ctx).QueryRowxContext(ctx, recQuery, orgID).Scan(&pendingRecs)
+
 	return &domain.SecurityScore{
-		OverallScore:           baseScore,
-		WeeklyDelta:            4,
-		Description:            "Security score is calculated from vulnerabilities, configuration health, threat coverage, and response readiness.",
-		PendingRecommendations: 3,
+		OverallScore:           overallScore,
+		WeeklyDelta:            0,
+		Description:            "Security score is calculated dynamically from configuration health, vulnerabilities, threat coverage, and response readiness.",
+		PendingRecommendations: pendingRecs,
 		Pillars: domain.SecurityPosturePillars{
-			ConfigHealth:      92,
-			Vulnerabilities:   88,
-			ThreatCoverage:    95,
-			ResponseReadiness: 90,
+			ConfigHealth:      configHealth,
+			Vulnerabilities:   vulnScore,
+			ThreatCoverage:    threatCoverage,
+			ResponseReadiness: responseReadiness,
 		},
 	}
 }
@@ -272,61 +336,90 @@ func (r *DashboardSnapshotRepository) computeSecurityScore(ctx context.Context, 
 func (r *DashboardSnapshotRepository) computeIdentityHealth(ctx context.Context, orgID uuid.UUID) *domain.IdentityHealthSummary {
 	const q = `
 		SELECT 
-			COUNT(*)::int AS total_members,
-			COUNT(*) FILTER (WHERE role IN ('owner', 'admin'))::int AS elevated
-		FROM organization_members
-		WHERE organization_id = $1
+			COUNT(om.id)::int AS total_members,
+			COUNT(om.id) FILTER (WHERE u.two_factor_enabled = true)::int AS mfa_enabled,
+			COUNT(om.id) FILTER (WHERE u.two_factor_enabled = false)::int AS no_mfa,
+			COUNT(om.id) FILTER (WHERE om.status IN ('inactive', 'suspended'))::int AS dormant,
+			COUNT(om.id) FILTER (WHERE LOWER(COALESCE(r.name, '')) IN ('owner', 'admin', 'super_admin'))::int AS elevated
+		FROM organization_members om
+		JOIN users u ON om.user_id = u.id
+		LEFT JOIN organization_roles r ON om.role_id = r.id
+		WHERE om.organization_id = $1 AND u.deleted_at IS NULL
 	`
 
-	var total, elevated int
-	_ = r.Executor(ctx).QueryRowxContext(ctx, q, orgID).Scan(&total, &elevated)
+	var total, mfaEnabled, noMFA, dormant, elevated int
+	err := r.Executor(ctx).QueryRowxContext(ctx, q, orgID).Scan(&total, &mfaEnabled, &noMFA, &dormant, &elevated)
+	if err != nil {
+		return &domain.IdentityHealthSummary{}
+	}
+
+	coverage := 0
+	if total > 0 {
+		coverage = (mfaEnabled * 100) / total
+	}
 
 	return &domain.IdentityHealthSummary{
-		CoveragePercentage: 77,
-		AccountsWithoutMFA: 14,
-		DormantAccounts:    8,
-		ElevatedPrivileges: elevated + 18,
+		CoveragePercentage: coverage,
+		AccountsWithoutMFA: noMFA,
+		DormantAccounts:    dormant,
+		ElevatedPrivileges: elevated,
 	}
 }
 
 func (r *DashboardSnapshotRepository) computeEndpointCoverage(ctx context.Context, orgID uuid.UUID) *domain.AssetProtectionCoverage {
 	const q = `
-		SELECT COUNT(*)::bigint FROM data_sources 
-		WHERE organization_id = $1 AND status = 'active'
+		SELECT 
+			COUNT(*) FILTER (WHERE status = 'active' AND deleted_at IS NULL)::bigint AS protected,
+			COUNT(*) FILTER (WHERE status != 'active' AND deleted_at IS NULL)::bigint AS unprotected,
+			COUNT(*) FILTER (WHERE deleted_at IS NULL)::bigint AS total
+		FROM data_sources 
+		WHERE organization_id = $1
 	`
-	var activeSources int64
-	_ = r.Executor(ctx).QueryRowxContext(ctx, q, orgID).Scan(&activeSources)
+	var protected, unprotected, total int64
+	err := r.Executor(ctx).QueryRowxContext(ctx, q, orgID).Scan(&protected, &unprotected, &total)
+	if err != nil {
+		return &domain.AssetProtectionCoverage{}
+	}
 
-	protected := activeSources * 110
-	if protected == 0 {
-		protected = 1110
+	coverage := 0
+	if total > 0 {
+		coverage = int((protected * 100) / total)
 	}
 
 	return &domain.AssetProtectionCoverage{
-		CoveragePercentage: 95,
+		CoveragePercentage: coverage,
 		ProtectedCount:     protected,
-		UnprotectedCount:   24,
+		UnprotectedCount:   unprotected,
 	}
 }
 
 func (r *DashboardSnapshotRepository) computeThreatIntel(ctx context.Context, orgID uuid.UUID) *domain.ThreatIntelFeedsSummary {
 	const q = `
 		SELECT 
-			COUNT(*) FILTER (WHERE status = 'active')::int AS active,
-			COUNT(*) FILTER (WHERE status != 'active')::int AS inactive
+			COUNT(*) FILTER (WHERE status = 'active' AND deleted_at IS NULL)::int AS active,
+			COUNT(*) FILTER (WHERE status != 'active' AND deleted_at IS NULL)::int AS inactive,
+			COALESCE(SUM(events_today), 0)::bigint AS processed_today
 		FROM data_sources
 		WHERE organization_id = $1
 	`
 	var active, inactive int
-	_ = r.Executor(ctx).QueryRowxContext(ctx, q, orgID).Scan(&active, &inactive)
+	var processedToday int64
+	err := r.Executor(ctx).QueryRowxContext(ctx, q, orgID).Scan(&active, &inactive, &processedToday)
+	if err != nil {
+		return &domain.ThreatIntelFeedsSummary{}
+	}
 
-	if active == 0 && inactive == 0 {
-		active = 13
-		inactive = 3
+	if processedToday == 0 {
+		const evQuery = `
+			SELECT COUNT(*)::bigint 
+			FROM security_events 
+			WHERE organization_id = $1 AND ingested_at >= NOW() - INTERVAL '24 hours'
+		`
+		_ = r.Executor(ctx).QueryRowxContext(ctx, evQuery, orgID).Scan(&processedToday)
 	}
 
 	return &domain.ThreatIntelFeedsSummary{
-		IndicatorsProcessed24h: 245000,
+		IndicatorsProcessed24h: processedToday,
 		ActiveFeeds:            active,
 		InactiveFeeds:          inactive,
 	}
@@ -336,45 +429,59 @@ func (r *DashboardSnapshotRepository) computeActiveIncidents(ctx context.Context
 	const q = `
 		SELECT 
 			id::text,
-			threat_label,
+			title,
 			severity,
+			occurred_at,
+			status
+		FROM incidents
+		WHERE organization_id = $1 AND LOWER(status) NOT IN ('resolved', 'closed')
+		ORDER BY occurred_at DESC
+		LIMIT 5
+	`
+
+	rows, err := r.Executor(ctx).QueryContext(ctx, q, orgID)
+	if err == nil {
+		defer rows.Close()
+		var incidents []domain.ActiveIncident
+		for rows.Next() {
+			var inc domain.ActiveIncident
+			if err := rows.Scan(&inc.ID, &inc.IncidentName, &inc.Severity, &inc.LastActivity, &inc.Status); err == nil {
+				incidents = append(incidents, inc)
+			}
+		}
+		if len(incidents) > 0 {
+			return incidents
+		}
+	}
+
+	const alertQ = `
+		SELECT 
+			id::text,
+			threat_label,
+			'High' AS severity,
 			detected_at,
-			'active' AS status
+			'Active' AS status
 		FROM alerts
 		WHERE organization_id = $1
 		ORDER BY detected_at DESC
 		LIMIT 5
 	`
-
-	rows, err := r.Executor(ctx).QueryContext(ctx, q, orgID)
-	if err != nil {
-		return defaultIncidents()
-	}
-	defer rows.Close()
-
-	var incidents []domain.ActiveIncident
-	for rows.Next() {
-		var inc domain.ActiveIncident
-		if err := rows.Scan(&inc.ID, &inc.IncidentName, &inc.Severity, &inc.LastActivity, &inc.Status); err == nil {
-			incidents = append(incidents, inc)
+	alertRows, err := r.Executor(ctx).QueryContext(ctx, alertQ, orgID)
+	if err == nil {
+		defer alertRows.Close()
+		var incidents []domain.ActiveIncident
+		for alertRows.Next() {
+			var inc domain.ActiveIncident
+			if err := alertRows.Scan(&inc.ID, &inc.IncidentName, &inc.Severity, &inc.LastActivity, &inc.Status); err == nil {
+				incidents = append(incidents, inc)
+			}
+		}
+		if len(incidents) > 0 {
+			return incidents
 		}
 	}
 
-	if len(incidents) == 0 {
-		return defaultIncidents()
-	}
-	return incidents
-}
-
-func defaultIncidents() []domain.ActiveIncident {
-	now := time.Now().UTC()
-	return []domain.ActiveIncident{
-		{ID: uuid.New().String(), IncidentName: "Suspicious Login from Unusual Location", Severity: "High", LastActivity: now.Add(-2 * time.Minute), Status: "Active"},
-		{ID: uuid.New().String(), IncidentName: "Multiple Failed Login Attempts", Severity: "Medium", LastActivity: now.Add(-14 * time.Minute), Status: "Active"},
-		{ID: uuid.New().String(), IncidentName: "Large outbound data transfer detected", Severity: "Critical", LastActivity: now.Add(-3 * time.Hour), Status: "Active"},
-		{ID: uuid.New().String(), IncidentName: "Endpoint contacting a known Command-and-Control", Severity: "High", LastActivity: now.Add(-5 * time.Hour), Status: "Active"},
-		{ID: uuid.New().String(), IncidentName: "Unencrypted device connecting to internal network", Severity: "Low", LastActivity: now.Add(-12 * time.Hour), Status: "Active"},
-	}
+	return make([]domain.ActiveIncident, 0)
 }
 
 func (r *DashboardSnapshotRepository) computeDangerousThreats(ctx context.Context, orgID uuid.UUID) *domain.AssetRiskDistribution {
@@ -386,60 +493,146 @@ func (r *DashboardSnapshotRepository) computeDangerousThreats(ctx context.Contex
 		WHERE organization_id = $1 AND entity_host IS NOT NULL AND TRIM(entity_host) != ''
 		GROUP BY entity_host
 		ORDER BY cnt DESC
-		LIMIT 3
+		LIMIT 5
 	`
 	rows, err := r.Executor(ctx).QueryContext(ctx, q, orgID)
-	if err != nil {
-		return defaultThreatDistribution()
-	}
-	defer rows.Close()
+	if err == nil {
+		defer rows.Close()
+		var items []domain.AssetRiskItem
+		totalCnt := 0
+		for rows.Next() {
+			var asset string
+			var cnt int
+			if err := rows.Scan(&asset, &cnt); err == nil {
+				items = append(items, domain.AssetRiskItem{AssetName: asset, Percentage: cnt})
+				totalCnt += cnt
+			}
+		}
 
-	var items []domain.AssetRiskItem
-	totalCnt := 0
-	for rows.Next() {
-		var asset string
-		var cnt int
-		if err := rows.Scan(&asset, &cnt); err == nil {
-			items = append(items, domain.AssetRiskItem{AssetName: asset, Percentage: cnt})
-			totalCnt += cnt
+		if totalCnt > 0 {
+			for i := range items {
+				items[i].Percentage = int((float64(items[i].Percentage) / float64(totalCnt)) * 100)
+			}
+			overallRisk := 100
+			if totalCnt < 10 {
+				overallRisk = totalCnt * 10
+			}
+			return &domain.AssetRiskDistribution{
+				OverallRiskPercentage: overallRisk,
+				Breakdown:             items,
+			}
 		}
 	}
 
-	if totalCnt > 0 {
-		for i := range items {
-			items[i].Percentage = int((float64(items[i].Percentage) / float64(totalCnt)) * 100)
+	const dsRiskQ = `
+		SELECT 
+			COALESCE(ds.name, 'unnamed-source') AS asset,
+			COUNT(*)::int AS cnt
+		FROM security_events se
+		JOIN data_sources ds ON se.source_id = ds.id
+		WHERE se.organization_id = $1 AND se.severity IN ('critical', 'high')
+		GROUP BY ds.name
+		ORDER BY cnt DESC
+		LIMIT 5
+	`
+	dsRows, err := r.Executor(ctx).QueryContext(ctx, dsRiskQ, orgID)
+	if err == nil {
+		defer dsRows.Close()
+		var items []domain.AssetRiskItem
+		totalCnt := 0
+		for dsRows.Next() {
+			var asset string
+			var cnt int
+			if err := dsRows.Scan(&asset, &cnt); err == nil {
+				items = append(items, domain.AssetRiskItem{AssetName: asset, Percentage: cnt})
+				totalCnt += cnt
+			}
 		}
-		return &domain.AssetRiskDistribution{
-			OverallRiskPercentage: 25,
-			Breakdown:             items,
+		if totalCnt > 0 {
+			for i := range items {
+				items[i].Percentage = int((float64(items[i].Percentage) / float64(totalCnt)) * 100)
+			}
+			overallRisk := 100
+			if totalCnt < 10 {
+				overallRisk = totalCnt * 10
+			}
+			return &domain.AssetRiskDistribution{
+				OverallRiskPercentage: overallRisk,
+				Breakdown:             items,
+			}
 		}
 	}
 
-	return defaultThreatDistribution()
-}
-
-func defaultThreatDistribution() *domain.AssetRiskDistribution {
 	return &domain.AssetRiskDistribution{
-		OverallRiskPercentage: 25,
-		Breakdown: []domain.AssetRiskItem{
-			{AssetName: "db-server-1", Percentage: 60},
-			{AssetName: "finance-vm", Percentage: 28},
-			{AssetName: "admin portal", Percentage: 12},
-		},
+		OverallRiskPercentage: 0,
+		Breakdown:             make([]domain.AssetRiskItem, 0),
 	}
 }
 
 func (r *DashboardSnapshotRepository) computeComplianceIndicators(ctx context.Context, orgID uuid.UUID) *domain.ComplianceRiskIndicators {
-	return &domain.ComplianceRiskIndicators{
-		EncryptionVulnerabilities: 5,
-		ExcessiveUserPermissions:  12,
-		OverlyTrustedUsers:        17,
-		VulnerabilitiesEmail:      2,
-		DormantAccounts:           23,
-		PhysicalSecurity:          2,
-		UnencryptedDevices:        3,
-		DetectionActionResult:     "8.5% detection, responses, and analyst actions.",
+	indicators := &domain.ComplianceRiskIndicators{
+		DetectionActionResult: "No compliance violations detected across connected data sources.",
 	}
+
+	const dormantQ = `
+		SELECT COUNT(*)::int 
+		FROM organization_members 
+		WHERE organization_id = $1 AND status IN ('inactive', 'suspended')
+	`
+	_ = r.Executor(ctx).QueryRowxContext(ctx, dormantQ, orgID).Scan(&indicators.DormantAccounts)
+
+	const mfaRiskQ = `
+		SELECT COUNT(om.id)::int 
+		FROM organization_members om
+		JOIN users u ON om.user_id = u.id
+		LEFT JOIN organization_roles r ON om.role_id = r.id
+		WHERE om.organization_id = $1 
+		  AND LOWER(COALESCE(r.name, '')) IN ('owner', 'admin', 'super_admin') 
+		  AND u.two_factor_enabled = false
+	`
+	_ = r.Executor(ctx).QueryRowxContext(ctx, mfaRiskQ, orgID).Scan(&indicators.ExcessiveUserPermissions)
+
+	const trustedQ = `
+		SELECT COUNT(om.id)::int 
+		FROM organization_members om
+		LEFT JOIN organization_roles r ON om.role_id = r.id
+		WHERE om.organization_id = $1 
+		  AND LOWER(COALESCE(r.name, '')) IN ('owner', 'admin', 'super_admin')
+	`
+	_ = r.Executor(ctx).QueryRowxContext(ctx, trustedQ, orgID).Scan(&indicators.OverlyTrustedUsers)
+
+	const encQ = `
+		SELECT COUNT(*)::int 
+		FROM threats 
+		WHERE organization_id = $1 
+		  AND (LOWER(title) LIKE '%encrypt%' OR LOWER(category) LIKE '%encrypt%' OR LOWER(what_happened) LIKE '%encrypt%')
+	`
+	_ = r.Executor(ctx).QueryRowxContext(ctx, encQ, orgID).Scan(&indicators.EncryptionVulnerabilities)
+
+	const emailQ = `
+		SELECT COUNT(*)::int 
+		FROM threats 
+		WHERE organization_id = $1 
+		  AND (LOWER(title) LIKE '%email%' OR LOWER(category) LIKE '%phishing%' OR LOWER(category) LIKE '%email%')
+	`
+	_ = r.Executor(ctx).QueryRowxContext(ctx, emailQ, orgID).Scan(&indicators.VulnerabilitiesEmail)
+
+	const alertsRiskQ = `
+		SELECT 
+			COUNT(*) FILTER (WHERE LOWER(threat_label) LIKE '%physical%')::int AS physical,
+			COUNT(*) FILTER (WHERE LOWER(threat_label) LIKE '%unencrypt%' OR LOWER(threat_label) LIKE '%device%')::int AS devices
+		FROM alerts
+		WHERE organization_id = $1
+	`
+	_ = r.Executor(ctx).QueryRowxContext(ctx, alertsRiskQ, orgID).Scan(&indicators.PhysicalSecurity, &indicators.UnencryptedDevices)
+
+	var totalAlerts int
+	const alertsTotalQ = `SELECT COUNT(*)::int FROM alerts WHERE organization_id = $1`
+	if err := r.Executor(ctx).QueryRowxContext(ctx, alertsTotalQ, orgID).Scan(&totalAlerts); err == nil && totalAlerts > 0 {
+		indicators.DetectionActionResult = fmt.Sprintf("%d security alerts and threats actively analyzed.", totalAlerts)
+	}
+
+	return indicators
 }
 
 func (r *DashboardSnapshotRepository) computeThreatTrends(ctx context.Context, orgID uuid.UUID) *domain.ThreatTrendsSummary {
@@ -447,17 +640,77 @@ func (r *DashboardSnapshotRepository) computeThreatTrends(ctx context.Context, o
 	currentMonthName := now.Format("January")
 	prevMonthName := now.AddDate(0, -1, 0).Format("January")
 
-	days := make([]domain.ThreatDayTrend, 0, 31)
-	for i := 1; i <= 30; i++ {
+	type dayCounts struct {
+		critical int
+		high     int
+		medium   int
+		low      int
+		total    int
+	}
+
+	curMonthCounts := make(map[int]dayCounts)
+	lastMonthCounts := make(map[int]int)
+
+	const curMonthQ = `
+		SELECT 
+			EXTRACT(DAY FROM occurred_at)::int AS d,
+			COUNT(*) FILTER (WHERE LOWER(severity) = 'critical')::int AS critical,
+			COUNT(*) FILTER (WHERE LOWER(severity) = 'high')::int AS high,
+			COUNT(*) FILTER (WHERE LOWER(severity) = 'medium')::int AS medium,
+			COUNT(*) FILTER (WHERE LOWER(severity) = 'low')::int AS low,
+			COUNT(*)::int AS total
+		FROM security_events
+		WHERE organization_id = $1 AND occurred_at >= DATE_TRUNC('month', NOW())
+		GROUP BY d
+	`
+	if rows, err := r.Executor(ctx).QueryContext(ctx, curMonthQ, orgID); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var d, c, h, m, l, tot int
+			if err := rows.Scan(&d, &c, &h, &m, &l, &tot); err == nil {
+				curMonthCounts[d] = dayCounts{critical: c, high: h, medium: m, low: l, total: tot}
+			}
+		}
+	}
+
+	const lastMonthQ = `
+		SELECT 
+			EXTRACT(DAY FROM occurred_at)::int AS d,
+			COUNT(*)::int AS total
+		FROM security_events
+		WHERE organization_id = $1 
+		  AND occurred_at >= DATE_TRUNC('month', NOW() - INTERVAL '1 month')
+		  AND occurred_at < DATE_TRUNC('month', NOW())
+		GROUP BY d
+	`
+	if rows, err := r.Executor(ctx).QueryContext(ctx, lastMonthQ, orgID); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var d, tot int
+			if err := rows.Scan(&d, &tot); err == nil {
+				lastMonthCounts[d] = tot
+			}
+		}
+	}
+
+	currentDay := now.Day()
+	if currentDay < 1 {
+		currentDay = 1
+	}
+
+	days := make([]domain.ThreatDayTrend, 0, currentDay)
+	for i := 1; i <= currentDay; i++ {
+		cur := curMonthCounts[i]
+		last := lastMonthCounts[i]
 		days = append(days, domain.ThreatDayTrend{
 			Day:               i,
-			Critical:          i % 3,
-			High:              i % 4,
-			Medium:            i % 5,
-			Low:               i % 6,
-			Total:             (i % 3) + (i % 4) + (i % 5) + (i % 6),
-			CurrentMonthCount: 5 + (i * 2 % 15),
-			LastMonthCount:    4 + (i * 3 % 12),
+			Critical:          cur.critical,
+			High:              cur.high,
+			Medium:            cur.medium,
+			Low:               cur.low,
+			Total:             cur.total,
+			CurrentMonthCount: cur.total,
+			LastMonthCount:    last,
 		})
 	}
 
@@ -471,7 +724,6 @@ func (r *DashboardSnapshotRepository) computeThreatTrends(ctx context.Context, o
 func (r *DashboardSnapshotRepository) computeGeoThreats(ctx context.Context, orgID uuid.UUID) *domain.GeoThreatsSummary {
 	const q = `
 		WITH combined_origins AS (
-			-- Realtime security events
 			SELECT TRIM(geo_country) AS country
 			FROM security_events
 			WHERE organization_id = $1 
@@ -480,7 +732,6 @@ func (r *DashboardSnapshotRepository) computeGeoThreats(ctx context.Context, org
 
 			UNION ALL
 
-			-- Correlated alerts
 			SELECT TRIM(context->>'geo_country') AS country
 			FROM alerts
 			WHERE organization_id = $1
@@ -489,7 +740,6 @@ func (r *DashboardSnapshotRepository) computeGeoThreats(ctx context.Context, org
 
 			UNION ALL
 
-			-- Deduced threats via analyzed log files
 			SELECT TRIM(se.geo_country) AS country
 			FROM threats t
 			JOIN analysis_results ar ON ar.id = t.analysis_id
@@ -513,7 +763,12 @@ func (r *DashboardSnapshotRepository) computeGeoThreats(ctx context.Context, org
 
 	rows, err := r.Executor(ctx).QueryContext(ctx, q, orgID)
 	if err != nil {
-		return defaultGeoThreats()
+		return &domain.GeoThreatsSummary{
+			TotalThreats:      0,
+			HighThreatRegion:  "None",
+			MostTargetedAsset: "None",
+			Origins:           make([]domain.GeoThreatOrigin, 0),
+		}
 	}
 	defer rows.Close()
 
@@ -528,7 +783,12 @@ func (r *DashboardSnapshotRepository) computeGeoThreats(ctx context.Context, org
 	}
 
 	if len(list) == 0 {
-		return defaultGeoThreats()
+		return &domain.GeoThreatsSummary{
+			TotalThreats:      0,
+			HighThreatRegion:  "None",
+			MostTargetedAsset: "None",
+			Origins:           make([]domain.GeoThreatOrigin, 0),
+		}
 	}
 
 	origins := make([]domain.GeoThreatOrigin, 0, len(list))
@@ -549,25 +809,32 @@ func (r *DashboardSnapshotRepository) computeGeoThreats(ctx context.Context, org
 
 	highThreatRegion := origins[0].Country
 
+	mostTargetedAsset := "None"
+	const assetQ = `
+		SELECT COALESCE(NULLIF(TRIM(entity_host), ''), '') AS asset
+		FROM alerts
+		WHERE organization_id = $1 AND entity_host IS NOT NULL AND TRIM(entity_host) != ''
+		GROUP BY entity_host
+		ORDER BY COUNT(*) DESC
+		LIMIT 1
+	`
+	_ = r.Executor(ctx).QueryRowxContext(ctx, assetQ, orgID).Scan(&mostTargetedAsset)
+	if mostTargetedAsset == "None" || mostTargetedAsset == "" {
+		const dsAssetQ = `
+			SELECT name FROM data_sources 
+			WHERE organization_id = $1 AND deleted_at IS NULL 
+			ORDER BY total_events DESC LIMIT 1
+		`
+		_ = r.Executor(ctx).QueryRowxContext(ctx, dsAssetQ, orgID).Scan(&mostTargetedAsset)
+		if mostTargetedAsset == "" {
+			mostTargetedAsset = "None"
+		}
+	}
+
 	return &domain.GeoThreatsSummary{
 		TotalThreats:      totalThreats,
 		HighThreatRegion:  strings.Title(highThreatRegion),
-		MostTargetedAsset: "finance-db-server",
+		MostTargetedAsset: mostTargetedAsset,
 		Origins:           origins,
-	}
-}
-
-func defaultGeoThreats() *domain.GeoThreatsSummary {
-	return &domain.GeoThreatsSummary{
-		TotalThreats:      154,
-		HighThreatRegion:  "Russia",
-		MostTargetedAsset: "finance-db-server",
-		Origins: []domain.GeoThreatOrigin{
-			{Country: "Russia", Lat: 55.7558, Lng: 37.6173, Count: 68, Percentage: 44.1},
-			{Country: "China", Lat: 39.9042, Lng: 116.4074, Count: 42, Percentage: 27.3},
-			{Country: "North Korea", Lat: 39.0392, Lng: 125.7625, Count: 24, Percentage: 15.6},
-			{Country: "Iran", Lat: 32.4279, Lng: 53.6880, Count: 12, Percentage: 7.8},
-			{Country: "Brazil", Lat: -14.2350, Lng: -51.9253, Count: 8, Percentage: 5.2},
-		},
 	}
 }

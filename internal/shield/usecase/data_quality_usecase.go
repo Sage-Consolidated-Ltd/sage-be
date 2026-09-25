@@ -173,6 +173,9 @@ func (s *DataQualityService) ApplySuggestedFix(ctx context.Context, orgID uuid.U
 		if err != nil {
 			return err
 		}
+		if parser == nil {
+			return apperrors.NotFoundError("PARSER NOT FOUND")
+		}
 		// Update parser fields based on suggested_fix
 		// expected suggested_fix contains 'logic' and/or 'mappings'
 		if logic, ok := target.SuggestedFix["logic"].(map[string]interface{}); ok {
@@ -225,6 +228,9 @@ func (s *DataQualityService) GetSuggestedFixDiff(ctx context.Context, suggestion
 	parser, err := s.parserRepo.GetParserByID(ctx, parserID, orgID)
 	if err != nil {
 		return nil, err
+	}
+	if parser == nil {
+		return nil, apperrors.NotFoundError("PARSER NOT FOUND")
 	}
 	// Compute diff: simple before/after maps
 	before := map[string]interface{}{
@@ -287,6 +293,9 @@ func (s *DataQualityService) DownloadDataQualityReport(ctx context.Context, orgI
 		var csv strings.Builder
 		csv.WriteString("Source ID,Parsing Errors,Missing Fields %,Unmapped Events,Duplicate %,Status\n")
 		for _, m := range metrics {
+			if m == nil {
+				continue
+			}
 			csv.WriteString(fmt.Sprintf("%s,%d,%.2f,%d,%.2f,%s\n",
 				m.SourceID,
 				m.ParsingErrors,

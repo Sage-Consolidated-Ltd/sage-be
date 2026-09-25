@@ -237,15 +237,21 @@ func (e *IncidentEngine) EvaluateEvent(ctx context.Context, event *domain.Securi
 
 // EvaluateBatch evaluates a slice of events against threat signatures and correlation rules.
 func (e *IncidentEngine) EvaluateBatch(ctx context.Context, events []*domain.SecurityEvent) ([]*domain.Incident, error) {
-	if len(events) == 0 {
+	var validEvents []*domain.SecurityEvent
+	for _, ev := range events {
+		if ev != nil {
+			validEvents = append(validEvents, ev)
+		}
+	}
+	if len(validEvents) == 0 {
 		return nil, nil
 	}
 
-	orgID := events[0].OrganizationID
+	orgID := validEvents[0].OrganizationID
 
 	// 1. Collect alerts across all events in batch
 	var allAlerts []*domain.Alert
-	for _, event := range events {
+	for _, event := range validEvents {
 		alerts := e.signatureDetector.DetectAlerts(event)
 		allAlerts = append(allAlerts, alerts...)
 	}
@@ -259,7 +265,7 @@ func (e *IncidentEngine) EvaluateBatch(ctx context.Context, events []*domain.Sec
 	incidents := e.correlationEngine.EvaluateRules(orgID, allAlerts)
 
 	// 3. Legacy rules evaluation
-	for _, event := range events {
+	for _, event := range validEvents {
 		legacy, _ := e.evaluateLegacyRules(ctx, event)
 		if len(legacy) > 0 {
 			incidents = append(incidents, legacy...)
@@ -271,7 +277,9 @@ func (e *IncidentEngine) EvaluateBatch(ctx context.Context, events []*domain.Sec
 
 	// 5. Dynamic scoring and priority
 	for _, inc := range incidents {
-		e.applyDynamicScoring(inc)
+		if inc != nil {
+			e.applyDynamicScoring(inc)
+		}
 	}
 
 	// 6. Deduplication
@@ -332,6 +340,9 @@ func (e *IncidentEngine) evaluateMetaIncidents(orgID uuid.UUID, incidents []*dom
 
 	entityIncidents := make(map[string][]*domain.Incident)
 	for _, inc := range incidents {
+		if inc == nil {
+			continue
+		}
 		if inc.EntityKey != "" {
 			entityIncidents[inc.EntityKey] = append(entityIncidents[inc.EntityKey], inc)
 		}
@@ -343,6 +354,9 @@ func (e *IncidentEngine) evaluateMetaIncidents(orgID uuid.UUID, incidents []*dom
 	for entityKey, group := range entityIncidents {
 		distinctRules := make(map[string]bool)
 		for _, inc := range group {
+			if inc == nil {
+				continue
+			}
 			distinctRules[inc.RuleID] = true
 		}
 
@@ -355,6 +369,9 @@ func (e *IncidentEngine) evaluateMetaIncidents(orgID uuid.UUID, incidents []*dom
 			var latestOccurred time.Time
 
 			for _, inc := range group {
+				if inc == nil {
+					continue
+				}
 				allSummaries = append(allSummaries, inc.Evidence.ContributingEvents...)
 				allMITRE = append(allMITRE, inc.Evidence.MITRETechniques...)
 				allThreats = append(allThreats, inc.Evidence.ContributingThreats...)
@@ -405,6 +422,9 @@ func (e *IncidentEngine) evaluateMetaIncidents(orgID uuid.UUID, incidents []*dom
 	}
 
 	for _, inc := range incidents {
+		if inc == nil {
+			continue
+		}
 		if !mergedEntities[inc.EntityKey] {
 			finalIncidents = append(finalIncidents, inc)
 		}
@@ -415,6 +435,9 @@ func (e *IncidentEngine) evaluateMetaIncidents(orgID uuid.UUID, incidents []*dom
 
 // applyDynamicScoring calculates dynamic score (0-100) and priority (P1/P2/P3).
 func (e *IncidentEngine) applyDynamicScoring(inc *domain.Incident) {
+	if inc == nil {
+		return
+	}
 	if inc.Score == 0 {
 		switch inc.Severity {
 		case types.SeverityCritical:
@@ -465,6 +488,9 @@ func (e *IncidentEngine) deduplicateIncidents(incidents []*domain.Incident) []*d
 
 	dedupMap := make(map[dedupKey]*domain.Incident)
 	for _, inc := range incidents {
+		if inc == nil {
+			continue
+		}
 		k := dedupKey{ruleID: inc.RuleID, entityKey: inc.EntityKey}
 		if existing, exists := dedupMap[k]; exists {
 			existing.Evidence.ContributingEvents = append(existing.Evidence.ContributingEvents, inc.Evidence.ContributingEvents...)

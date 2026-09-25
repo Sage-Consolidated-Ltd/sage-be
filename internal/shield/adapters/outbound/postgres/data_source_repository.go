@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"sage-backend/internal/shared/db"
@@ -97,6 +98,9 @@ const (
 )
 
 func (r *DataSourceRepository) CreateDataSource(ctx context.Context, ds *domain.DataSource) error {
+	if ds == nil {
+		return fmt.Errorf("data source cannot be nil")
+	}
 	var id uuid.UUID
 	var createdAt, updatedAt time.Time
 	metaJSON := ds.Metadata
@@ -123,6 +127,9 @@ func (r *DataSourceRepository) CreateDataSource(ctx context.Context, ds *domain.
 }
 
 func (r *DataSourceRepository) UpdateDataSource(ctx context.Context, ds *domain.DataSource) error {
+	if ds == nil {
+		return fmt.Errorf("data source cannot be nil")
+	}
 	metaJSON := ds.Metadata
 	if metaJSON == nil {
 		metaJSON = json.RawMessage{}
@@ -193,6 +200,9 @@ func (r *DataSourceRepository) ListDataSources(ctx context.Context, orgID uuid.U
 	}
 	var domainSources []*domain.DataSource
 	for _, dto := range sources {
+		if dto == nil {
+			continue
+		}
 		domainSources = append(domainSources, dto.ToDomain())
 	}
 	return domainSources, total, nil
@@ -291,6 +301,9 @@ func (r *DataSourceRepository) GetSourcesWithIssues(ctx context.Context, orgID u
 	}
 	var sources []*domain.DataSource
 	for _, dto := range dtos {
+		if dto == nil {
+			continue
+		}
 		sources = append(sources, dto.ToDomain())
 	}
 	return sources, nil
@@ -304,6 +317,9 @@ func (r *DataSourceRepository) ListAllActiveDataSources(ctx context.Context) ([]
 	}
 	var sources []*domain.DataSource
 	for _, dto := range dtos {
+		if dto == nil {
+			continue
+		}
 		sources = append(sources, dto.ToDomain())
 	}
 	return sources, nil
